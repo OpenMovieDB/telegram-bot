@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { session } from 'telegraf';
 import * as process from 'process';
+import { BotService } from './bot.service';
 
 @Module({
   imports: [
@@ -15,6 +16,6 @@ import * as process from 'process';
     }),
   ],
   controllers: [],
-  providers: [],
+  providers: [BotService],
 })
 export class BotModule {}
