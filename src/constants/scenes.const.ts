@@ -3,7 +3,11 @@ import { CommandEnum } from '../enum/command.enum';
 const SCENES = {
   [CommandEnum.START]: {
     text: 'Привет! Я бот который поможет тебе получить токен для работы с API kinopoisk.dev. Для начала выбери действие:',
-    buttons: [BUTTONS[CommandEnum.GET_ACCESS], BUTTONS[CommandEnum.QUESTION]],
+    buttons: [
+      BUTTONS[CommandEnum.GET_ACCESS],
+      BUTTONS[CommandEnum.QUESTION],
+      BUTTONS[CommandEnum.I_HAVE_TOKEN],
+    ],
   },
   [CommandEnum.GET_ACCESS]: {
     text: `Для получения доступа к API тебе нужно выбрать тарифный план. \n\nТарифы: \n${
@@ -57,6 +61,23 @@ const SCENES = {
     },
     error: {
       text: `Вы еще не зарегистрированы в системе, для этого вам нужно получить токен.`,
+    },
+  },
+  [CommandEnum.I_HAVE_TOKEN]: {
+    text: `Давай проверим его! И если все ок, привяжем его к твоему аккаунту! \n\n Введи токен:`,
+    scenes: {
+      [CommandEnum.BIND_TOKEN]: {
+        success: {
+          text: `О, спасибо, я запомню, что он твой! \n\n Теперь ты можешь получить статистику по использованию API!`,
+        },
+        error: {
+          text: `Этот токен не твой или не существует!`,
+          buttons: [
+            BUTTONS[CommandEnum.BACK],
+            [BUTTONS[CommandEnum.GET_ACCESS]],
+          ],
+        },
+      },
     },
   },
 };
