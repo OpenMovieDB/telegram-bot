@@ -32,6 +32,10 @@ const SCENES = {
               text: `Отлично! Теперь ты можешь получить токен!`,
               buttons: [BUTTONS[CommandEnum.GET_TOKEN]],
             },
+            error: {
+              text: `Ты еще не вступил в чат!`,
+              buttons: [BUTTONS[CommandEnum.JOIN_CHAT]],
+            },
           },
         },
       },
