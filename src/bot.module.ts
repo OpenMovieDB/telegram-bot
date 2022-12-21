@@ -6,15 +6,15 @@ import * as process from 'process';
 @Module({
   imports: [
     TelegrafModule.forRootAsync({
-      botName: process.env.BOT_NAME,
+      botName: BOT_NAME,
       useFactory: () => ({
         token: process.env.BOT_TOKEN,
         middlewares: [session()],
-        include: [AppModule],
+        include: [BotModule],
       }),
     }),
   ],
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class BotModule {}
