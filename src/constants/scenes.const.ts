@@ -1,12 +1,13 @@
 import { CommandEnum } from '../enum/command.enum';
+import { BUTTONS } from './buttons.const';
 
-const SCENES = {
+export const SCENES = {
   [CommandEnum.START]: {
     text: 'Привет! Я бот который поможет тебе получить токен для работы с API kinopoisk.dev. Для начала выбери действие:',
     buttons: [
-      BUTTONS[CommandEnum.GET_ACCESS],
-      BUTTONS[CommandEnum.QUESTION],
-      BUTTONS[CommandEnum.I_HAVE_TOKEN],
+      [BUTTONS[CommandEnum.GET_ACCESS]],
+      [BUTTONS[CommandEnum.QUESTION]],
+      [BUTTONS[CommandEnum.I_HAVE_TOKEN]],
     ],
   },
   [CommandEnum.GET_ACCESS]: {
@@ -27,11 +28,11 @@ const SCENES = {
         text: `Отлично! Но перед этим к тебе есть небольшая просьба, зайди к нам в общий чат 😇\n В нем ты всегда можешь получить поддержку от сообщества и администрации, а в замен я дам тебе токен!`,
         buttons: [BUTTONS[CommandEnum.JOIN_CHAT]],
         scenes: {
-          [BUTTONS[CommandEnum.JOIN_CHAT]]: {
+          [CommandEnum.JOIN_CHAT]: {
             text: `Отлично, возвращайся сюда после вступления в чат!`,
             buttons: [BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
           },
-          [BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]]: {
+          [CommandEnum.CONFIRM_JOIN_CHAT]: {
             success: {
               text: `Отлично! Теперь ты можешь получить токен!`,
               buttons: [BUTTONS[CommandEnum.GET_TOKEN]],
