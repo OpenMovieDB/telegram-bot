@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
+import ApiKey from 'uuid-apikey';
 
 @Injectable()
 export class UserService {
@@ -16,5 +17,11 @@ export class UserService {
 
   async findOneByUserId(userId: string): Promise<User> {
     return this.userModel.findOne({ userId }).populate('tariffId');
+  }
+
+  async getUserToken(userId: string): Promise<string | null> {
+    const user = await this.findOneByUserId(userId);
+    if (!user) return null;
+    return ApiKey.toAPIKey(user.token);
   }
 }
