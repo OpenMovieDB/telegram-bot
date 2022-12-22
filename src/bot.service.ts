@@ -23,10 +23,4 @@ export class BotService {
       Markup.inlineKeyboard(SCENES[CommandEnum.START].buttons),
     );
   }
-
-  async baseSceneMessage(ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
-    const scene = SCENES[ctx.scene.session.current];
-    await replyOrEdit(ctx, scene.text, Markup.inlineKeyboard(scene.buttons));
-  }
 }
