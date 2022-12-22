@@ -6,6 +6,7 @@ import { InjectBot } from 'nestjs-telegraf';
 import { SCENES } from './constants/scenes.const';
 import { CommandEnum } from './enum/command.enum';
 import { replyOrEdit } from './utils/reply-or-edit.util';
+import { BOT_NAME } from './constants/bot-name.const';
 
 @Injectable()
 export class BotService {
