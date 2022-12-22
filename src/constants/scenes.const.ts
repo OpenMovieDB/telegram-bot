@@ -19,17 +19,16 @@ export const SCENES = {
     ],
   },
   [CommandEnum.GET_ACCESS]: {
-    text: `Для получения доступа к API тебе нужно выбрать тарифный план. \n\nТарифы: \n${
-      BUTTONS[CommandEnum.FREE_TARIFF]
-    } - Всегда бесплатный.\n${
-      BUTTONS[CommandEnum.DEVELOPER_TARIFF]
-    } - 500 рублей в месяц.\n${
-      BUTTONS[CommandEnum.UNLIMITED_TARIFF]
-    } - 2000 рублей в месяц.`,
+    text: `Для получения доступа к API тебе нужно выбрать тарифный план по количеству запросов в сутки. \n\nТарифы: \n<b>${
+      BUTTONS[CommandEnum.FREE_TARIFF].text
+    }</b> - Всегда бесплатный.\n<b>${
+      BUTTONS[CommandEnum.DEVELOPER_TARIFF].text
+    }</b> - <i>500</i> рублей в месяц.\n<b>${
+      BUTTONS[CommandEnum.UNLIMITED_TARIFF].text
+    }</b> - <i>2000</i> рублей в месяц.`,
     buttons: [
-      BUTTONS[CommandEnum.FREE_TARIFF],
-      BUTTONS[CommandEnum.DEVELOPER_TARIFF],
-      BUTTONS[CommandEnum.UNLIMITED_TARIFF],
+      [BUTTONS[CommandEnum.FREE_TARIFF], BUTTONS[CommandEnum.DEVELOPER_TARIFF]],
+      [BUTTONS[CommandEnum.UNLIMITED_TARIFF]],
     ],
     scenes: {
       [CommandEnum.FREE_TARIFF]: {

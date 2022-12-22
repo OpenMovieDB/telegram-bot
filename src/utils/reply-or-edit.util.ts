@@ -1,5 +1,6 @@
 import { ExtraEditMessageText } from 'telegraf/typings/telegram-types';
 import { Context } from '../interfaces/context.interface';
+import { FmtString } from 'telegraf/src/format';
 
 export const replyOrEdit = async (
   ctx: Context,
@@ -15,7 +16,7 @@ export const replyOrEdit = async (
       chatId,
       messageId,
       undefined,
-      text,
+      { text, parse_mode: 'HTML' } as FmtString,
       extra,
     );
   }
