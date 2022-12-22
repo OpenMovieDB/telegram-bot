@@ -1,6 +1,7 @@
 export enum CommandEnum {
   START = 'START',
   BACK = 'BACK',
+  HOME = 'HOME',
   GET_ACCESS = 'GET_ACCESS',
   QUESTION = 'QUESTION',
   FREE_TARIFF = 'FREE_TARIFF',

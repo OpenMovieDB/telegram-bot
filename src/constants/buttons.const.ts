@@ -3,6 +3,7 @@ import { Markup } from 'telegraf';
 
 export const BUTTONS = {
   [CommandEnum.BACK]: Markup.button.callback('⬅ назад', CommandEnum.BACK),
+  [CommandEnum.HOME]: Markup.button.callback('🏠 в начало', CommandEnum.HOME),
   [CommandEnum.GET_ACCESS]: Markup.button.callback(
     'Я хочу получить доступ к API 🚀',
     CommandEnum.GET_ACCESS,

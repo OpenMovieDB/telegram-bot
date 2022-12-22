@@ -81,4 +81,8 @@ export const SCENES = {
       },
     },
   },
+  ERROR: (message: string) => ({
+    text: `<b>Прошу прошения, но у меня тут ошибка: </b>: ${message}`,
+    buttons: [BUTTONS[CommandEnum.BACK], BUTTONS[CommandEnum.HOME]],
+  }),
 };
