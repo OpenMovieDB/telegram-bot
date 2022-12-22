@@ -2,8 +2,16 @@ import { CommandEnum } from '../enum/command.enum';
 import { BUTTONS } from './buttons.const';
 
 export const SCENES = {
+  [CommandEnum.START]: {
+    text: 'Привет! Я бот который поможет тебе получить токен для работы с API kinopoisk.dev. \n\n Для начала выбери действие:',
+    buttons: [
+      [BUTTONS[CommandEnum.GET_ACCESS]],
+      [BUTTONS[CommandEnum.QUESTION]],
+      [BUTTONS[CommandEnum.I_HAVE_TOKEN]],
+    ],
+  },
   [CommandEnum.HOME]: {
-    text: 'Привет! Я бот который поможет тебе получить токен для работы с API kinopoisk.dev. Для начала выбери действие:',
+    text: 'Выбери действие:',
     buttons: [
       [BUTTONS[CommandEnum.GET_ACCESS]],
       [BUTTONS[CommandEnum.QUESTION]],

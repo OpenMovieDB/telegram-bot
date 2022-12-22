@@ -9,6 +9,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionFilter } from './filters/all-exception.filter';
 import { GetAccessScene } from './scenes/get-access.scene';
 import { HomeScene } from './scenes/home.scene';
+import { StartScene } from './scenes/start.scene';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { HomeScene } from './scenes/home.scene';
     },
     BotService,
     BotUpdate,
+    StartScene,
     HomeScene,
     GetAccessScene,
   ],

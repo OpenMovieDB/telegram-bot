@@ -7,6 +7,7 @@ import { ResponseTimeInterceptor } from './interceptors/response-time-intercepto
 import { AllExceptionFilter } from './filters/all-exception.filter';
 import { Context } from './interfaces/context.interface';
 import { SceneContext } from 'telegraf/typings/scenes';
+import { CommandEnum } from './enum/command.enum';
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -22,7 +23,7 @@ export class BotUpdate {
   @Start()
   async onStart(@Ctx() ctx: Context) {
     ctx.session.messageId = undefined;
-    await this.botService.start(ctx);
+    await ctx.scene.enter(CommandEnum.START);
   }
 
   @Action(/.*/)
