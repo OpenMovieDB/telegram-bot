@@ -4,6 +4,7 @@ import { session } from 'telegraf';
 import { BotService } from './bot.service';
 import { BOT_NAME } from './constants/bot-name.const';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BotUpdate } from './bot.update';
 
 @Module({
   imports: [
@@ -22,6 +23,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     }),
   ],
   controllers: [],
-  providers: [BotService],
+  providers: [BotService, BotUpdate],
 })
 export class BotModule {}

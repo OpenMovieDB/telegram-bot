@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Markup, Telegraf } from 'telegraf';
 import { Context } from './interfaces/context.interface';
 
@@ -10,12 +10,15 @@ import { BOT_NAME } from './constants/bot-name.const';
 
 @Injectable()
 export class BotService {
+  private readonly logger = new Logger(BotService.name);
   constructor(
     @InjectBot(BOT_NAME)
     private readonly bot: Telegraf<Context>,
   ) {}
 
   async start(ctx: Context) {
+    this.logger.log(ctx);
+
     return replyOrEdit(
       ctx,
       SCENES[CommandEnum.START].text,
