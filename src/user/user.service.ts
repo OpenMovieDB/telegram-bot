@@ -24,4 +24,9 @@ export class UserService {
     if (!user) return null;
     return ApiKey.toAPIKey(user.token);
   }
+
+  async existUser(userId: string): Promise<boolean> {
+    const user = await this.findOneByUserId(userId);
+    return !!user;
+  }
 }
