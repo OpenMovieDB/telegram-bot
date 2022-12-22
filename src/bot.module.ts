@@ -10,6 +10,8 @@ import { AllExceptionFilter } from './filters/all-exception.filter';
 import { GetAccessScene } from './scenes/get-access.scene';
 import { HomeScene } from './scenes/home.scene';
 import { StartScene } from './scenes/start.scene';
+import { UserModule } from './user/user.module';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
@@ -26,6 +28,14 @@ import { StartScene } from './scenes/start.scene';
         include: [BotModule],
       }),
     }),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        uri: configService.get('MONGO_URI'),
+      }),
+    }),
+    UserModule,
   ],
   controllers: [],
   providers: [
