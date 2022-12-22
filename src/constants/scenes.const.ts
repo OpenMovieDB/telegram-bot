@@ -2,7 +2,7 @@ import { CommandEnum } from '../enum/command.enum';
 import { BUTTONS } from './buttons.const';
 
 export const SCENES = {
-  [CommandEnum.START]: {
+  [CommandEnum.HOME]: {
     text: 'Привет! Я бот который поможет тебе получить токен для работы с API kinopoisk.dev. Для начала выбери действие:',
     buttons: [
       [BUTTONS[CommandEnum.GET_ACCESS]],
@@ -82,7 +82,7 @@ export const SCENES = {
     },
   },
   ERROR: (message: string) => ({
-    text: `<b>Прошу прошения, но у меня тут ошибка: </b>: ${message}`,
+    text: `Прошу прошения, но у меня тут ошибка: ${message}`,
     buttons: [BUTTONS[CommandEnum.BACK], BUTTONS[CommandEnum.HOME]],
   }),
 };

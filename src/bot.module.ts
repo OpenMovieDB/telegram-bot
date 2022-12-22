@@ -5,6 +5,10 @@ import { BotService } from './bot.service';
 import { BOT_NAME } from './constants/bot-name.const';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BotUpdate } from './bot.update';
+import { APP_FILTER } from '@nestjs/core';
+import { AllExceptionFilter } from './filters/all-exception.filter';
+import { GetAccessScene } from './scenes/get-access.scene';
+import { HomeScene } from './scenes/home.scene';
 
 @Module({
   imports: [
@@ -23,6 +27,15 @@ import { BotUpdate } from './bot.update';
     }),
   ],
   controllers: [],
-  providers: [BotService, BotUpdate],
+  providers: [
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionFilter,
+    },
+    BotService,
+    BotUpdate,
+    HomeScene,
+    GetAccessScene,
+  ],
 })
 export class BotModule {}

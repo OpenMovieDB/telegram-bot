@@ -17,12 +17,16 @@ export class BotService {
   ) {}
 
   async start(ctx: Context) {
-    this.logger.log(ctx);
-
-    return replyOrEdit(
+    await replyOrEdit(
       ctx,
       SCENES[CommandEnum.START].text,
       Markup.inlineKeyboard(SCENES[CommandEnum.START].buttons),
     );
+  }
+
+  async baseSceneMessage(ctx: Context) {
+    this.logger.log(ctx.scene.session.current);
+    const scene = SCENES[ctx.scene.session.current];
+    await replyOrEdit(ctx, scene.text, Markup.inlineKeyboard(scene.buttons));
   }
 }
