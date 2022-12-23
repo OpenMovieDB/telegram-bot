@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument, ObjectId } from 'mongoose';
-import { Tariff } from './tariff.schema';
-import ApiKey from 'uuid-apikey';
+import * as ApiKey from 'uuid-apikey';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -16,9 +15,10 @@ export class User {
   @Prop({
     required: true,
     unique: true,
+    // @ts-ignore
     default: () => ApiKey.create().uuid,
   })
-  token: string;
+  token?: string;
 
   @Prop({
     required: true,
@@ -29,13 +29,18 @@ export class User {
   @Prop({
     default: () => 0,
   })
-  requestUsed: number;
+  requestUsed?: number;
 
   @Prop({
     default: () => '6016bed198ebf72bc112edae',
-    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tariff' }],
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: User.name }],
   })
-  tariffId: ObjectId;
+  tariffId?: ObjectId;
+
+  @Prop({
+    default: () => false,
+  })
+  inChat?: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
