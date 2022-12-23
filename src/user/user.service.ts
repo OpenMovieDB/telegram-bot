@@ -15,17 +15,28 @@ export class UserService {
     return this.userModel.create(user);
   }
 
-  async findOneByUserId(userId: string): Promise<User> {
+  async upsert(user: User): Promise<User> {
+    const { userId } = user;
+    const existUser = await this.findOneByUserId(userId);
+    if (existUser) {
+      await this.userModel.updateOne({ userId }, user);
+      return this.findOneByUserId(userId);
+    } else {
+      return this.create(user);
+    }
+  }
+
+  async findOneByUserId(userId: number): Promise<User> {
     return this.userModel.findOne({ userId }).populate('tariffId');
   }
 
-  async getUserToken(userId: string): Promise<string | null> {
+  async getUserToken(userId: number): Promise<string | null> {
     const user = await this.findOneByUserId(userId);
     if (!user) return null;
     return ApiKey.toAPIKey(user.token);
   }
 
-  async existUser(userId: string): Promise<boolean> {
+  async existUser(userId: number): Promise<boolean> {
     const user = await this.findOneByUserId(userId);
     return !!user;
   }
