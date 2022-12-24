@@ -1,5 +1,5 @@
 import { Logger, UseFilters, UseInterceptors } from '@nestjs/common';
-import { Action, Ctx, InjectBot, Start, Update } from 'nestjs-telegraf';
+import { Action, Ctx, InjectBot, On, Start, Update } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import { BotService } from './bot.service';
 import { BOT_NAME } from './constants/bot-name.const';
@@ -8,6 +8,7 @@ import { AllExceptionFilter } from './filters/all-exception.filter';
 import { Context } from './interfaces/context.interface';
 import { SceneContext } from 'telegraf/typings/scenes';
 import { CommandEnum } from './enum/command.enum';
+import { UserService } from './user/user.service';
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -18,6 +19,7 @@ export class BotUpdate {
     @InjectBot(BOT_NAME)
     private readonly bot: Telegraf<Context>,
     private readonly botService: BotService,
+    private readonly userService: UserService,
   ) {}
 
   @Start()
@@ -31,5 +33,16 @@ export class BotUpdate {
     const cbQuery = ctx.update.callback_query;
     const nextStep = 'data' in cbQuery ? cbQuery.data : null;
     await ctx.scene.enter(nextStep);
+  }
+
+  @On('new_chat_members')
+  async onNewChatMembers(@Ctx() ctx: Context) {
+    await this.botService.createInvitedUser(ctx);
+  }
+
+  @On('left_chat_member')
+  async onLeftChatMember(@Ctx() ctx: Context) {
+    this.logger.log('left_chat_member', ctx);
+    await this.botService.leftTheChat(ctx);
   }
 }

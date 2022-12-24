@@ -12,6 +12,7 @@ import { HomeScene } from './scenes/home.scene';
 import { StartScene } from './scenes/start.scene';
 import { UserModule } from './user/user.module';
 import { MongooseModule } from '@nestjs/mongoose';
+import { FreeTariffScene } from './scenes/free-tariff.scene';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { MongooseModule } from '@nestjs/mongoose';
     StartScene,
     HomeScene,
     GetAccessScene,
+    FreeTariffScene,
   ],
 })
 export class BotModule {}
