@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './schemas/user.schema';
-import ApiKey from 'uuid-apikey';
+import * as ApiKey from 'uuid-apikey';
 
 @Injectable()
 export class UserService {
@@ -26,6 +26,11 @@ export class UserService {
     }
   }
 
+  async update(userId: number, user: Partial<User>): Promise<User> {
+    await this.userModel.updateOne({ userId }, user);
+    return this.findOneByUserId(user.userId);
+  }
+
   async findOneByUserId(userId: number): Promise<User> {
     return this.userModel.findOne({ userId }).populate('tariffId');
   }
@@ -33,11 +38,22 @@ export class UserService {
   async getUserToken(userId: number): Promise<string | null> {
     const user = await this.findOneByUserId(userId);
     if (!user) return null;
+    // @ts-ignore
     return ApiKey.toAPIKey(user.token);
   }
 
-  async existUser(userId: number): Promise<boolean> {
+  async existUserInChat(userId: number): Promise<boolean> {
     const user = await this.findOneByUserId(userId);
-    return !!user;
+    return !!user?.inChat;
+  }
+
+  async blockUser(userId: number, inChat: boolean): Promise<User> {
+    const user = await this.findOneByUserId(userId);
+    if (!user) return null;
+    return this.update(userId, {
+      inChat,
+      // @ts-ignore
+      token: ApiKey.create().uuid,
+    });
   }
 }
