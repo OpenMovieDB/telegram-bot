@@ -22,9 +22,17 @@ export class User {
 
   @Prop({
     required: true,
-    unique: true,
   })
   username: string;
+
+  @Prop({
+    required: true,
+    unique: true,
+    default() {
+      return this.username;
+    },
+  })
+  email?: string;
 
   @Prop({
     default: () => 0,
