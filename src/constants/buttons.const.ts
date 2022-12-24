@@ -28,9 +28,9 @@ export const BUTTONS = {
     'Безлимит 🔥🔥🔥',
     CommandEnum.UNLIMITED_TARIFF,
   ),
-  [CommandEnum.JOIN_CHAT]: Markup.button.callback(
+  [CommandEnum.JOIN_CHAT]: Markup.button.url(
     'Вступить в чат',
-    CommandEnum.JOIN_CHAT,
+    'https://t.me/+jeHPZVXiLPFhODJi',
   ),
   [CommandEnum.CONFIRM_JOIN_CHAT]: Markup.button.callback(
     'Я вступил в чат',
