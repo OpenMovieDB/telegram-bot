@@ -40,4 +40,8 @@ export const BUTTONS = {
     'Получить токен',
     CommandEnum.GET_TOKEN,
   ),
+  [CommandEnum.SEND_MESSAGE_TO_ADMIN]: Markup.button.url(
+    'Написать администратору',
+    'https://t.me/mdwit',
+  ),
 };
