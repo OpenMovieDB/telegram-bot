@@ -6,7 +6,7 @@ import { replyOrEdit } from '../utils/reply-or-edit.util';
 import { Markup } from 'telegraf';
 
 export class AbstractScene {
-  private readonly logger = new Logger(AbstractScene.name);
+  public logger = new Logger(AbstractScene.name);
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
