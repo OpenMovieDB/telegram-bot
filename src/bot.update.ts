@@ -32,8 +32,10 @@ export class BotUpdate {
   ) {}
 
   @Start()
-  async onStart(@Ctx() ctx: Context) {
-    if (ctx?.message?.chat?.type !== 'private') return;
+  async onStart(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
 
     try {
       ctx.session.messageId = undefined;
@@ -45,9 +47,10 @@ export class BotUpdate {
 
   @Action(/.*/)
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
-    if (ctx?.message?.chat?.type !== 'private') return;
+    this.logger.log(ctx);
     try {
       const cbQuery = ctx.update.callback_query;
+      if (!['private'].includes(cbQuery.message.chat.type)) return;
       const nextStep = 'data' in cbQuery ? cbQuery.data : null;
       await ctx.scene.enter(nextStep);
     } catch (e) {
@@ -56,8 +59,10 @@ export class BotUpdate {
   }
 
   @Hears(BUTTONS[CommandEnum.HOME].text)
-  async onMenuHears(@Ctx() ctx: Context) {
-    if (ctx?.message?.chat?.type !== 'private') return;
+  async onMenuHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
 
     try {
       this.logger.log('hears', ctx.message);
@@ -73,68 +78,82 @@ export class BotUpdate {
   }
 
   @Hears(BUTTONS[CommandEnum.GET_REQUEST_STATS].text)
-  async onStatsHears(@Ctx() ctx: Context) {
-    if (ctx?.message?.chat?.type !== 'private') return;
+  async onStatsHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
 
     this.logger.log('stats', ctx.message);
     await ctx.scene.enter(CommandEnum.GET_REQUEST_STATS);
   }
 
   @Hears(BUTTONS[CommandEnum.QUESTION].text)
-  async onQuestionHears(@Ctx() ctx: Context) {
-    if (ctx?.message?.chat?.type !== 'private') return;
+  async onQuestionHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
 
     this.logger.log('question', ctx.message);
     await ctx.scene.enter(CommandEnum.QUESTION);
   }
 
   @Hears(BUTTONS[CommandEnum.UPDATE_TARIFF].text)
-  async onTariffHears(@Ctx() ctx: Context) {
-    if (ctx?.message?.chat?.type !== 'private') return;
+  async onTariffHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
 
     this.logger.log('tariff', ctx.message);
     await ctx.scene.enter(CommandEnum.UPDATE_TARIFF);
   }
 
   @Hears(BUTTONS[CommandEnum.GET_ACCESS].text)
-  async onApiHears(@Ctx() ctx: Context) {
-    if (ctx?.message?.chat?.type !== 'private') return;
+  async onApiHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
 
     this.logger.log('api', ctx.message);
     await ctx.scene.enter(CommandEnum.GET_ACCESS);
   }
 
   @Hears(BUTTONS[CommandEnum.I_HAVE_TOKEN].text)
-  async onTokenHears(@Ctx() ctx: Context) {
-    if (ctx?.message?.chat?.type !== 'private') return;
+  async onTokenHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
 
     this.logger.log('token', ctx.message);
     await ctx.scene.enter(CommandEnum.I_HAVE_TOKEN);
   }
 
   @Hears(BUTTONS[CommandEnum.GET_MY_TOKEN].text)
-  async onGetMyTokenHears(@Ctx() ctx: Context) {
-    if (ctx?.message?.chat?.type !== 'private') return;
+  async onGetMyTokenHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
 
     this.logger.log('token', ctx.message);
     await ctx.scene.enter(CommandEnum.GET_MY_TOKEN);
   }
 
   @Hears(BUTTONS[CommandEnum.CHANGE_TOKEN].text)
-  async onChangeTokenHears(@Ctx() ctx: Context) {
-    if (ctx?.message?.chat?.type !== 'private') return;
+  async onChangeTokenHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
 
     this.logger.log('token', ctx.message);
     await ctx.scene.enter(CommandEnum.CHANGE_TOKEN);
   }
 
   @On('new_chat_members')
-  async onNewChatMembers(@Ctx() ctx: Context) {
+  async onNewChatMembers(@Ctx() ctx: Context & { update: any }) {
     await this.botService.createInvitedUser(ctx);
   }
 
   @On('left_chat_member')
-  async onLeftChatMember(@Ctx() ctx: Context) {
+  async onLeftChatMember(@Ctx() ctx: Context & { update: any }) {
     this.logger.log('left_chat_member', ctx);
     await this.botService.leftTheChat(ctx);
   }

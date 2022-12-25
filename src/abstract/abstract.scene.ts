@@ -9,8 +9,6 @@ export class AbstractScene {
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    if (ctx?.message?.chat?.type !== 'private') return;
-
     const scene = SCENES[ctx.scene.session.current];
 
     if (scene.navigateButtons && scene.navigateText) {
