@@ -13,7 +13,10 @@ export const SCENES = {
   [CommandEnum.HOME]: {
     navigateText: 'Выбери действие:',
     navigateButtons: [
-      [BUTTONS[CommandEnum.GET_REQUEST_STATS]],
+      [
+        BUTTONS[CommandEnum.GET_REQUEST_STATS],
+        BUTTONS[CommandEnum.GET_MY_TOKEN],
+      ],
       [BUTTONS[CommandEnum.QUESTION]],
     ],
   },
@@ -92,6 +95,15 @@ export const SCENES = {
         },
       },
     },
+  },
+  [CommandEnum.GET_MY_TOKEN]: {
+    success: (token: string) => ({
+      text: `Вот твой токен: \n\n<code>${token}</code>`,
+    }),
+    error: () => ({
+      text: `У тебя еще нет токена. \n\n Чтобы получить токен, нажми на кнопку ниже.`,
+      buttons: [BUTTONS[CommandEnum.GET_ACCESS]],
+    }),
   },
   ERROR: (message: string) => ({
     navigateText: `Прошу прошения, но у меня тут ошибка: ${message}`,

@@ -14,6 +14,11 @@ export class IHaveTokenScene extends AbstractScene {
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
+    const existUser = await this.userService.findOneByUserId(ctx.from.id);
+    if (existUser) {
+      await ctx.scene.enter(CommandEnum.HOME);
+      return;
+    }
     const scene = SCENES[ctx.scene.session.current];
     await ctx.replyWithHTML(scene.text);
   }
@@ -25,6 +30,7 @@ export class IHaveTokenScene extends AbstractScene {
       const scene = SCENES[ctx.scene.session.current];
       const action = scene.actions[CommandEnum.BIND_TOKEN];
       this.logger.log(token);
+
       const user = await this.userService.findUserByToken(token);
 
       if (user?.username && user?.userId) {

@@ -52,4 +52,8 @@ export const BUTTONS = {
     '🔥 сменить тариф',
     CommandEnum.UPDATE_TARIFF,
   ),
+  [CommandEnum.GET_MY_TOKEN]: Markup.button.callback(
+    '🔑 мой токен',
+    CommandEnum.GET_MY_TOKEN,
+  ),
 };

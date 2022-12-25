@@ -85,6 +85,12 @@ export class BotUpdate {
     await ctx.scene.enter(CommandEnum.I_HAVE_TOKEN);
   }
 
+  @Hears(BUTTONS[CommandEnum.GET_MY_TOKEN].text)
+  async onGetMyTokenHears(@Ctx() ctx: Context) {
+    this.logger.log('token', ctx.message);
+    await ctx.scene.enter(CommandEnum.GET_MY_TOKEN);
+  }
+
   @On('new_chat_members')
   async onNewChatMembers(@Ctx() ctx: Context) {
     await this.botService.createInvitedUser(ctx);
