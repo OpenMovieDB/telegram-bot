@@ -20,6 +20,7 @@ import { GetRequestStatsScene } from './scenes/get-request-stats.scene';
 import { IHaveTokenScene } from './scenes/i-have-token.scene';
 import { GetMyTokenScene } from './scenes/get-my-token.scene';
 import { ChangeTokenScene } from './scenes/change-token.scene';
+import { BotController } from './bot.controller';
 
 @Module({
   imports: [
@@ -45,7 +46,7 @@ import { ChangeTokenScene } from './scenes/change-token.scene';
     }),
     UserModule,
   ],
-  controllers: [],
+  controllers: [BotController],
   providers: [
     {
       provide: APP_FILTER,
