@@ -21,12 +21,12 @@ export class FreeTariffScene extends AbstractScene {
       const token = await this.userService.getUserToken(ctx.from.id);
       await ctx.replyWithHTML(
         action.success(token).navigateText,
-        Markup.keyboard(action.success(token).navigateButtons),
+        Markup.keyboard(action.success(token).navigateButtons).resize(),
       );
     } else {
       await ctx.replyWithHTML(
         action.error().navigateText,
-        Markup.keyboard(action.error().navigateButtons),
+        Markup.keyboard(action.error().navigateButtons).resize(),
       );
       await ctx.replyWithHTML(
         action.error().text,

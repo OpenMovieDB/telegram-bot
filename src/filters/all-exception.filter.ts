@@ -14,7 +14,7 @@ export class AllExceptionFilter implements ExceptionFilter {
     Logger.error(exception.message, exception.stack, AllExceptionFilter.name);
     await ctx.replyWithHTML(
       scene.navigateText,
-      Markup.keyboard(scene.navigateButtons),
+      Markup.keyboard(scene.navigateButtons).resize(),
     );
   }
 }

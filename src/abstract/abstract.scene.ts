@@ -14,7 +14,7 @@ export class AbstractScene {
     if (scene.navigateButtons && scene.navigateText) {
       await ctx.replyWithHTML(
         scene.navigateText,
-        Markup.keyboard(scene.navigateButtons),
+        Markup.keyboard(scene.navigateButtons).resize(),
       );
     }
     if (!scene.navigateButtons && !scene.buttons) {

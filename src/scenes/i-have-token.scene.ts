@@ -29,6 +29,7 @@ export class IHaveTokenScene extends AbstractScene {
 
       if (user?.username && user?.userId) {
         await ctx.replyWithHTML(action.error.text);
+        await ctx.scene.enter(CommandEnum.START);
         return;
       }
 
@@ -38,9 +39,11 @@ export class IHaveTokenScene extends AbstractScene {
           username: ctx.from.username,
         });
         await ctx.replyWithHTML(action.success.text);
+        await ctx.scene.enter(CommandEnum.HOME);
         return;
       } else {
         await ctx.replyWithHTML(action.error.text);
+        await ctx.scene.enter(CommandEnum.START);
         return;
       }
     }
