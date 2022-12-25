@@ -40,7 +40,7 @@ export class BotService {
       for (const member of members) {
         const user = await this.userService.upsert({
           userId: member.id,
-          username: member.username,
+          username: member?.username || null,
           inChat: true,
         });
 

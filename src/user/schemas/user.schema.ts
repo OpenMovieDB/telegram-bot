@@ -21,16 +21,14 @@ export class User {
   })
   token?: string;
 
-  @Prop({
-    required: true,
-  })
+  @Prop()
   username: string;
 
   @Prop({
     required: true,
     unique: true,
     default() {
-      return this.username;
+      return this.userId;
     },
   })
   email?: string;

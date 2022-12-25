@@ -33,7 +33,7 @@ export class IHaveTokenScene extends AbstractScene {
 
       const user = await this.userService.findUserByToken(token);
 
-      if (user?.username && user?.userId) {
+      if (user?.userId) {
         await ctx.replyWithHTML(action.error.text);
         await ctx.scene.enter(CommandEnum.START);
         return;
@@ -42,7 +42,7 @@ export class IHaveTokenScene extends AbstractScene {
       if (user) {
         await this.userService.updateUserByToken(token, {
           userId: ctx.from.id,
-          username: ctx.from.username,
+          username: ctx.from.username || null,
         });
         await ctx.replyWithHTML(action.success.text);
         await ctx.scene.enter(CommandEnum.HOME);
