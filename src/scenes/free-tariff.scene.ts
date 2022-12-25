@@ -3,7 +3,6 @@ import { AbstractScene } from '../abstract/abstract.scene';
 import { UserService } from '../user/user.service';
 import { Action, Scene } from 'nestjs-telegraf';
 import { SCENES } from '../constants/scenes.const';
-import { replyOrEdit } from '../utils/reply-or-edit.util';
 import { Markup } from 'telegraf';
 
 @Scene(CommandEnum.FREE_TARIFF)
@@ -20,15 +19,17 @@ export class FreeTariffScene extends AbstractScene {
     const existUser = await this.userService.existUserInChat(ctx.from.id);
     if (existUser) {
       const token = await this.userService.getUserToken(ctx.from.id);
-      await replyOrEdit(
-        ctx,
-        action.success(token).text,
-        Markup.inlineKeyboard(action.success(token).buttons),
+      await ctx.replyWithHTML(
+        action.success(token).navigateText,
+        Markup.keyboard(action.success(token).navigateButtons),
       );
     } else {
-      await replyOrEdit(
-        ctx,
-        action.error().text || null,
+      await ctx.replyWithHTML(
+        action.error().navigateText,
+        Markup.keyboard(action.error().navigateButtons),
+      );
+      await ctx.replyWithHTML(
+        action.error().text,
         Markup.inlineKeyboard(action.error().buttons),
       );
     }

@@ -22,7 +22,7 @@ export class BotService {
   async start(ctx: Context) {
     await replyOrEdit(
       ctx,
-      SCENES[CommandEnum.START].text,
+      SCENES[CommandEnum.START].navigateText,
       Markup.inlineKeyboard(SCENES[CommandEnum.START].navigateButtons),
     );
   }

@@ -12,6 +12,9 @@ export class AllExceptionFilter implements ExceptionFilter {
     const scene = SCENES.ERROR(exception.message);
 
     Logger.error(exception.message, exception.stack, AllExceptionFilter.name);
-    await ctx.replyWithHTML(scene.text, Markup.inlineKeyboard(scene.buttons));
+    await ctx.replyWithHTML(
+      scene.navigateText,
+      Markup.inlineKeyboard(scene.navigateButtons),
+    );
   }
 }

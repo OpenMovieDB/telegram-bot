@@ -3,22 +3,25 @@ import { BUTTONS } from './buttons.const';
 
 export const SCENES = {
   [CommandEnum.START]: {
-    text: 'Привет! Я бот который поможет тебе получить токен для работы с API kinopoisk.dev. \n\n Для начала выбери действие:',
+    navigateText:
+      'Привет! Я бот который поможет тебе получить токен для работы с API kinopoisk.dev. \n\n Для начала выбери действие:',
     navigateButtons: [
       [BUTTONS[CommandEnum.GET_ACCESS]],
-      [BUTTONS[CommandEnum.I_HAVE_TOKEN]],
-      [BUTTONS[CommandEnum.QUESTION]],
+      [BUTTONS[CommandEnum.I_HAVE_TOKEN], BUTTONS[CommandEnum.QUESTION]],
     ],
   },
   [CommandEnum.HOME]: {
-    text: 'Выбери действие:',
+    navigateText: 'Выбери действие:',
     navigateButtons: [
       [BUTTONS[CommandEnum.GET_REQUEST_STATS]],
       [BUTTONS[CommandEnum.QUESTION], BUTTONS[CommandEnum.UPDATE_TARIFF]],
     ],
   },
   [CommandEnum.GET_ACCESS]: {
-    text: `Для получения доступа к API тебе нужно выбрать тарифный план по количеству запросов в сутки. \n\nТарифы: \n<b>${
+    navigateText:
+      'Для получения доступа к API тебе нужно выбрать тарифный план по количеству запросов в сутки.',
+    navigateButtons: [BUTTONS[CommandEnum.HOME]],
+    text: `Тарифы: \n<b>${
       BUTTONS[CommandEnum.FREE_TARIFF].text
     }</b> - Всегда бесплатный.\n<b>${
       BUTTONS[CommandEnum.DEVELOPER_TARIFF].text
@@ -28,26 +31,30 @@ export const SCENES = {
     buttons: [
       [BUTTONS[CommandEnum.FREE_TARIFF], BUTTONS[CommandEnum.DEVELOPER_TARIFF]],
       [BUTTONS[CommandEnum.UNLIMITED_TARIFF]],
-      [BUTTONS[CommandEnum.HOME]],
     ],
   },
   [CommandEnum.FREE_TARIFF]: {
-    text: `Отлично! Но перед этим к тебе есть небольшая просьба, зайди к нам в общий чат 😇\n\nВ нем ты всегда можешь получить поддержку от сообщества и администрации, а в замен я дам тебе токен!`,
+    navigateText:
+      'Отлично! Но перед этим к тебе есть небольшая просьба, зайди к нам в общий чат 😇',
+    navigateButtons: [BUTTONS[CommandEnum.HOME]],
+    text: `В нем ты всегда можешь получить поддержку от сообщества и администрации, а в замен я дам тебе токен!`,
     buttons: [
-      [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
-      [BUTTONS[CommandEnum.HOME]],
+      BUTTONS[CommandEnum.JOIN_CHAT],
+      BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT],
     ],
     actions: {
       [CommandEnum.CONFIRM_JOIN_CHAT]: {
         success: (token: string) => ({
-          text: `Теперь, ты можешь пользоваться API: \n\n<code>${token}</code>`,
-          buttons: [BUTTONS[CommandEnum.HOME]],
+          navigateText: `Теперь, ты можешь пользоваться API: \n\n<code>${token}</code>`,
+          navigateButtons: [BUTTONS[CommandEnum.HOME]],
         }),
         error: () => ({
-          text: `Ты не вступил в чат 😔`,
+          navigateText: `Ты не вступил в чат 😔`,
+          navigateButtons: [BUTTONS[CommandEnum.HOME]],
+          text: `Нажми на кнопку ниже и вступи в чат, а затем вернись сюда и нажми на кнопку "Подтвердить вступление"`,
           buttons: [
-            [BUTTONS[CommandEnum.JOIN_CHAT]],
-            [BUTTONS[CommandEnum.HOME]],
+            BUTTONS[CommandEnum.JOIN_CHAT],
+            BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT],
           ],
         }),
       },
@@ -82,16 +89,13 @@ export const SCENES = {
         },
         error: {
           text: `Этот токен не твой или не существует!`,
-          buttons: [
-            BUTTONS[CommandEnum.BACK],
-            [BUTTONS[CommandEnum.GET_ACCESS]],
-          ],
+          buttons: [[BUTTONS[CommandEnum.GET_ACCESS]]],
         },
       },
     },
   },
   ERROR: (message: string) => ({
-    text: `Прошу прошения, но у меня тут ошибка: ${message}`,
-    buttons: [BUTTONS[CommandEnum.BACK], BUTTONS[CommandEnum.HOME]],
+    navigateText: `Прошу прошения, но у меня тут ошибка: ${message}`,
+    navigateButtons: [BUTTONS[CommandEnum.HOME]],
   }),
 };
