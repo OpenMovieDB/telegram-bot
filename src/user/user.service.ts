@@ -3,6 +3,7 @@ import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import * as ApiKey from 'uuid-apikey';
+import { Tariff } from './schemas/tariff.schema';
 
 @Injectable()
 export class UserService {
@@ -31,8 +32,8 @@ export class UserService {
     return this.findOneByUserId(user.userId);
   }
 
-  async findOneByUserId(userId: number): Promise<User> {
-    return this.userModel.findOne({ userId }).populate('tariffId');
+  async findOneByUserId(userId: number): Promise<User & { tariffId: Tariff }> {
+    return this.userModel.findOne({ userId }).populate('tariffId').lean();
   }
 
   async getUserToken(userId: number): Promise<string | null> {

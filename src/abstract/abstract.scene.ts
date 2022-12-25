@@ -11,10 +11,16 @@ export class AbstractScene {
   async onSceneEnter(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
     const scene = SCENES[ctx.scene.session.current];
-    await replyOrEdit(
-      ctx,
-      scene.text || null,
-      Markup.inlineKeyboard(scene.buttons),
-    );
+    if (scene.buttons) {
+      await replyOrEdit(
+        ctx,
+        scene.text || null,
+        Markup.inlineKeyboard(scene.buttons),
+      );
+    } else if (scene.navigateButtons) {
+      await ctx.reply(scene.text, Markup.keyboard(scene.navigateButtons));
+    } else {
+      await ctx.reply(scene.text);
+    }
   }
 }

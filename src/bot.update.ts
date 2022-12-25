@@ -1,5 +1,13 @@
 import { Logger, UseFilters, UseInterceptors } from '@nestjs/common';
-import { Action, Ctx, InjectBot, On, Start, Update } from 'nestjs-telegraf';
+import {
+  Action,
+  Ctx,
+  Hears,
+  InjectBot,
+  On,
+  Start,
+  Update,
+} from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import { BotService } from './bot.service';
 import { BOT_NAME } from './constants/bot-name.const';
@@ -33,6 +41,47 @@ export class BotUpdate {
     const cbQuery = ctx.update.callback_query;
     const nextStep = 'data' in cbQuery ? cbQuery.data : null;
     await ctx.scene.enter(nextStep);
+  }
+
+  @Hears('🏠 в меню')
+  async onMenuHears(@Ctx() ctx: Context) {
+    this.logger.log('hears', ctx.message);
+    const existUser = await this.userService.findOneByUserId(ctx.from.id);
+    if (existUser) {
+      await ctx.scene.enter(CommandEnum.HOME);
+    } else {
+      await ctx.scene.enter(CommandEnum.START);
+    }
+  }
+
+  @Hears('📊 статистика запросов')
+  async onStatsHears(@Ctx() ctx: Context) {
+    this.logger.log('stats', ctx.message);
+    await ctx.scene.enter(CommandEnum.GET_REQUEST_STATS);
+  }
+
+  @Hears('у меня есть вопрос 🥹')
+  async onQuestionHears(@Ctx() ctx: Context) {
+    this.logger.log('question', ctx.message);
+    await ctx.scene.enter(CommandEnum.QUESTION);
+  }
+
+  @Hears('🔥 обновить тариф')
+  async onTariffHears(@Ctx() ctx: Context) {
+    this.logger.log('tariff', ctx.message);
+    await ctx.scene.enter(CommandEnum.UPDATE_TARIFF);
+  }
+
+  @Hears('хочу доступ к API 🚀')
+  async onApiHears(@Ctx() ctx: Context) {
+    this.logger.log('api', ctx.message);
+    await ctx.scene.enter(CommandEnum.GET_ACCESS);
+  }
+
+  @Hears('у меня уже есть токен 🤓')
+  async onTokenHears(@Ctx() ctx: Context) {
+    this.logger.log('token', ctx.message);
+    await ctx.scene.enter(CommandEnum.I_HAVE_TOKEN);
   }
 
   @On('new_chat_members')

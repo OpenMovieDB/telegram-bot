@@ -3,17 +3,17 @@ import { Markup } from 'telegraf';
 
 export const BUTTONS = {
   [CommandEnum.BACK]: Markup.button.callback('⬅ назад', CommandEnum.BACK),
-  [CommandEnum.HOME]: Markup.button.callback('🏠 в начало', CommandEnum.HOME),
+  [CommandEnum.HOME]: Markup.button.callback('🏠 в меню', CommandEnum.HOME),
   [CommandEnum.GET_ACCESS]: Markup.button.callback(
-    'Я хочу получить доступ к API 🚀',
+    'хочу доступ к API 🚀',
     CommandEnum.GET_ACCESS,
   ),
   [CommandEnum.QUESTION]: Markup.button.callback(
-    'У меня есть вопрос 🥹',
+    'у меня есть вопрос 🥹',
     CommandEnum.QUESTION,
   ),
   [CommandEnum.I_HAVE_TOKEN]: Markup.button.callback(
-    'У меня уже есть токен 🤓',
+    'у меня уже есть токен 🤓',
     CommandEnum.I_HAVE_TOKEN,
   ),
   [CommandEnum.FREE_TARIFF]: Markup.button.callback(
@@ -25,23 +25,31 @@ export const BUTTONS = {
     CommandEnum.DEVELOPER_TARIFF,
   ),
   [CommandEnum.UNLIMITED_TARIFF]: Markup.button.callback(
-    'Безлимит 🔥🔥🔥',
+    'безлимит 🔥🔥🔥',
     CommandEnum.UNLIMITED_TARIFF,
   ),
   [CommandEnum.JOIN_CHAT]: Markup.button.url(
-    'Вступить в чат',
+    'вступить в чат 📣',
     'https://t.me/+jeHPZVXiLPFhODJi',
   ),
   [CommandEnum.CONFIRM_JOIN_CHAT]: Markup.button.callback(
-    'Я вступил в чат',
+    '🔥 я вступил в чат 🔥',
     CommandEnum.CONFIRM_JOIN_CHAT,
   ),
   [CommandEnum.GET_TOKEN]: Markup.button.callback(
-    'Получить токен',
+    '👉получить токен👈',
     CommandEnum.GET_TOKEN,
   ),
   [CommandEnum.SEND_MESSAGE_TO_ADMIN]: Markup.button.url(
-    'Написать администратору',
+    'написать администратору 📩',
     'https://t.me/mdwit',
+  ),
+  [CommandEnum.GET_REQUEST_STATS]: Markup.button.callback(
+    '📊 статистика запросов',
+    CommandEnum.GET_REQUEST_STATS,
+  ),
+  [CommandEnum.UPDATE_TARIFF]: Markup.button.callback(
+    '🔥 обновить тариф',
+    CommandEnum.UPDATE_TARIFF,
   ),
 };

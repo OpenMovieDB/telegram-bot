@@ -4,18 +4,17 @@ import { BUTTONS } from './buttons.const';
 export const SCENES = {
   [CommandEnum.START]: {
     text: 'Привет! Я бот который поможет тебе получить токен для работы с API kinopoisk.dev. \n\n Для начала выбери действие:',
-    buttons: [
+    navigateButtons: [
       [BUTTONS[CommandEnum.GET_ACCESS]],
-      [BUTTONS[CommandEnum.QUESTION]],
       [BUTTONS[CommandEnum.I_HAVE_TOKEN]],
+      [BUTTONS[CommandEnum.QUESTION]],
     ],
   },
   [CommandEnum.HOME]: {
     text: 'Выбери действие:',
-    buttons: [
-      [BUTTONS[CommandEnum.GET_ACCESS]],
-      [BUTTONS[CommandEnum.QUESTION]],
-      [BUTTONS[CommandEnum.I_HAVE_TOKEN]],
+    navigateButtons: [
+      [BUTTONS[CommandEnum.GET_REQUEST_STATS]],
+      [BUTTONS[CommandEnum.QUESTION], BUTTONS[CommandEnum.UPDATE_TARIFF]],
     ],
   },
   [CommandEnum.GET_ACCESS]: {
@@ -29,13 +28,14 @@ export const SCENES = {
     buttons: [
       [BUTTONS[CommandEnum.FREE_TARIFF], BUTTONS[CommandEnum.DEVELOPER_TARIFF]],
       [BUTTONS[CommandEnum.UNLIMITED_TARIFF]],
+      [BUTTONS[CommandEnum.HOME]],
     ],
   },
   [CommandEnum.FREE_TARIFF]: {
     text: `Отлично! Но перед этим к тебе есть небольшая просьба, зайди к нам в общий чат 😇\n\nВ нем ты всегда можешь получить поддержку от сообщества и администрации, а в замен я дам тебе токен!`,
     buttons: [
-      BUTTONS[CommandEnum.JOIN_CHAT],
-      BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT],
+      [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
+      [BUTTONS[CommandEnum.HOME]],
     ],
     actions: {
       [CommandEnum.CONFIRM_JOIN_CHAT]: {
@@ -45,7 +45,10 @@ export const SCENES = {
         }),
         error: () => ({
           text: `Ты не вступил в чат 😔`,
-          buttons: [BUTTONS[CommandEnum.JOIN_CHAT]],
+          buttons: [
+            [BUTTONS[CommandEnum.JOIN_CHAT]],
+            [BUTTONS[CommandEnum.HOME]],
+          ],
         }),
       },
     },
@@ -63,12 +66,12 @@ export const SCENES = {
     buttons: [BUTTONS[CommandEnum.JOIN_CHAT]],
   },
   [CommandEnum.GET_REQUEST_STATS]: {
-    success: {
-      text: `Вот статистика по использованию API:`,
-    },
-    error: {
+    success: (requests: number, leftRequests: number) => ({
+      text: `Вот статистика по использованию API:\n\n<b>Использовано:</b> <i>${requests}</i>\n<b>Осталось запросов:</b> <i>${leftRequests}</i>`,
+    }),
+    error: () => ({
       text: `Вы еще не зарегистрированы в системе, для этого вам нужно получить токен.`,
-    },
+    }),
   },
   [CommandEnum.I_HAVE_TOKEN]: {
     text: `Давай проверим его! И если все ок, привяжем его к твоему аккаунту! \n\n Введи токен:`,
