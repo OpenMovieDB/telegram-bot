@@ -13,10 +13,8 @@ export const SCENES = {
   [CommandEnum.HOME]: {
     navigateText: 'Выбери действие:',
     navigateButtons: [
-      [
-        BUTTONS[CommandEnum.GET_REQUEST_STATS],
-        BUTTONS[CommandEnum.GET_MY_TOKEN],
-      ],
+      [BUTTONS[CommandEnum.GET_REQUEST_STATS]],
+      [BUTTONS[CommandEnum.GET_MY_TOKEN], BUTTONS[CommandEnum.CHANGE_TOKEN]],
       [BUTTONS[CommandEnum.QUESTION]],
     ],
   },
@@ -104,6 +102,24 @@ export const SCENES = {
       text: `У тебя еще нет токена. \n\n Чтобы получить токен, нажми на кнопку ниже.`,
       buttons: [BUTTONS[CommandEnum.GET_ACCESS]],
     }),
+  },
+  [CommandEnum.CHANGE_TOKEN]: {
+    text: `Ты точно хочешь сменить токен? \n\n Его необходимо будет поменять во всех приложениях, которые используют его.`,
+    buttons: [BUTTONS[CommandEnum.YES], BUTTONS[CommandEnum.NO]],
+    actions: {
+      [CommandEnum.YES]: {
+        success: (token: string) => ({
+          text: `Вот новый токен: \n\n<code>${token}</code>`,
+        }),
+        error: () => ({
+          text: `У тебя еще нет токена. \n\n Чтобы получить токен, нажми на кнопку ниже.`,
+          buttons: [BUTTONS[CommandEnum.GET_ACCESS]],
+        }),
+      },
+      [CommandEnum.NO]: {
+        text: `Отлично!`,
+      },
+    },
   },
   ERROR: (message: string) => ({
     navigateText: `Прошу прошения, но у меня тут ошибка: ${message}`,

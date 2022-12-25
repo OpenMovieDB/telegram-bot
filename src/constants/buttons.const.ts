@@ -56,4 +56,10 @@ export const BUTTONS = {
     '🔑 мой токен',
     CommandEnum.GET_MY_TOKEN,
   ),
+  [CommandEnum.CHANGE_TOKEN]: Markup.button.callback(
+    '✏️ сменить токен',
+    CommandEnum.CHANGE_TOKEN,
+  ),
+  [CommandEnum.YES]: Markup.button.callback('✅ да', CommandEnum.YES),
+  [CommandEnum.NO]: Markup.button.callback('❌ нет', CommandEnum.NO),
 };

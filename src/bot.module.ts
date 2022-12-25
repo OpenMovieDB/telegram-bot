@@ -19,6 +19,7 @@ import { QuestionScene } from './scenes/question.scene';
 import { GetRequestStatsScene } from './scenes/get-request-stats.scene';
 import { IHaveTokenScene } from './scenes/i-have-token.scene';
 import { GetMyTokenScene } from './scenes/get-my-token.scene';
+import { ChangeTokenScene } from './scenes/change-token.scene';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { GetMyTokenScene } from './scenes/get-my-token.scene';
     GetRequestStatsScene,
     IHaveTokenScene,
     GetMyTokenScene,
+    ChangeTokenScene,
   ],
 })
 export class BotModule {}

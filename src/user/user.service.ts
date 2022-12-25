@@ -78,4 +78,17 @@ export class UserService {
     // @ts-ignore
     return this.userModel.updateOne({ token: ApiKey.toUUID(token) }, user);
   }
+
+  async changeToken(userId: number): Promise<string | null> {
+    const user = await this.findOneByUserId(userId);
+    if (!user) return null;
+    await this.userModel.updateOne(
+      { userId },
+      {
+        // @ts-ignore
+        token: ApiKey.create().uuid,
+      },
+    );
+    return this.getUserToken(userId);
+  }
 }
