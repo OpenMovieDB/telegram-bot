@@ -17,6 +17,7 @@ import { DeveloperTariffScene } from './scenes/developer-tariff.scene';
 import { UnlimitedTariffScene } from './scenes/unlimited-tariff.scene';
 import { QuestionScene } from './scenes/question.scene';
 import { GetRequestStatsScene } from './scenes/get-request-stats.scene';
+import { IHaveTokenScene } from './scenes/i-have-token.scene';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { GetRequestStatsScene } from './scenes/get-request-stats.scene';
     UnlimitedTariffScene,
     QuestionScene,
     GetRequestStatsScene,
+    IHaveTokenScene,
   ],
 })
 export class BotModule {}

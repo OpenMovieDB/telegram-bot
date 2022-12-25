@@ -14,7 +14,7 @@ export const SCENES = {
     navigateText: 'Выбери действие:',
     navigateButtons: [
       [BUTTONS[CommandEnum.GET_REQUEST_STATS]],
-      [BUTTONS[CommandEnum.QUESTION], BUTTONS[CommandEnum.UPDATE_TARIFF]],
+      [BUTTONS[CommandEnum.QUESTION]],
     ],
   },
   [CommandEnum.GET_ACCESS]: {
@@ -82,14 +82,13 @@ export const SCENES = {
   },
   [CommandEnum.I_HAVE_TOKEN]: {
     text: `Давай проверим его! И если все ок, привяжем его к твоему аккаунту! \n\n Введи токен:`,
-    scenes: {
+    actions: {
       [CommandEnum.BIND_TOKEN]: {
         success: {
           text: `О, спасибо, я запомню, что он твой! \n\n Теперь ты можешь получить статистику по использованию API!`,
         },
         error: {
-          text: `Этот токен не твой или не существует!`,
-          buttons: [[BUTTONS[CommandEnum.GET_ACCESS]]],
+          text: `Этот токен не твой или его не существует!`,
         },
       },
     },

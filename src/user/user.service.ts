@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './schemas/user.schema';
@@ -7,6 +7,7 @@ import { Tariff } from './schemas/tariff.schema';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
   constructor(
     @InjectModel(User.name)
     private userModel: Model<UserDocument>,
@@ -56,5 +57,25 @@ export class UserService {
       // @ts-ignore
       token: ApiKey.create().uuid,
     });
+  }
+
+  async findUserByToken(token: string): Promise<User> {
+    try {
+      const user = await this.userModel
+        .findOne({
+          // @ts-ignore
+          token: ApiKey.toUUID(token),
+        })
+        .lean();
+      return user;
+    } catch (e) {
+      this.logger.error(e);
+      return null;
+    }
+  }
+
+  async updateUserByToken(token: string, user: Partial<User>): Promise<User> {
+    // @ts-ignore
+    return this.userModel.updateOne({ token: ApiKey.toUUID(token) }, user);
   }
 }
