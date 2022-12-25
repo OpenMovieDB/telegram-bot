@@ -38,7 +38,7 @@ export class User {
   @Prop({
     default: () => 0,
   })
-  requestUsed?: number;
+  requestsUsed?: number;
 
   @Prop({
     default: () => '6016bed198ebf72bc112edae',
