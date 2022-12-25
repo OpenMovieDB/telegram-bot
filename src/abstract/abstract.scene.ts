@@ -8,7 +8,11 @@ export class AbstractScene {
   public logger = new Logger(AbstractScene.name);
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
-    if (ctx.update['message'].chat.type !== 'private') return;
+    if (
+      ctx.update?.['message']?.chat?.type !== 'private' &&
+      ctx.update?.callback_query?.['chat']?.type !== 'private'
+    )
+      return;
     this.logger.log(ctx.scene.session.current);
     const scene = SCENES[ctx.scene.session.current];
 

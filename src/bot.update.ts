@@ -43,11 +43,9 @@ export class BotUpdate {
     }
   }
 
-
-
   @Action(/.*/)
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
-    if (ctx.update['message'].chat.type !== 'private') return;
+    if (ctx.update.callback_query.chat.type !== 'private') return;
 
     try {
       const cbQuery = ctx.update.callback_query;
