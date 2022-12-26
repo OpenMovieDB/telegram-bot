@@ -17,15 +17,15 @@ export const BUTTONS = {
     CommandEnum.I_HAVE_TOKEN,
   ),
   [CommandEnum.FREE_TARIFF]: Markup.button.callback(
-    '200 🔥',
+    'FREE',
     CommandEnum.FREE_TARIFF,
   ),
   [CommandEnum.DEVELOPER_TARIFF]: Markup.button.callback(
-    '5000 🔥🔥',
+    'DEVELOPER',
     CommandEnum.DEVELOPER_TARIFF,
   ),
   [CommandEnum.UNLIMITED_TARIFF]: Markup.button.callback(
-    'БЕЗЛИМИТ 🔥🔥🔥',
+    'UNLIMIT',
     CommandEnum.UNLIMITED_TARIFF,
   ),
   [CommandEnum.JOIN_CHAT]: Markup.button.url(
@@ -63,7 +63,7 @@ export const BUTTONS = {
   [CommandEnum.YES]: Markup.button.callback('✅ да', CommandEnum.YES),
   [CommandEnum.NO]: Markup.button.callback('❌ нет', CommandEnum.NO),
   [CommandEnum.DOCUMENTATION]: Markup.button.url(
-    '📑 Документация',
+    '📑 документация',
     'https://kinopoiskdev.docs.apiary.io/',
   ),
 };

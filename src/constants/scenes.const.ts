@@ -22,13 +22,10 @@ export const SCENES = {
     navigateText:
       'Для получения доступа к API тебе нужно выбрать тарифный план по количеству запросов в сутки.',
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
-    text: `Тарифы: \n<b>${
-      BUTTONS[CommandEnum.FREE_TARIFF].text
-    }</b> - Всегда бесплатный.\n<b>${
-      BUTTONS[CommandEnum.DEVELOPER_TARIFF].text
-    }</b> - <i>500</i> рублей в месяц.\n<b>${
-      BUTTONS[CommandEnum.UNLIMITED_TARIFF].text
-    }</b> - <i>2000</i> рублей в месяц.`,
+    text: `Тарифы: \n\n<b>${BUTTONS[CommandEnum.FREE_TARIFF].text
+      }</b>: <i>200</i> запросов в сутки. <b>Всегда бесплатно</b>.\n<b>${BUTTONS[CommandEnum.DEVELOPER_TARIFF].text
+      }</b>: <i>5000</i> запросов в сутки. <b>500</b> руб./месяц.\n<b>${BUTTONS[CommandEnum.UNLIMITED_TARIFF].text
+      }</b>: <i>∞</i> запросов в сутки. <b>2000</b> руб./месяц.`,
     buttons: [
       [BUTTONS[CommandEnum.FREE_TARIFF], BUTTONS[CommandEnum.DEVELOPER_TARIFF]],
       [BUTTONS[CommandEnum.UNLIMITED_TARIFF]],
