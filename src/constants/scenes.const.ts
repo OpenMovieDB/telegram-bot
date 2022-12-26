@@ -70,8 +70,11 @@ export const SCENES = {
     buttons: [BUTTONS[CommandEnum.SEND_MESSAGE_TO_ADMIN]],
   },
   [CommandEnum.QUESTION]: {
-    text: `Если у тебя есть вопрос, то ты можешь задать его в нашем чате. \n\n Чтобы вступить в чат нажми на кнопку ниже.`,
-    buttons: [BUTTONS[CommandEnum.JOIN_CHAT]],
+    text: `Если у тебя есть вопрос, то ты можешь, посмотреть в документацию или задать его в нашем чате.`,
+    buttons: [
+      BUTTONS[CommandEnum.JOIN_CHAT],
+      BUTTONS[CommandEnum.DOCUMENTATION],
+    ],
   },
   [CommandEnum.GET_REQUEST_STATS]: {
     success: (requests: number, leftRequests: number) => ({

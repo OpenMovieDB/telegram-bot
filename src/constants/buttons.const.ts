@@ -62,4 +62,8 @@ export const BUTTONS = {
   ),
   [CommandEnum.YES]: Markup.button.callback('✅ да', CommandEnum.YES),
   [CommandEnum.NO]: Markup.button.callback('❌ нет', CommandEnum.NO),
+  [CommandEnum.DOCUMENTATION]: Markup.button.url(
+    '📑 Документация',
+    'https://kinopoiskdev.docs.apiary.io/',
+  ),
 };
