@@ -30,7 +30,7 @@ export const BUTTONS = {
   ),
   [CommandEnum.JOIN_CHAT]: Markup.button.url(
     'вступить в чат 📣',
-    'https://t.me/+jeHPZVXiLPFhODJi',
+    'https://t.me/+hdOSHbV8SJo2NmJi',
   ),
   [CommandEnum.CONFIRM_JOIN_CHAT]: Markup.button.callback(
     '🔥 я вступил в чат 🔥',
