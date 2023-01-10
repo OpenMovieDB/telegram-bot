@@ -16,6 +16,14 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@app/update-client": [
+        "libs/update-client/src"
+      ],
+      "@app/update-client/*": [
+        "libs/update-client/src/*"
+      ]
+    }
   }
 }
