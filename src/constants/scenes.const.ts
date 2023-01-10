@@ -13,7 +13,10 @@ export const SCENES = {
   [CommandEnum.HOME]: {
     navigateText: 'Выбери действие:',
     navigateButtons: [
-      [BUTTONS[CommandEnum.GET_REQUEST_STATS]],
+      [
+        BUTTONS[CommandEnum.GET_REQUEST_STATS],
+        BUTTONS[CommandEnum.UPDATE_MOVIE],
+      ],
       [BUTTONS[CommandEnum.GET_MY_TOKEN], BUTTONS[CommandEnum.CHANGE_TOKEN]],
       [BUTTONS[CommandEnum.QUESTION]],
     ],
@@ -22,10 +25,13 @@ export const SCENES = {
     navigateText:
       'Для получения доступа к API тебе нужно выбрать тарифный план по количеству запросов в сутки.',
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
-    text: `Тарифы: \n\n<b>${BUTTONS[CommandEnum.FREE_TARIFF].text
-      }</b>: <i>200</i> запросов в сутки. <b>Всегда бесплатно</b>.\n<b>${BUTTONS[CommandEnum.DEVELOPER_TARIFF].text
-      }</b>: <i>5000</i> запросов в сутки. <b>500</b> руб./месяц.\n<b>${BUTTONS[CommandEnum.UNLIMITED_TARIFF].text
-      }</b>: <i>∞</i> запросов в сутки. <b>2000</b> руб./месяц.`,
+    text: `Тарифы: \n\n<b>${
+      BUTTONS[CommandEnum.FREE_TARIFF].text
+    }</b>: <i>200</i> запросов в сутки. <b>Всегда бесплатно</b>.\n<b>${
+      BUTTONS[CommandEnum.DEVELOPER_TARIFF].text
+    }</b>: <i>5000</i> запросов в сутки. <b>500</b> руб./месяц.\n<b>${
+      BUTTONS[CommandEnum.UNLIMITED_TARIFF].text
+    }</b>: <i>∞</i> запросов в сутки. <b>2000</b> руб./месяц.`,
     buttons: [
       [BUTTONS[CommandEnum.FREE_TARIFF], BUTTONS[CommandEnum.DEVELOPER_TARIFF]],
       [BUTTONS[CommandEnum.UNLIMITED_TARIFF]],
@@ -120,6 +126,18 @@ export const SCENES = {
         text: `Отлично!`,
       },
     },
+  },
+  [CommandEnum.UPDATE_MOVIE]: {
+    text: `Я могу обновить или добавить фильмы. Пожалуйста, пришли мне список ID из кинопоиска разделенные запятой. \n\n Например: 666, 326, 435. \n\n Учитывай пожалуйста, что на обновление фильмов может потребоваться некоторое время. А так же, учитывай, что кеш действует сутки. Чтобы посмотреть результат без кеша, отправь запрос с параметром v и любым значением. Например v=123.`,
+    buttons: [BUTTONS[CommandEnum.BACK]],
+    success: (ids: number[]) => ({
+      text: `Выполнено! Вот список фильмов добавленых в приоритетную очередь на переобход: \n\n<code>${ids.join(
+        ', ',
+      )}</code>`,
+    }),
+    error: () => ({
+      text: `Что-то пошло не так 😨`,
+    }),
   },
   ERROR: (message: string) => ({
     navigateText: `Прошу прошения, но у меня тут ошибка: ${message}`,

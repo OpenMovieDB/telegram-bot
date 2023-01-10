@@ -19,6 +19,6 @@ export enum CommandEnum {
   CHANGE_TOKEN = 'CHANGE_TOKEN',
   YES = 'YES',
   NO = 'NO',
-
   DOCUMENTATION = 'DOCUMENTATION',
+  UPDATE_MOVIE = 'UPDATE_MOVIE',
 }

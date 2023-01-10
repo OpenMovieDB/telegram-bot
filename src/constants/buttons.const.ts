@@ -66,4 +66,8 @@ export const BUTTONS = {
     '📑 документация',
     'https://kinopoiskdev.docs.apiary.io/',
   ),
+  [CommandEnum.UPDATE_MOVIE]: Markup.button.callback(
+    '🔄️ Обновить фильмы',
+    CommandEnum.UPDATE_MOVIE,
+  ),
 };
