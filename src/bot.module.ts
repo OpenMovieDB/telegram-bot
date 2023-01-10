@@ -21,6 +21,8 @@ import { IHaveTokenScene } from './scenes/i-have-token.scene';
 import { GetMyTokenScene } from './scenes/get-my-token.scene';
 import { ChangeTokenScene } from './scenes/change-token.scene';
 import { BotController } from './bot.controller';
+import { UpdateClientModule } from '@app/update-client';
+import { UpdateMovieScene } from './scenes/update-movie.scene';
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { BotController } from './bot.controller';
       }),
     }),
     UserModule,
+    UpdateClientModule,
   ],
   controllers: [BotController],
   providers: [
@@ -65,6 +68,7 @@ import { BotController } from './bot.controller';
     IHaveTokenScene,
     GetMyTokenScene,
     ChangeTokenScene,
+    UpdateMovieScene,
   ],
 })
 export class BotModule {}

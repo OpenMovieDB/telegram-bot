@@ -147,6 +147,16 @@ export class BotUpdate {
     await ctx.scene.enter(CommandEnum.CHANGE_TOKEN);
   }
 
+  @Hears(BUTTONS[CommandEnum.UPDATE_MOVIE].text)
+  async onUpdateMovieHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
+
+    this.logger.log('update-movie', ctx.message);
+    await ctx.scene.enter(CommandEnum.UPDATE_MOVIE);
+  }
+
   @On('new_chat_members')
   async onNewChatMembers(@Ctx() ctx: Context & { update: any }) {
     await this.botService.createInvitedUser(ctx);

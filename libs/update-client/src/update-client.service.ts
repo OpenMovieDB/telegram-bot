@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class UpdateClientService {
@@ -21,10 +22,12 @@ export class UpdateClientService {
 
   constructor(private readonly httpService: HttpService) {}
 
-  update(ids: number[]) {
-    return this.httpService.put('/movie', {
-      updateData: this.updateData,
-      ids,
-    });
+  async update(ids: number[]): Promise<void> {
+    await lastValueFrom(
+      this.httpService.put('/movie', {
+        updateData: this.updateData,
+        ids,
+      }),
+    );
   }
 }
