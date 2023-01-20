@@ -70,4 +70,8 @@ export const BUTTONS = {
     '🔄️ обновить фильмы',
     CommandEnum.UPDATE_MOVIE,
   ),
+  [CommandEnum.SET_IMDB_RELATION]: Markup.button.callback(
+    '🔗 связать с IMDB',
+    CommandEnum.SET_IMDB_RELATION,
+  ),
 };

@@ -30,4 +30,18 @@ export class UpdateClientService {
       }),
     );
   }
+
+  async setImdbRelation(kinopoiskId: number, imdbId: string): Promise<void> {
+    await lastValueFrom(
+      this.httpService.put('/movie', {
+        updateData: ['base'],
+        ids: [kinopoiskId],
+        data: {
+          externalId: {
+            imdb: imdbId,
+          },
+        },
+      }),
+    );
+  }
 }

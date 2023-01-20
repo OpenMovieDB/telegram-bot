@@ -16,6 +16,7 @@ export const SCENES = {
       [
         BUTTONS[CommandEnum.GET_REQUEST_STATS],
         BUTTONS[CommandEnum.UPDATE_MOVIE],
+        BUTTONS[CommandEnum.SET_IMDB_RELATION],
       ],
       [BUTTONS[CommandEnum.GET_MY_TOKEN], BUTTONS[CommandEnum.CHANGE_TOKEN]],
       [BUTTONS[CommandEnum.QUESTION]],
@@ -132,6 +133,17 @@ export const SCENES = {
     buttons: [BUTTONS[CommandEnum.BACK]],
     success: {
       text: `Выполнено! Этот список фильмов добавлен в приоритетную очередь на обновение`,
+    },
+    error: {
+      text: `Что-то пошло не так 😨`,
+      buttons: [BUTTONS[CommandEnum.BACK]],
+    },
+  },
+  [CommandEnum.SET_IMDB_RELATION]: {
+    text: `Я могу указать imdb id для фильма у которого его еще нет. Пришли мне список связей(id_kinopoisk:id_imdb) разделенные запятой. \n\n Например: 666:tt0232500, 326:tt0111161, 435:tt0120689. \n\n <b>Пожалуйста, используйте этот функционал с пониманием ответственности!</b>`,
+    buttons: [BUTTONS[CommandEnum.BACK]],
+    success: {
+      text: `Выполнено!`,
     },
     error: {
       text: `Что-то пошло не так 😨`,

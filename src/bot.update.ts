@@ -157,6 +157,16 @@ export class BotUpdate {
     await ctx.scene.enter(CommandEnum.UPDATE_MOVIE);
   }
 
+  @Hears(BUTTONS[CommandEnum.SET_IMDB_RELATION].text)
+  async onUSetImdbRelationHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+
+    if (!['private'].includes(message.chat.type)) return;
+
+    this.logger.log('set-imdb-relation', ctx.message);
+    await ctx.scene.enter(CommandEnum.SET_IMDB_RELATION);
+  }
+
   @On('new_chat_members')
   async onNewChatMembers(@Ctx() ctx: Context & { update: any }) {
     await this.botService.createInvitedUser(ctx);

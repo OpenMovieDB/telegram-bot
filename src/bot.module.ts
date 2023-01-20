@@ -23,6 +23,7 @@ import { ChangeTokenScene } from './scenes/change-token.scene';
 import { BotController } from './bot.controller';
 import { UpdateClientModule } from '@app/update-client';
 import { UpdateMovieScene } from './scenes/update-movie.scene';
+import { SetImdbRelationScene } from './scenes/set-imdb-relation.scene';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { UpdateMovieScene } from './scenes/update-movie.scene';
     GetMyTokenScene,
     ChangeTokenScene,
     UpdateMovieScene,
+    SetImdbRelationScene,
   ],
 })
 export class BotModule {}
