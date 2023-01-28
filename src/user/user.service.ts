@@ -37,6 +37,10 @@ export class UserService {
     return this.userModel.findOne({ userId }).populate('tariffId').lean();
   }
 
+  async findUsersInChat(): Promise<(User & { tariffId: Tariff })[]> {
+    return this.userModel.find({ inChat: true }).populate('tariffId').lean();
+  }
+
   async getUserToken(userId: number): Promise<string | null> {
     const user = await this.findOneByUserId(userId);
     if (!user) return null;

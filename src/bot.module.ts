@@ -25,6 +25,7 @@ import { UpdateClientModule } from '@app/update-client';
 import { UpdateMovieScene } from './scenes/update-movie.scene';
 import { SetImdbRelationScene } from './scenes/set-imdb-relation.scene';
 import { BillingModule } from './billing/billing.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { BillingModule } from './billing/billing.module';
         uri: configService.get('MONGO_URI'),
       }),
     }),
+    ScheduleModule.forRoot(),
     UserModule,
     UpdateClientModule,
     BillingModule,
