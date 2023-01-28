@@ -34,7 +34,6 @@ export class BotUpdate {
   @Start()
   async onStart(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
-
     if (!['private'].includes(message.chat.type)) return;
 
     try {
@@ -77,94 +76,17 @@ export class BotUpdate {
     }
   }
 
-  @Hears(BUTTONS[CommandEnum.GET_REQUEST_STATS].text)
+  @Hears(/.*/)
   async onStatsHears(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
+    const [command] = Object.entries(BUTTONS).find(
+      ([_, button]) => button.text === message.text,
+    );
 
     if (!['private'].includes(message.chat.type)) return;
 
     this.logger.log('stats', ctx.message);
-    await ctx.scene.enter(CommandEnum.GET_REQUEST_STATS);
-  }
-
-  @Hears(BUTTONS[CommandEnum.QUESTION].text)
-  async onQuestionHears(@Ctx() ctx: Context & { update: any }) {
-    const message = ctx.update.message;
-
-    if (!['private'].includes(message.chat.type)) return;
-
-    this.logger.log('question', ctx.message);
-    await ctx.scene.enter(CommandEnum.QUESTION);
-  }
-
-  @Hears(BUTTONS[CommandEnum.UPDATE_TARIFF].text)
-  async onTariffHears(@Ctx() ctx: Context & { update: any }) {
-    const message = ctx.update.message;
-
-    if (!['private'].includes(message.chat.type)) return;
-
-    this.logger.log('tariff', ctx.message);
-    await ctx.scene.enter(CommandEnum.UPDATE_TARIFF);
-  }
-
-  @Hears(BUTTONS[CommandEnum.GET_ACCESS].text)
-  async onApiHears(@Ctx() ctx: Context & { update: any }) {
-    const message = ctx.update.message;
-
-    if (!['private'].includes(message.chat.type)) return;
-
-    this.logger.log('api', ctx.message);
-    await ctx.scene.enter(CommandEnum.GET_ACCESS);
-  }
-
-  @Hears(BUTTONS[CommandEnum.I_HAVE_TOKEN].text)
-  async onTokenHears(@Ctx() ctx: Context & { update: any }) {
-    const message = ctx.update.message;
-
-    if (!['private'].includes(message.chat.type)) return;
-
-    this.logger.log('token', ctx.message);
-    await ctx.scene.enter(CommandEnum.I_HAVE_TOKEN);
-  }
-
-  @Hears(BUTTONS[CommandEnum.GET_MY_TOKEN].text)
-  async onGetMyTokenHears(@Ctx() ctx: Context & { update: any }) {
-    const message = ctx.update.message;
-
-    if (!['private'].includes(message.chat.type)) return;
-
-    this.logger.log('token', ctx.message);
-    await ctx.scene.enter(CommandEnum.GET_MY_TOKEN);
-  }
-
-  @Hears(BUTTONS[CommandEnum.CHANGE_TOKEN].text)
-  async onChangeTokenHears(@Ctx() ctx: Context & { update: any }) {
-    const message = ctx.update.message;
-
-    if (!['private'].includes(message.chat.type)) return;
-
-    this.logger.log('token', ctx.message);
-    await ctx.scene.enter(CommandEnum.CHANGE_TOKEN);
-  }
-
-  @Hears(BUTTONS[CommandEnum.UPDATE_MOVIE].text)
-  async onUpdateMovieHears(@Ctx() ctx: Context & { update: any }) {
-    const message = ctx.update.message;
-
-    if (!['private'].includes(message.chat.type)) return;
-
-    this.logger.log('update-movie', ctx.message);
-    await ctx.scene.enter(CommandEnum.UPDATE_MOVIE);
-  }
-
-  @Hears(BUTTONS[CommandEnum.SET_IMDB_RELATION].text)
-  async onUSetImdbRelationHears(@Ctx() ctx: Context & { update: any }) {
-    const message = ctx.update.message;
-
-    if (!['private'].includes(message.chat.type)) return;
-
-    this.logger.log('set-imdb-relation', ctx.message);
-    await ctx.scene.enter(CommandEnum.SET_IMDB_RELATION);
+    await ctx.scene.enter(command);
   }
 
   @On('new_chat_members')
