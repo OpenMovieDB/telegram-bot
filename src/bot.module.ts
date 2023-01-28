@@ -24,6 +24,7 @@ import { BotController } from './bot.controller';
 import { UpdateClientModule } from '@app/update-client';
 import { UpdateMovieScene } from './scenes/update-movie.scene';
 import { SetImdbRelationScene } from './scenes/set-imdb-relation.scene';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { SetImdbRelationScene } from './scenes/set-imdb-relation.scene';
     }),
     UserModule,
     UpdateClientModule,
+    BillingModule,
   ],
   controllers: [BotController],
   providers: [
