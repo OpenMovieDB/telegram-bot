@@ -23,6 +23,12 @@
       ],
       "@app/update-client/*": [
         "libs/update-client/src/*"
+      ],
+      "@app/criptomus-client": [
+        "libs/criptomus-client/src"
+      ],
+      "@app/criptomus-client/*": [
+        "libs/criptomus-client/src/*"
       ]
     }
   }

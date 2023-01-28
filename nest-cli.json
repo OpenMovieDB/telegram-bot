@@ -11,6 +11,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/update-client/tsconfig.lib.json"
       }
+    },
+    "criptomus-client": {
+      "type": "library",
+      "root": "libs/criptomus-client",
+      "entryFile": "index",
+      "sourceRoot": "libs/criptomus-client/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/criptomus-client/tsconfig.lib.json"
+      }
     }
   },
   "compilerOptions": {

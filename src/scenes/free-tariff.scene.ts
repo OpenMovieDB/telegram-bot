@@ -14,6 +14,7 @@ export class FreeTariffScene extends AbstractScene {
   @Action(CommandEnum.CONFIRM_JOIN_CHAT)
   async confirmJoinChat(ctx) {
     const scene = SCENES[ctx.scene.session.current];
+
     const action = scene.actions[CommandEnum.CONFIRM_JOIN_CHAT];
 
     const existUser = await this.userService.existUserInChat(ctx.from.id);
