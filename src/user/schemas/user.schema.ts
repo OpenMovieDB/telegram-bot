@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument, Types } from 'mongoose';
-import * as ApiKey from 'uuid-apikey';
 import { Tariff } from './tariff.schema';
 
 export type UserDocument = HydratedDocument<User>;
@@ -16,8 +15,6 @@ export class User {
   @Prop({
     required: true,
     unique: true,
-    // @ts-ignore
-    default: () => ApiKey.create().uuid,
   })
   token?: string;
 

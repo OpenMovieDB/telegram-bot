@@ -14,7 +14,9 @@ export class UserService {
   ) {}
 
   async create(user: User): Promise<User> {
-    return this.userModel.create(user);
+    // @ts-ignore
+    const userToken = ApiKey.create().uuid;
+    return this.userModel.create({ ...user, userToken });
   }
 
   async upsert(user: User): Promise<User> {
