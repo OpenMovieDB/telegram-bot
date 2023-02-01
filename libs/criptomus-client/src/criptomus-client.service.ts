@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { CreatePaymentResponse } from '@app/criptomus-client/types/create-payment.type';
+import { lastValueFrom, map } from 'rxjs';
 
 @Injectable()
 export class CriptomusClientService {
@@ -27,5 +29,38 @@ export class CriptomusClientService {
       merchant: this.merchantId,
       sign,
     };
+  }
+
+  async createPayment(
+    amount: number,
+    orderId: string,
+  ): Promise<CreatePaymentResponse> {
+    const payload = {
+      amount,
+      currency: 'USD',
+      orderId,
+    };
+
+    return lastValueFrom(
+      this.httpService
+        .post('/payment/create', payload, {
+          headers: this.getHeaders(payload),
+        })
+        .pipe(map((response) => response.data)),
+    );
+  }
+
+  checkPaymentStatus(orderId: string) {
+    const payload = {
+      uuid: orderId,
+    };
+
+    return lastValueFrom(
+      this.httpService
+        .post('/payment/info', payload, {
+          headers: this.getHeaders(payload),
+        })
+        .pipe(map((response) => response.data)),
+    );
   }
 }
