@@ -38,7 +38,7 @@ export class BotUpdate {
 
     try {
       ctx.session.messageId = undefined;
-      await ctx.scene.enter(CommandEnum.START);
+      ctx.scene.enter(CommandEnum.START);
     } catch (e) {
       this.logger.log(e);
     }
@@ -51,7 +51,7 @@ export class BotUpdate {
       const cbQuery = ctx.update.callback_query;
       if (!['private'].includes(cbQuery.message.chat.type)) return;
       const nextStep = 'data' in cbQuery ? cbQuery.data : null;
-      await ctx.scene.enter(nextStep);
+      ctx.scene.enter(nextStep);
     } catch (e) {
       this.logger.log(e);
     }
@@ -67,9 +67,9 @@ export class BotUpdate {
       this.logger.log('hears', ctx.message);
       const existUser = await this.userService.findOneByUserId(ctx.from.id);
       if (existUser) {
-        await ctx.scene.enter(CommandEnum.HOME);
+        ctx.scene.enter(CommandEnum.HOME);
       } else {
-        await ctx.scene.enter(CommandEnum.START);
+        ctx.scene.enter(CommandEnum.START);
       }
     } catch (e) {
       this.logger.log(e);
@@ -78,25 +78,29 @@ export class BotUpdate {
 
   @Hears(/.*/)
   async onStatsHears(@Ctx() ctx: Context & { update: any }) {
-    const message = ctx.update.message;
-    const [command] = Object.entries(BUTTONS).find(
-      ([_, button]) => button.text === message.text,
-    );
+    try {
+      const message = ctx.update.message;
+      const [command] = Object.entries(BUTTONS).find(
+        ([_, button]) => button.text === message.text,
+      );
 
-    if (!['private'].includes(message.chat.type)) return;
+      if (!['private'].includes(message.chat.type)) return;
 
-    this.logger.log('stats', ctx.message);
-    await ctx.scene.enter(command);
+      this.logger.log('stats', ctx.message);
+      ctx.scene.enter(command);
+    } catch (e) {
+      this.logger.log(e);
+    }
   }
 
   @On('new_chat_members')
   async onNewChatMembers(@Ctx() ctx: Context & { update: any }) {
-    await this.botService.createInvitedUser(ctx);
+    this.botService.createInvitedUser(ctx);
   }
 
   @On('left_chat_member')
   async onLeftChatMember(@Ctx() ctx: Context & { update: any }) {
     this.logger.log('left_chat_member', ctx);
-    await this.botService.leftTheChat(ctx);
+    this.botService.leftTheChat(ctx);
   }
 }

@@ -28,10 +28,11 @@ export class SetImdbRelationScene extends AbstractScene {
           .split(',')
           .map((relation) => relation.split(':'));
         for (const [kinopoiskId, imdbId] of relations) {
-          await this.updateClient.setImdbRelation(
-            parseInt(kinopoiskId),
-            imdbId,
-          );
+          this.updateClient
+            .setImdbRelation(parseInt(kinopoiskId), imdbId)
+            .catch((e) => {
+              console.log(e);
+            });
         }
         await ctx.replyWithHTML(scene.success.text);
         await ctx.scene.enter(CommandEnum.HOME);

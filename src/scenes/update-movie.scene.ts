@@ -25,9 +25,12 @@ export class UpdateMovieScene extends AbstractScene {
       if (isValidIdList) {
         const ids = message.split(',').map((id) => parseInt(id));
 
-        await this.updateClient.update(ids);
-        await ctx.replyWithHTML(scene.success.text);
-        await ctx.scene.enter(CommandEnum.HOME);
+        this.updateClient.update(ids).catch((err) => {
+          console.log(err);
+        });
+
+        ctx.replyWithHTML(scene.success.text);
+        ctx.scene.enter(CommandEnum.HOME);
       }
     }
   }
