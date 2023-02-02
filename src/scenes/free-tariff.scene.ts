@@ -47,7 +47,7 @@ export class FreeTariffScene extends AbstractScene {
         );
       }
     } catch (e) {
-      this.logger.error(e);
+      this.logger.error('CommandEnum.CONFIRM_JOIN_CHAT', e);
       await ctx.replyWithHTML(
         action.error().navigateText,
         Markup.keyboard(action.error().navigateButtons).resize(),
