@@ -95,7 +95,7 @@ export class BotUpdate {
 
   @On('new_chat_members')
   async onNewChatMembers(@Ctx() ctx: Context & { update: any }) {
-    this.botService.createInvitedUser(ctx);
+    await this.botService.createInvitedUser(ctx);
   }
 
   @On('left_chat_member')
