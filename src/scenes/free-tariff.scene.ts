@@ -34,11 +34,11 @@ export class FreeTariffScene extends AbstractScene {
           if (user) {
             token = await this.userService.changeToken(ctx.from.id);
           } else {
-            const newUser = await this.userService.create({
+            await this.userService.create({
               userId: ctx.from.id,
               username: ctx.from.username,
             });
-            token = newUser.token;
+            token = await this.userService.getUserToken(ctx.from.id);
           }
         }
 

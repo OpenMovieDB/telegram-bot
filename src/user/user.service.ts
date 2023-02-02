@@ -45,7 +45,7 @@ export class UserService {
 
   async getUserToken(userId: number): Promise<string | null> {
     const user = await this.findOneByUserId(userId);
-    if (!user.token) return null;
+    if (!user?.token) return null;
     // @ts-ignore
     return ApiKey.toAPIKey(user.token);
   }

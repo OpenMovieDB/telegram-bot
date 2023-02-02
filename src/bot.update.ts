@@ -67,7 +67,7 @@ export class BotUpdate {
       const cbQuery = ctx.update.callback_query;
       if (!['private'].includes(cbQuery.message.chat.type)) return;
       const nextStep = 'data' in cbQuery ? cbQuery.data : null;
-      ctx.scene.enter(nextStep);
+      await ctx.scene.enter(nextStep);
     } catch (e) {
       this.logger.log(e);
     }
