@@ -11,6 +11,7 @@ import { User as TelegramUser } from 'typegram/manage';
 import { UserService } from './user/user.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
+import { User } from './user/schemas/user.schema';
 
 @Injectable()
 export class BotService {
@@ -64,7 +65,7 @@ export class BotService {
     this.logger.log(`User ${ctx.from.username} blocked`);
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_NOON)
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async checkUsers() {
     const users = await this.userService.findUsersInChat();
 
@@ -72,22 +73,14 @@ export class BotService {
     const leavedUsers = [];
     for (const user of users) {
       try {
-        await this.bot.telegram.getChatMember(this.chatId, user.userId);
+        const { status } = await this.bot.telegram.getChatMember(
+          this.chatId,
+          user.userId,
+        );
+        if (status === 'left') leavedUsers.push(user);
       } catch (e) {
         if (!user.password && user.tariffId?.name?.toLowerCase() === 'free') {
-          try {
-            await this.userService.blockUser(user.userId, false);
-
-            leavedUsers.push(user.username || user.userId);
-
-            this.logger.log(`User ${user.username} blocked`);
-            await this.bot.telegram.sendMessage(
-              user.userId,
-              'Ваш токен был заблокирован, так как вы покинули наш чат 😢',
-            );
-          } catch (e) {
-            this.logger.error(e);
-          }
+          leavedUsers.push(user);
         }
       }
     }
@@ -97,11 +90,30 @@ export class BotService {
         this.adminChatId,
         `😵‍💫Пользователи, которые вчера покинули чат: ${leavedUsers.join(', ')}`,
       );
+      await this.blockUsers(leavedUsers);
     } else {
       await this.bot.telegram.sendMessage(
         this.adminChatId,
         '😎 Никто не покинул чат',
       );
+    }
+  }
+
+  private async blockUsers(users: User[]) {
+    try {
+      await Promise.all(
+        users.map((user) => {
+          this.logger.log(`User ${user.username} blocked`);
+          return this.userService.blockUser(user.userId, false);
+        }),
+      );
+
+      // await this.bot.telegram.sendMessage(
+      //   user.userId,
+      //   'Ваш токен был заблокирован, так как вы покинули наш чат 😢',
+      // );
+    } catch (e) {
+      this.logger.error(e);
     }
   }
 }

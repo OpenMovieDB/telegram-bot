@@ -15,8 +15,8 @@ export class UserService {
 
   async create(user: User): Promise<User> {
     // @ts-ignore
-    const userToken = ApiKey.create().uuid;
-    return this.userModel.create({ ...user, userToken });
+    const token = ApiKey.create().uuid;
+    return this.userModel.create({ ...user, token });
   }
 
   async upsert(user: User): Promise<User> {
@@ -45,7 +45,7 @@ export class UserService {
 
   async getUserToken(userId: number): Promise<string | null> {
     const user = await this.findOneByUserId(userId);
-    if (!user) return null;
+    if (!user.token) return null;
     // @ts-ignore
     return ApiKey.toAPIKey(user.token);
   }

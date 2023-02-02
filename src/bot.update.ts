@@ -34,11 +34,27 @@ export class BotUpdate {
   @Start()
   async onStart(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
-    if (!['private'].includes(message.chat.type)) return;
+    if (!['private'].includes(message.chat.type)) {
+      await ctx.reply(
+        'Для работы с ботом, нужно писать ему в личные сообщения',
+        {
+          reply_markup: {
+            remove_keyboard: true,
+          },
+        },
+      );
+      return;
+    }
 
     try {
+      const user = await this.userService.findOneByUserId(ctx.from.id);
+      if (!user)
+        await this.userService.create({
+          userId: ctx.from.id,
+          username: ctx.from.username,
+        });
       ctx.session.messageId = undefined;
-      ctx.scene.enter(CommandEnum.START);
+      await ctx.scene.enter(CommandEnum.START);
     } catch (e) {
       this.logger.log(e);
     }
