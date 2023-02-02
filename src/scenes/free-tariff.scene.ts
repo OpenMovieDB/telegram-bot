@@ -22,11 +22,10 @@ export class FreeTariffScene extends AbstractScene {
     const scene = SCENES[ctx.scene.session.current];
 
     const action = scene.actions[CommandEnum.CONFIRM_JOIN_CHAT];
-    const user = await this.userService.findOneByUserId(ctx.from.id);
     try {
       const { status } = await ctx.telegram.getChatMember(
         this.chatId,
-        user.userId,
+        ctx.from.id,
       );
       if (status === 'member') {
         let token = await this.userService.getUserToken(ctx.from.id);
