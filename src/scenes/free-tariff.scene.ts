@@ -29,8 +29,20 @@ export class FreeTariffScene extends AbstractScene {
       );
       if (status === 'member') {
         let token = await this.userService.getUserToken(ctx.from.id);
+        if (!token) {
+          const user = await this.userService.getUserToken(ctx.from.id);
+          if (user) {
+            token = await this.userService.changeToken(ctx.from.id);
+          } else {
+            const newUser = await this.userService.create({
+              userId: ctx.from.id,
+              username: ctx.from.username,
+            });
+            token = newUser.token;
+          }
+        }
+
         await this.userService.update(ctx.from.id, { inChat: true });
-        if (!token) token = await this.userService.changeToken(ctx.from.id);
 
         await ctx.replyWithHTML(
           action.success(token).navigateText,
