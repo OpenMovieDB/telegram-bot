@@ -10,6 +10,7 @@ export class AllExceptionFilter implements ExceptionFilter {
     const telegrafHost = TelegrafArgumentsHost.create(host);
     const ctx = telegrafHost.getContext<Context>();
     const scene = SCENES.ERROR(exception.message);
+    if (!['private'].includes(ctx.message.chat.type)) return;
 
     Logger.error(exception.message, exception.stack, AllExceptionFilter.name);
     await ctx.replyWithHTML(
