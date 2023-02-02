@@ -29,6 +29,7 @@ export class FreeTariffScene extends AbstractScene {
       );
       if (status === 'member') {
         let token = await this.userService.getUserToken(ctx.from.id);
+        await this.userService.update(ctx.from.id, { inChat: true });
         if (!token) token = await this.userService.changeToken(ctx.from.id);
 
         await ctx.replyWithHTML(
