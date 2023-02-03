@@ -88,7 +88,9 @@ export class BotService {
     if (leavedUsers.length) {
       await this.bot.telegram.sendMessage(
         this.adminChatId,
-        `😵‍💫Пользователи, которые вчера покинули чат: ${leavedUsers.join(', ')}`,
+        `😵‍💫Пользователи, которые вчера покинули чат: ${leavedUsers
+          .map((user) => user.userId || user.username)
+          .join(', ')}`,
       );
       await this.blockUsers(leavedUsers);
     } else {
