@@ -50,8 +50,8 @@ export class User {
   })
   inChat?: boolean;
 
-  @Prop({ type: Date })
-  tariffExpirationDate: Date;
+  @Prop({ type: Date, nullable: true })
+  tariffExpirationDate?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
