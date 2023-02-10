@@ -49,6 +49,9 @@ export class User {
     default: () => false,
   })
   inChat?: boolean;
+
+  @Prop({ type: Date })
+  tariffExpirationDate: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
