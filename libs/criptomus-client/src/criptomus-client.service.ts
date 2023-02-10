@@ -6,23 +6,24 @@ import { CreatePaymentResponse } from '@app/criptomus-client/types/create-paymen
 import { lastValueFrom, map } from 'rxjs';
 
 @Injectable()
-export class CriptomusClientService {
+export class CriptomusClient {
   private readonly apiKey: string;
   private readonly merchantId: string;
 
-  constructor(
-    private readonly httpService: HttpService,
-    private readonly configService: ConfigService,
-  ) {
+  constructor(private readonly httpService: HttpService, private readonly configService: ConfigService) {
     this.apiKey = this.configService.get('CRIPTOMUS_API_KEY');
     this.merchantId = this.configService.get('CRIPTOMUS_MERCHANT_ID');
+
+    console.log(this.apiKey);
+    console.log(this.merchantId);
   }
 
   getHeaders(payload: { [key: string]: any }) {
     const payloadString = JSON.stringify(payload);
+
     const sign = crypto
       .createHash('md5')
-      .update(Buffer.from(payloadString) + this.apiKey)
+      .update(Buffer.from(payloadString).toString('base64') + this.apiKey)
       .digest('hex');
 
     return {
@@ -31,28 +32,25 @@ export class CriptomusClientService {
     };
   }
 
-  async createPayment(
-    amount: number,
-    orderId: string,
-  ): Promise<CreatePaymentResponse> {
+  async createPayment(amount: number, orderId: string): Promise<CreatePaymentResponse> {
     const payload = {
-      amount,
+      amount: amount.toString(),
       currency: 'USD',
-      orderId,
+      order_id: orderId,
     };
 
     return lastValueFrom(
       this.httpService
-        .post('/payment/create', payload, {
+        .post('/payment', payload, {
           headers: this.getHeaders(payload),
         })
         .pipe(map((response) => response.data)),
     );
   }
 
-  checkPaymentStatus(orderId: string) {
+  checkPaymentStatus(orderUuid: string) {
     const payload = {
-      uuid: orderId,
+      uuid: orderUuid,
     };
 
     return lastValueFrom(

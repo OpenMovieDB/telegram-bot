@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CriptomusClientService } from './criptomus-client.service';
+import { CriptomusClient } from './criptomus-client.service';
 import { HttpModule } from '@nestjs/axios';
 
 @Module({
@@ -8,7 +8,7 @@ import { HttpModule } from '@nestjs/axios';
       baseURL: 'https://api.cryptomus.com/v1',
     }),
   ],
-  providers: [CriptomusClientService],
-  exports: [CriptomusClientService],
+  providers: [CriptomusClient],
+  exports: [CriptomusClient],
 })
 export class CriptomusClientModule {}
