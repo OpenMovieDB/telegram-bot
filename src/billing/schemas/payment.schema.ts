@@ -43,6 +43,9 @@ export class Payment {
 
   @Prop()
   url: string;
+
+  @Prop({ type: Date })
+  tariffExpirationDate: Date;
 }
 
 export const PaymentSchema = SchemaFactory.createForClass(Payment);
