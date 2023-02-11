@@ -1,13 +1,5 @@
 import { Logger, UseFilters, UseInterceptors } from '@nestjs/common';
-import {
-  Action,
-  Ctx,
-  Hears,
-  InjectBot,
-  On,
-  Start,
-  Update,
-} from 'nestjs-telegraf';
+import { Action, Ctx, Hears, InjectBot, On, Start, Update } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import { BotService } from './bot.service';
 import { BOT_NAME } from './constants/bot-name.const';
@@ -35,14 +27,11 @@ export class BotUpdate {
   async onStart(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
     if (!['private'].includes(message.chat.type)) {
-      await ctx.reply(
-        'Для работы с ботом, нужно писать ему в личные сообщения',
-        {
-          reply_markup: {
-            remove_keyboard: true,
-          },
+      await ctx.reply('Для работы с ботом, нужно писать ему в личные сообщения', {
+        reply_markup: {
+          remove_keyboard: true,
         },
-      );
+      });
       return;
     }
 
@@ -96,9 +85,7 @@ export class BotUpdate {
   async onStatsHears(@Ctx() ctx: Context & { update: any }) {
     try {
       const message = ctx.update.message;
-      const [command] = Object.entries(BUTTONS).find(
-        ([_, button]) => button.text === message.text,
-      );
+      const [command] = Object.entries(BUTTONS).find(([_, button]) => button.text === message.text);
 
       if (!['private'].includes(message.chat.type)) return;
 

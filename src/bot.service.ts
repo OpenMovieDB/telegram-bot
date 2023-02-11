@@ -17,6 +17,7 @@ import { User } from './user/schemas/user.schema';
 export class BotService {
   private readonly chatId: string;
   private readonly adminChatId: string;
+  private readonly isProd: boolean;
 
   private readonly logger = new Logger(BotService.name);
   constructor(
@@ -27,6 +28,7 @@ export class BotService {
   ) {
     this.chatId = configService.get('CHAT_ID');
     this.adminChatId = configService.get('ADMIN_CHAT_ID');
+    this.isProd = configService.get('NODE_ENV') === 'production';
   }
 
   async start(ctx: Context) {
@@ -38,13 +40,8 @@ export class BotService {
   }
 
   async createInvitedUser(ctx: Context) {
-    const members: TelegramUser[] =
-      ctx.update?.['message']?.['new_chat_members'];
-    this.logger.log(
-      `NewChatMembers: ${members
-        .map((member: any) => member.username)
-        .join(', ')}`,
-    );
+    const members: TelegramUser[] = ctx.update?.['message']?.['new_chat_members'];
+    this.logger.log(`NewChatMembers: ${members.map((member: any) => member.username).join(', ')}`);
 
     if (members) {
       for (const member of members) {
@@ -65,18 +62,16 @@ export class BotService {
     this.logger.log(`User ${ctx.from.username} blocked`);
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  @Cron(CronExpression.EVERY_HOUR)
   async checkUsers() {
+    if (!this.isProd) return;
     const users = await this.userService.findUsersInChat();
 
     this.logger.log(`Users in chat: ${users.length}`);
     const leavedUsers = [];
     for (const user of users) {
       try {
-        const { status } = await this.bot.telegram.getChatMember(
-          this.chatId,
-          user.userId,
-        );
+        const { status } = await this.bot.telegram.getChatMember(this.chatId, user.userId);
         if (status === 'left') leavedUsers.push(user);
       } catch (e) {
         if (!user.password && user.tariffId?.name?.toLowerCase() === 'free') {
@@ -94,10 +89,7 @@ export class BotService {
       );
       await this.blockUsers(leavedUsers);
     } else {
-      await this.bot.telegram.sendMessage(
-        this.adminChatId,
-        '😎 Никто не покинул чат',
-      );
+      await this.bot.telegram.sendMessage(this.adminChatId, '😎 Никто не покинул чат');
     }
   }
 

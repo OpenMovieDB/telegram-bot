@@ -60,8 +60,6 @@ export class UserService {
     if (!user) return null;
     return this.update(userId, {
       inChat,
-      // @ts-ignore
-      token: ApiKey.create().uuid,
     });
   }
 
