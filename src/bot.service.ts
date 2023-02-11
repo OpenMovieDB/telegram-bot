@@ -62,8 +62,9 @@ export class BotService {
     this.logger.log(`User ${ctx.from.username} blocked`);
   }
 
-  @Cron(CronExpression.EVERY_HOUR)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async checkUsers() {
+    this.logger.log('Check users');
     if (!this.isProd) return;
     const users = await this.userService.findUsersInChat();
 
@@ -101,8 +102,6 @@ export class BotService {
           return this.userService.blockUser(user.userId, false);
         }),
       );
-
-      this.logger.log(`Users blocked: ${users.length}`);
 
       // await this.bot.telegram.sendMessage(
       //   user.userId,
