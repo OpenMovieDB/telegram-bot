@@ -102,6 +102,8 @@ export class BotService {
         }),
       );
 
+      this.logger.log(`Users blocked: ${users.length}`);
+
       // await this.bot.telegram.sendMessage(
       //   user.userId,
       //   'Ваш токен был заблокирован, так как вы покинули наш чат 😢',
