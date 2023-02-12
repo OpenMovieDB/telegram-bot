@@ -6,8 +6,8 @@ export type TariffDocument = HydratedDocument<Tariff>;
 @Schema()
 export class Tariff {
   @Prop({
-    type: String,
     required: true,
+    unique: true,
   })
   name: string;
 
