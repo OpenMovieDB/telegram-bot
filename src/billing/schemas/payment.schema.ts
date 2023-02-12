@@ -1,9 +1,10 @@
-import { CreatePaymentResponse } from '@app/criptomus-client/types/create-payment.type';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+
+import { CreatePaymentResponse } from '@app/criptomus-client/types/create-payment.type';
 import { HydratedDocument } from 'mongoose';
-import { v4 as uuidv4 } from 'uuid';
 import { PaymentStatusEnum } from '../enum/payment-status.enum';
 import { PaymentSystemEnum } from '../enum/payment-system.enum';
+import { v4 as uuidv4 } from 'uuid';
 
 export type PaymentDocument = HydratedDocument<Payment>;
 
@@ -15,8 +16,8 @@ export class Payment {
   @Prop({ default: () => PaymentStatusEnum.PENDING })
   status: string;
 
-  @Prop()
-  system: PaymentSystemEnum;
+  @Prop({ type: String, enum: PaymentSystemEnum })
+  paymentSystem: PaymentSystemEnum;
 
   @Prop()
   userId: number;
@@ -78,6 +79,7 @@ export class Payment {
     chatId: number,
     tariffId: string,
     tariffPrice: number,
+    paymentSystem: PaymentSystemEnum,
     paymentAmount: number,
     createPaymentResponse: CreatePaymentResponse,
     paymentMonths: number,
@@ -87,6 +89,7 @@ export class Payment {
       chatId,
       tariffId,
       amount: tariffPrice,
+      paymentSystem,
       paymentAmount,
       paymentCurrency: createPaymentResponse.result.payer_currency,
       description: '',
