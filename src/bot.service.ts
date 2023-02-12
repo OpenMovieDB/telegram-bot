@@ -62,7 +62,7 @@ export class BotService {
     this.logger.log(`User ${ctx.from.username} blocked`);
   }
 
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async checkUsers() {
     this.logger.log('Check users');
     if (!this.isProd) return;
