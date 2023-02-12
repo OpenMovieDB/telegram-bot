@@ -7,7 +7,11 @@ import { Tariff, TariffDocument } from './schemas/tariff.schema';
 export class TariffService {
   constructor(@InjectModel(Tariff.name) private readonly tariffModel: Model<TariffDocument>) {}
 
-  async getAllTariffs() {
+  async getOneById(_id: string): Promise<Tariff> {
+    return this.tariffModel.findById(_id);
+  }
+
+  async getAllTariffs(): Promise<Tariff[]> {
     return await this.tariffModel.find();
   }
 }
