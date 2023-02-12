@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
-import { UserService } from './user.service';
+import { Tariff, TariffSchema } from 'src/tariff/schemas/tariff.schema';
 import { User, UserSchema } from './schemas/user.schema';
+
+import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Tariff, TariffSchema } from './schemas/tariff.schema';
+import { UserService } from './user.service';
 
 @Module({
   imports: [

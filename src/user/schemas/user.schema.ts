@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument, Types } from 'mongoose';
+
 import { Tariff } from 'src/tariff/schemas/tariff.schema';
 
 export type UserDocument = HydratedDocument<User>;
@@ -50,8 +51,14 @@ export class User {
   })
   inChat?: boolean;
 
-  @Prop({ type: Date, nullable: true })
-  tariffExpirationDate?: Date;
+  @Prop({ isOptional: true })
+  isSubscribed?: boolean;
+
+  @Prop({ isOptional: true, type: Date })
+  subscriptionStartDate?: Date;
+
+  @Prop({ isOptional: true, type: Date })
+  subscriptionEndDate?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

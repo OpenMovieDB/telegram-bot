@@ -3,7 +3,7 @@ import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import * as ApiKey from 'uuid-apikey';
-import { Tariff } from './schemas/tariff.schema';
+import { Tariff } from 'src/tariff/schemas/tariff.schema';
 
 @Injectable()
 export class UserService {
