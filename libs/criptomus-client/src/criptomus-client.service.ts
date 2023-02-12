@@ -2,8 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
-import { CreatePaymentResponse } from '@app/criptomus-client/types/create-payment.type';
+import { CratePaymentPayload, CreatePaymentResponse } from './types/create-payment.type';
 import { lastValueFrom, map } from 'rxjs';
+import { CheckPaymentPayload, CheckPaymentResponse } from './types/check-payment.type';
 
 @Injectable()
 export class CriptomusClient {
@@ -13,9 +14,6 @@ export class CriptomusClient {
   constructor(private readonly httpService: HttpService, private readonly configService: ConfigService) {
     this.apiKey = this.configService.get('CRIPTOMUS_API_KEY');
     this.merchantId = this.configService.get('CRIPTOMUS_MERCHANT_ID');
-
-    console.log(this.apiKey);
-    console.log(this.merchantId);
   }
 
   getHeaders(payload: { [key: string]: any }) {
@@ -33,7 +31,7 @@ export class CriptomusClient {
   }
 
   async createPayment(amount: number, orderId: string): Promise<CreatePaymentResponse> {
-    const payload = {
+    const payload: CratePaymentPayload = {
       amount: amount.toString(),
       currency: 'USD',
       order_id: orderId,
@@ -48,8 +46,8 @@ export class CriptomusClient {
     );
   }
 
-  checkPaymentStatus(orderUuid: string) {
-    const payload = {
+  checkPaymentStatus(orderUuid: string): Promise<CheckPaymentResponse> {
+    const payload: CheckPaymentPayload = {
       uuid: orderUuid,
     };
 
