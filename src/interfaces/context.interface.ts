@@ -1,4 +1,5 @@
 import { Context as BaseContext, Scenes } from 'telegraf';
+
 import { Update } from 'telegraf/typings/core/types/typegram';
 
 export interface Context extends BaseContext {
@@ -10,6 +11,8 @@ export interface Context extends BaseContext {
 
 interface SessionData extends Scenes.SceneSession<SceneSession> {
   messageId: number;
+  tariffId: string;
+  paymentMonths: number;
 }
 
 interface SceneSession extends Scenes.SceneSessionData {
