@@ -33,12 +33,17 @@ export class PaymentService {
     if (!user) throw new Error('User not found');
 
     const tariff: Tariff = await this.tariffService.getOneById(tariffId);
-
-    if (!tariff) throw new Error('Tariff not found');
+    if (!tariff) throw new Error(`Tariff with id ${tariffId} not found`);
 
     const paymentStrategy = this.paymentStrategyFactory.createPaymentStrategy(paymentSystem);
 
-    const payment = await paymentStrategy.createPayment(userId, chatId, tariffId, paymentMonths);
+    const payment = await paymentStrategy.createPayment({
+      userId,
+      chatId,
+      tariffId,
+      tariffPrice: tariff.price,
+      paymentMonths,
+    });
 
     return payment;
   }
