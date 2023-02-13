@@ -19,10 +19,7 @@ export class GetMyTokenScene extends AbstractScene {
       const token = await this.userService.getUserToken(ctx.from.id);
       await ctx.replyWithHTML(scene.success(token).text);
     } else {
-      await ctx.replyWithHTML(
-        scene.error().text,
-        Markup.inlineKeyboard(scene.error().buttons),
-      );
+      await ctx.replyWithHTML(scene.error().text, Markup.inlineKeyboard(scene.error().buttons));
     }
   }
 }

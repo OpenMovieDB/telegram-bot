@@ -8,10 +8,7 @@ import { UpdateClientService } from '@app/update-client';
 
 @Scene(CommandEnum.UPDATE_MOVIE)
 export class UpdateMovieScene extends AbstractScene {
-  constructor(
-    private readonly userService: UserService,
-    private readonly updateClient: UpdateClientService,
-  ) {
+  constructor(private readonly userService: UserService, private readonly updateClient: UpdateClientService) {
     super();
   }
 

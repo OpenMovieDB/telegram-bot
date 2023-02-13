@@ -18,12 +18,7 @@ export class GetRequestStatsScene extends AbstractScene {
     const user = await this.userService.findOneByUserId(ctx.from.id);
     if (user) {
       this.logger.log(user.requestsUsed);
-      await ctx.replyWithHTML(
-        scene.success(
-          user.requestsUsed,
-          user.tariffId.requestsLimit - user.requestsUsed,
-        ).text,
-      );
+      await ctx.replyWithHTML(scene.success(user.requestsUsed, user.tariffId.requestsLimit - user.requestsUsed).text);
     } else {
       await ctx.replyWithHTML(scene.error().text);
     }

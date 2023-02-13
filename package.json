@@ -29,6 +29,7 @@
     "@nestjs/mongoose": "^9.2.1",
     "@nestjs/platform-express": "^9.0.0",
     "@nestjs/schedule": "^2.1.0",
+    "eslint-plugin-unused-imports": "^2.0.0",
     "luxon": "^3.2.1",
     "mongoose": "^6.8.1",
     "nestjs-telegraf": "^2.6.3",

@@ -1,31 +1,32 @@
-import { Module } from '@nestjs/common';
-import { TelegrafModule } from 'nestjs-telegraf';
-import { session } from 'telegraf';
-import { BotService } from './bot.service';
-import { BOT_NAME } from './constants/bot-name.const';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { BotUpdate } from './bot.update';
+
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionFilter } from './filters/all-exception.filter';
-import { GetAccessScene } from './scenes/get-access.scene';
-import { HomeScene } from './scenes/home.scene';
-import { StartScene } from './scenes/start.scene';
-import { UserModule } from './user/user.module';
-import { MongooseModule } from '@nestjs/mongoose';
-import { FreeTariffScene } from './scenes/free-tariff.scene';
-import { DeveloperTariffScene } from './scenes/developer-tariff.scene';
-import { UnlimitedTariffScene } from './scenes/unlimited-tariff.scene';
-import { QuestionScene } from './scenes/question.scene';
-import { GetRequestStatsScene } from './scenes/get-request-stats.scene';
-import { IHaveTokenScene } from './scenes/i-have-token.scene';
-import { GetMyTokenScene } from './scenes/get-my-token.scene';
-import { ChangeTokenScene } from './scenes/change-token.scene';
+import { BOT_NAME } from './constants/bot-name.const';
 import { BotController } from './bot.controller';
+import { BotService } from './bot.service';
+import { BotUpdate } from './bot.update';
+import { ChangeTokenScene } from './scenes/change-token.scene';
+import { DeveloperTariffScene } from './scenes/developer-tariff.scene';
+import { FreeTariffScene } from './scenes/free-tariff.scene';
+import { GetAccessScene } from './scenes/get-access.scene';
+import { GetMyTokenScene } from './scenes/get-my-token.scene';
+import { GetRequestStatsScene } from './scenes/get-request-stats.scene';
+import { HomeScene } from './scenes/home.scene';
+import { IHaveTokenScene } from './scenes/i-have-token.scene';
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { PaymentModule } from './payment/payment.module';
+import { QuestionScene } from './scenes/question.scene';
+import { ScheduleModule } from '@nestjs/schedule';
+import { SetImdbRelationScene } from './scenes/set-imdb-relation.scene';
+import { StartScene } from './scenes/start.scene';
+import { TelegrafModule } from 'nestjs-telegraf';
+import { UnlimitedTariffScene } from './scenes/unlimited-tariff.scene';
 import { UpdateClientModule } from '@app/update-client';
 import { UpdateMovieScene } from './scenes/update-movie.scene';
-import { SetImdbRelationScene } from './scenes/set-imdb-relation.scene';
-import { BillingModule } from './billing/billing.module';
-import { ScheduleModule } from '@nestjs/schedule';
+import { UserModule } from './user/user.module';
+import { session } from 'telegraf';
 
 @Module({
   imports: [
@@ -52,7 +53,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ScheduleModule.forRoot(),
     UserModule,
     UpdateClientModule,
-    BillingModule,
+    PaymentModule,
   ],
   controllers: [BotController],
   providers: [

@@ -8,10 +8,7 @@ import { UpdateClientService } from '@app/update-client';
 
 @Scene(CommandEnum.SET_IMDB_RELATION)
 export class SetImdbRelationScene extends AbstractScene {
-  constructor(
-    private readonly userService: UserService,
-    private readonly updateClient: UpdateClientService,
-  ) {
+  constructor(private readonly userService: UserService, private readonly updateClient: UpdateClientService) {
     super();
   }
 
@@ -21,18 +18,13 @@ export class SetImdbRelationScene extends AbstractScene {
       const message = ctx.message.text;
       const scene = SCENES[ctx.scene.session.current];
 
-      const isValidIdList =
-        message.length > 5 && /(\d+:tt\d+)+/gm.test(message);
+      const isValidIdList = message.length > 5 && /(\d+:tt\d+)+/gm.test(message);
       if (isValidIdList) {
-        const relations = message
-          .split(',')
-          .map((relation) => relation.split(':'));
+        const relations = message.split(',').map((relation) => relation.split(':'));
         for (const [kinopoiskId, imdbId] of relations) {
-          this.updateClient
-            .setImdbRelation(parseInt(kinopoiskId), imdbId)
-            .catch((e) => {
-              console.log(e);
-            });
+          this.updateClient.setImdbRelation(parseInt(kinopoiskId), imdbId).catch((e) => {
+            console.log(e);
+          });
         }
         await ctx.replyWithHTML(scene.success.text);
         await ctx.scene.enter(CommandEnum.HOME);

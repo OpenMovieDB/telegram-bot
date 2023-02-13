@@ -13,9 +13,6 @@ export class AllExceptionFilter implements ExceptionFilter {
     if (!['private'].includes(ctx.message.chat.type)) return;
 
     Logger.error(exception.message, exception.stack, AllExceptionFilter.name);
-    await ctx.replyWithHTML(
-      scene.navigateText,
-      Markup.keyboard(scene.navigateButtons).resize(),
-    );
+    await ctx.replyWithHTML(scene.navigateText, Markup.keyboard(scene.navigateButtons).resize());
   }
 }

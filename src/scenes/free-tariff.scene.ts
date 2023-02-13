@@ -9,10 +9,7 @@ import { ConfigService } from '@nestjs/config';
 @Scene(CommandEnum.FREE_TARIFF)
 export class FreeTariffScene extends AbstractScene {
   private readonly chatId: string;
-  constructor(
-    private readonly userService: UserService,
-    private readonly configService: ConfigService,
-  ) {
+  constructor(private readonly userService: UserService, private readonly configService: ConfigService) {
     super();
     this.chatId = configService.get('CHAT_ID');
   }
@@ -23,10 +20,7 @@ export class FreeTariffScene extends AbstractScene {
 
     const action = scene.actions[CommandEnum.CONFIRM_JOIN_CHAT];
     try {
-      const { status } = await ctx.telegram.getChatMember(
-        this.chatId,
-        ctx.from.id,
-      );
+      const { status } = await ctx.telegram.getChatMember(this.chatId, ctx.from.id);
       if (status === 'member') {
         let token = await this.userService.getUserToken(ctx.from.id);
         if (!token) {
@@ -49,25 +43,13 @@ export class FreeTariffScene extends AbstractScene {
           Markup.keyboard(action.success(token).navigateButtons).resize(),
         );
       } else {
-        await ctx.replyWithHTML(
-          action.error().navigateText,
-          Markup.keyboard(action.error().navigateButtons).resize(),
-        );
-        await ctx.replyWithHTML(
-          action.error().text,
-          Markup.inlineKeyboard(action.error().buttons),
-        );
+        await ctx.replyWithHTML(action.error().navigateText, Markup.keyboard(action.error().navigateButtons).resize());
+        await ctx.replyWithHTML(action.error().text, Markup.inlineKeyboard(action.error().buttons));
       }
     } catch (e) {
       this.logger.error('CommandEnum.CONFIRM_JOIN_CHAT', e);
-      await ctx.replyWithHTML(
-        action.error().navigateText,
-        Markup.keyboard(action.error().navigateButtons).resize(),
-      );
-      await ctx.replyWithHTML(
-        action.error().text,
-        Markup.inlineKeyboard(action.error().buttons),
-      );
+      await ctx.replyWithHTML(action.error().navigateText, Markup.keyboard(action.error().navigateButtons).resize());
+      await ctx.replyWithHTML(action.error().text, Markup.inlineKeyboard(action.error().buttons));
     }
   }
 }

@@ -23,11 +23,7 @@ export class ChangeTokenScene extends AbstractScene {
       await ctx.scene.enter(CommandEnum.HOME);
       return;
     } else {
-      await replyOrEdit(
-        ctx,
-        action.error().text,
-        Markup.inlineKeyboard(action.error().buttons),
-      );
+      await replyOrEdit(ctx, action.error().text, Markup.inlineKeyboard(action.error().buttons));
       return;
     }
   }

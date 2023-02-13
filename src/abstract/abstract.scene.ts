@@ -12,10 +12,7 @@ export class AbstractScene {
     const scene = SCENES[ctx.scene.session.current];
 
     if (scene.navigateButtons && scene.navigateText) {
-      await ctx.replyWithHTML(
-        scene.navigateText,
-        Markup.keyboard(scene.navigateButtons).resize(),
-      );
+      await ctx.replyWithHTML(scene.navigateText, Markup.keyboard(scene.navigateButtons).resize());
     }
     if (!scene.navigateButtons && !scene.buttons) {
       if (scene.text) {

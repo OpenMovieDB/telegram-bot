@@ -23,8 +23,7 @@ export const SCENES = {
     ],
   },
   [CommandEnum.GET_ACCESS]: {
-    navigateText:
-      'Для получения доступа к API тебе нужно выбрать тарифный план по количеству запросов в сутки.',
+    navigateText: 'Для получения доступа к API тебе нужно выбрать тарифный план по количеству запросов в сутки.',
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
     text: `Тарифы: \n\n<b>${
       BUTTONS[CommandEnum.FREE_TARIFF].text
@@ -39,14 +38,10 @@ export const SCENES = {
     ],
   },
   [CommandEnum.FREE_TARIFF]: {
-    navigateText:
-      'Отлично! Но перед этим к тебе есть небольшая просьба, зайди к нам в общий чат 😇',
+    navigateText: 'Отлично! Но перед этим к тебе есть небольшая просьба, зайди к нам в общий чат 😇',
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
     text: `В нем ты всегда можешь получить поддержку от сообщества и администрации, а в замен я дам тебе токен!`,
-    buttons: [
-      BUTTONS[CommandEnum.JOIN_CHAT],
-      BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT],
-    ],
+    buttons: [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
     actions: {
       [CommandEnum.CONFIRM_JOIN_CHAT]: {
         success: (token: string) => ({
@@ -57,10 +52,7 @@ export const SCENES = {
           navigateText: `Ты не вступил в чат 😔`,
           navigateButtons: [BUTTONS[CommandEnum.HOME]],
           text: `Нажми на кнопку ниже и вступи в чат, а затем вернись сюда и нажми на кнопку "Подтвердить вступление"`,
-          buttons: [
-            BUTTONS[CommandEnum.JOIN_CHAT],
-            BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT],
-          ],
+          buttons: [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
         }),
       },
     },
@@ -75,10 +67,7 @@ export const SCENES = {
   },
   [CommandEnum.QUESTION]: {
     text: `Если у тебя есть вопрос, то ты можешь, посмотреть в документацию или задать его в нашем чате.`,
-    buttons: [
-      BUTTONS[CommandEnum.JOIN_CHAT],
-      BUTTONS[CommandEnum.DOCUMENTATION],
-    ],
+    buttons: [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.DOCUMENTATION]],
   },
   [CommandEnum.GET_REQUEST_STATS]: {
     success: (requests: number, leftRequests: number) => ({
