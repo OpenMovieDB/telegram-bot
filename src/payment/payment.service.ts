@@ -2,16 +2,18 @@ import { Payment, PaymentDocument } from './schemas/payment.schema';
 
 import { InjectModel } from '@nestjs/mongoose';
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 
 import { PaymentStrategyFactory } from './strategies/factory/payment-strategy.factory';
 import { PaymentSystemEnum } from './enum/payment-system.enum';
 import { Tariff } from 'src/tariff/schemas/tariff.schema';
 import { TariffService } from 'src/tariff/tariff.service';
 import { UserService } from 'src/user/user.service';
+import { PaymentStatusEnum } from './enum/payment-status.enum';
+import { DateTime } from 'luxon';
 
 @Injectable()
-export class BillingService {
+export class PaymentService {
   constructor(
     private readonly userService: UserService,
     private readonly tariffService: TariffService,
@@ -59,6 +61,25 @@ export class BillingService {
 
     const paymentStrategy = this.paymentStrategyFactory.createPaymentStrategy(payment.paymentSystem);
 
-    return paymentStrategy.validateTransaction(paymentId);
+    const isPaid = paymentStrategy.validateTransaction(payment.paymentId);
+
+    if (isPaid) {
+      const startAt = DateTime.local();
+      const expiredAt = startAt.plus({ months: payment.monthCount });
+
+      const user = await this.userService.findOneByUserId(payment.userId);
+
+      if (user) {
+        await this.userService.update(user.userId, {
+          tariffId: new mongoose.Types.ObjectId(payment.tariffId),
+          subscriptionStartDate: startAt.toJSDate(),
+          subscriptionEndDate: expiredAt.toJSDate(),
+        });
+      }
+
+      await this.updatePaymentStatus(paymentId, PaymentStatusEnum.PAID, true);
+    }
+
+    return isPaid;
   }
 }

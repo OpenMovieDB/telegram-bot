@@ -10,8 +10,8 @@ export type PaymentDocument = HydratedDocument<Payment>;
 
 @Schema()
 export class Payment {
-  @Prop({ default: () => uuidv4 })
-  orderId: string;
+  @Prop()
+  paymentId: string;
 
   @Prop({ default: () => PaymentStatusEnum.PENDING })
   status: string;
