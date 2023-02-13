@@ -38,7 +38,7 @@ export class Payment {
   paymentCurrency: string;
 
   @Prop()
-  description: string;
+  description?: string;
 
   @Prop()
   url: string;
@@ -47,63 +47,31 @@ export class Payment {
   monthCount: number;
 
   @Prop()
-  transactionId: string;
+  transactionId?: string;
 
   @Prop()
-  payerAmount: string;
+  payerAmount?: string;
 
   @Prop()
-  payerCurrency: string;
+  payerCurrency?: string;
 
   @Prop()
-  network: string;
+  network?: string;
 
   @Prop()
-  address: string;
+  address?: string;
 
   @Prop()
-  from: string;
+  from?: string;
 
   @Prop()
-  txid: string;
+  txid?: string;
 
   @Prop()
-  isFinal: boolean;
+  isFinal?: boolean;
 
   constructor(payment: Partial<Payment>) {
     Object.assign(this, payment);
-  }
-
-  static createPayment(
-    userId: number,
-    chatId: number,
-    tariffId: string,
-    tariffPrice: number,
-    paymentSystem: PaymentSystemEnum,
-    paymentAmount: number,
-    createPaymentResponse: CreatePaymentResponse,
-    paymentMonths: number,
-  ): Payment {
-    return new Payment({
-      userId,
-      chatId,
-      tariffId,
-      amount: tariffPrice,
-      paymentSystem,
-      paymentAmount,
-      paymentCurrency: createPaymentResponse.result.payer_currency,
-      description: '',
-      url: createPaymentResponse.result.url,
-      monthCount: paymentMonths,
-      transactionId: createPaymentResponse.result.txid,
-      payerAmount: createPaymentResponse.result.payer_amount,
-      payerCurrency: createPaymentResponse.result.payer_currency,
-      network: createPaymentResponse.result.network,
-      address: createPaymentResponse.result.address,
-      from: createPaymentResponse.result.from,
-      txid: createPaymentResponse.result.txid,
-      isFinal: createPaymentResponse.result.is_final,
-    });
   }
 }
 

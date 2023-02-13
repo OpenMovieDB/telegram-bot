@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+
+import { CheckPaymentPayload, CheckPaymentResponse } from './types/check-payment.type';
 import { CratePaymentPayload, CreatePaymentResponse } from './types/create-payment.type';
 import { lastValueFrom, map } from 'rxjs';
-import { CheckPaymentPayload, CheckPaymentResponse } from './types/check-payment.type';
+
+import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class CriptomusClient {

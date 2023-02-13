@@ -16,16 +16,27 @@ export class CriptomusPaymentStrategy implements PaymentStrategy {
     const paymentAmount = tariff.price * paymentMonths;
     const createPaymentResponse = await this.criptomusClient.createPayment(paymentAmount, `User #${userId} payment`);
 
-    return Payment.createPayment(
+    const payment = new Payment({
       userId,
       chatId,
       tariffId,
-      tariff.price,
-      PaymentSystemEnum.CYPTOMUS,
+      amount: tariff.price,
+      paymentSystem: PaymentSystemEnum.CYPTOMUS,
       paymentAmount,
-      createPaymentResponse,
-      paymentMonths,
-    );
+      paymentCurrency: createPaymentResponse.result.payer_currency,
+      url: createPaymentResponse.result.url,
+      monthCount: paymentMonths,
+      transactionId: createPaymentResponse.result.txid,
+      payerAmount: createPaymentResponse.result.payer_amount,
+      payerCurrency: createPaymentResponse.result.payer_currency,
+      network: createPaymentResponse.result.network,
+      address: createPaymentResponse.result.address,
+      from: createPaymentResponse.result.from,
+      txid: createPaymentResponse.result.txid,
+      isFinal: createPaymentResponse.result.is_final,
+    });
+
+    return payment;
   }
 
   async validateTransaction(paymentId: string): Promise<boolean> {
