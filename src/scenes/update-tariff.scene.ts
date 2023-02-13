@@ -10,8 +10,8 @@ import { Markup } from 'telegraf';
 import { Context } from 'src/interfaces/context.interface';
 import { TariffService } from 'src/tariff/tariff.service';
 
-@Scene(CommandEnum.GET_ACCESS)
-export class GetAccessScene extends AbstractScene {
+@Scene(CommandEnum.UPDATE_TARIFF)
+export class UpdateTariffScene extends AbstractScene {
   public logger = new Logger(AbstractScene.name);
 
   constructor(private readonly tariffService: TariffService) {
@@ -21,10 +21,9 @@ export class GetAccessScene extends AbstractScene {
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    const tariffs = await this.tariffService.getAllTariffs();
+    const tariffs = (await this.tariffService.getAllTariffs()).filter((tariff) => tariff.price !== 0).reverse();
     const scene = SCENES[ctx.scene.session.current];
 
-    await ctx.replyWithHTML(scene.navigateText, Markup.keyboard(scene.navigateButtons).resize());
     await ctx.replyWithHTML(scene.text(tariffs), Markup.inlineKeyboard(scene.buttons(tariffs)));
   }
 }

@@ -21,10 +21,12 @@ import { QuestionScene } from './scenes/question.scene';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SetImdbRelationScene } from './scenes/set-imdb-relation.scene';
 import { StartScene } from './scenes/start.scene';
+import { TariffModule } from './tariff/tariff.module';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { UnlimitedTariffScene } from './scenes/unlimited-tariff.scene';
 import { UpdateClientModule } from '@app/update-client';
 import { UpdateMovieScene } from './scenes/update-movie.scene';
+import { UpdateTariffScene } from './scenes/update-tariff.scene';
 import { UserModule } from './user/user.module';
 import { session } from 'telegraf';
 
@@ -54,6 +56,7 @@ import { session } from 'telegraf';
     UserModule,
     UpdateClientModule,
     PaymentModule,
+    TariffModule,
   ],
   controllers: [BotController],
   providers: [
@@ -76,6 +79,7 @@ import { session } from 'telegraf';
     ChangeTokenScene,
     UpdateMovieScene,
     SetImdbRelationScene,
+    UpdateTariffScene,
   ],
 })
 export class BotModule {}

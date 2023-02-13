@@ -1,5 +1,8 @@
-import { CommandEnum } from '../enum/command.enum';
 import { BUTTONS } from './buttons.const';
+import { CommandEnum } from '../enum/command.enum';
+import { Payment } from 'src/payment/schemas/payment.schema';
+import { Tariff } from 'src/tariff/schemas/tariff.schema';
+import { splitArrayIntoPairs } from 'src/utils/split-array-into-pairs';
 
 export const SCENES = {
   [CommandEnum.START]: {
@@ -18,24 +21,62 @@ export const SCENES = {
         BUTTONS[CommandEnum.UPDATE_MOVIE],
         BUTTONS[CommandEnum.SET_IMDB_RELATION],
       ],
-      [BUTTONS[CommandEnum.GET_MY_TOKEN], BUTTONS[CommandEnum.CHANGE_TOKEN]],
+      [BUTTONS[CommandEnum.GET_MY_TOKEN], BUTTONS[CommandEnum.CHANGE_TOKEN], BUTTONS[CommandEnum.UPDATE_TARIFF]],
       [BUTTONS[CommandEnum.QUESTION]],
     ],
   },
   [CommandEnum.GET_ACCESS]: {
     navigateText: 'Для получения доступа к API тебе нужно выбрать тарифный план по количеству запросов в сутки.',
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
-    text: `Тарифы: \n\n<b>${
-      BUTTONS[CommandEnum.FREE_TARIFF].text
-    }</b>: <i>200</i> запросов в сутки. <b>Всегда бесплатно</b>.\n<b>${
-      BUTTONS[CommandEnum.DEVELOPER_TARIFF].text
-    }</b>: <i>5000</i> запросов в сутки. <b>500</b> руб./месяц.\n<b>${
-      BUTTONS[CommandEnum.UNLIMITED_TARIFF].text
-    }</b>: <i>∞</i> запросов в сутки. <b>2000</b> руб./месяц.`,
-    buttons: [
-      [BUTTONS[CommandEnum.FREE_TARIFF], BUTTONS[CommandEnum.DEVELOPER_TARIFF]],
-      [BUTTONS[CommandEnum.UNLIMITED_TARIFF]],
-    ],
+    text: (tariffs: Tariff[]) =>
+      'Тарифы: \n\n' +
+      tariffs
+        .map(
+          (tariff) =>
+            `<b>${BUTTONS[CommandEnum[tariff.name + '_TARIFF']].text}</b>: <i>${
+              tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit
+            }</i> запросов в сутки. <b>${tariff.price === 0 ? 'Всегда бесплатно' : tariff.price + 'руб'}</b>.\n`,
+        )
+        .join(''),
+    buttons: (tariffs: Tariff[]) =>
+      splitArrayIntoPairs(tariffs.map((tariff) => BUTTONS[CommandEnum[tariff.name + '_TARIFF']])),
+  },
+  [CommandEnum.UPDATE_TARIFF]: {
+    text: (tariffs: Tariff[]) =>
+      'Тарифы: \n\n' +
+      tariffs
+        .map(
+          (tariff) =>
+            `<b>${BUTTONS[CommandEnum[tariff.name + '_TARIFF']].text}</b>: <i>${
+              tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit
+            }</i> запросов в сутки. <b>${tariff.price === 0 ? 'Всегда бесплатно' : tariff.price + 'руб'}</b>.\n`,
+        )
+        .join(''),
+    buttons: (tariffs: Tariff[]) =>
+      splitArrayIntoPairs(tariffs.map((tariff) => BUTTONS[CommandEnum[tariff.name + '_TARIFF']])),
+  },
+  [CommandEnum.PAYMENT]: {
+    text: `Выберите способ оплаты:`,
+    buttons: [BUTTONS[CommandEnum.PAY_WITH_CRYPTOMUS]],
+    actions: {
+      [CommandEnum.PAY_WITH_CRYPTOMUS]: {
+        text: (payment: Payment) =>
+          `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти по ссылке: <a href="${payment.url}">${payment.url}</a>\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
+        buttons: [BUTTONS[CommandEnum.CONFIRM_PAYMENT]],
+      },
+      [CommandEnum.CONFIRM_PAYMENT]: {
+        success: (tariffName: string) => ({
+          navigateText: `Поздравляю, твой тариф изменен, на <code>${tariffName}</code>`,
+          navigateButtons: [BUTTONS[CommandEnum.HOME]],
+        }),
+        error: () => ({
+          navigateText: `Оплата еще в процессе, или ты еще ее не произвел. Я сообщу когда тариф обновится`,
+          navigateButtons: [BUTTONS[CommandEnum.HOME]],
+          text: `Если ничего не произошло, то нажмите на кнопку ниже. Или напишите @mdwit`,
+          buttons: [BUTTONS[CommandEnum.CONFIRM_PAYMENT]],
+        }),
+      },
+    },
   },
   [CommandEnum.FREE_TARIFF]: {
     navigateText: 'Отлично! Но перед этим к тебе есть небольшая просьба, зайди к нам в общий чат 😇',
@@ -56,14 +97,6 @@ export const SCENES = {
         }),
       },
     },
-  },
-  [CommandEnum.DEVELOPER_TARIFF]: {
-    text: `Оплата пока что не доступна, свяжитесь с администрацией для получения доступа.`,
-    buttons: [BUTTONS[CommandEnum.SEND_MESSAGE_TO_ADMIN]],
-  },
-  [CommandEnum.UNLIMITED_TARIFF]: {
-    text: `Оплата пока что не доступна, свяжитесь с администрацией для получения доступа.`,
-    buttons: [BUTTONS[CommandEnum.SEND_MESSAGE_TO_ADMIN]],
   },
   [CommandEnum.QUESTION]: {
     text: `Если у тебя есть вопрос, то ты можешь, посмотреть в документацию или задать его в нашем чате.`,
