@@ -1,4 +1,4 @@
-import { CriptomusClient, CriptomusClientModule } from '@app/criptomus-client';
+import { CryptomusClient, CryptomusClientModule } from '@app/cryptomus-client';
 import { Payment, PaymentSchema } from './schemas/payment.schema';
 import { Tariff, TariffSchema } from 'src/tariff/schemas/tariff.schema';
 import { User, UserSchema } from 'src/user/schemas/user.schema';
@@ -16,7 +16,7 @@ import { UserService } from 'src/user/user.service';
     MongooseModule.forFeature([{ name: Payment.name, schema: PaymentSchema }]),
     UserModule,
     TariffModule,
-    CriptomusClientModule,
+    CryptomusClientModule,
   ],
   providers: [PaymentService, PaymentStrategyFactory],
   exports: [PaymentService],

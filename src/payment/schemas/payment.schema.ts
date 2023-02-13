@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
-import { CreatePaymentResponse } from '@app/criptomus-client/types/create-payment.type';
+import { CreatePaymentResponse } from '@app/cryptomus-client/types/create-payment.type';
 import { HydratedDocument } from 'mongoose';
 import { PaymentStatusEnum } from '../enum/payment-status.enum';
 import { PaymentSystemEnum } from '../enum/payment-system.enum';

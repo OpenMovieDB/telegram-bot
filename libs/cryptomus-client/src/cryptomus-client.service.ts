@@ -9,13 +9,13 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class CriptomusClient {
+export class CryptomusClient {
   private readonly apiKey: string;
   private readonly merchantId: string;
 
   constructor(private readonly httpService: HttpService, private readonly configService: ConfigService) {
-    this.apiKey = this.configService.get('CRIPTOMUS_API_KEY');
-    this.merchantId = this.configService.get('CRIPTOMUS_MERCHANT_ID');
+    this.apiKey = this.configService.get('CRYPTOMUS_API_KEY');
+    this.merchantId = this.configService.get('CRYPTOMUS_MERCHANT_ID');
   }
 
   getHeaders(payload: { [key: string]: any }) {

@@ -85,7 +85,7 @@
     ],
     "moduleNameMapper": {
       "^@app/update-client(|/.*)$": "<rootDir>/libs/update-client/src/$1",
-      "^@app/criptomus-client(|/.*)$": "<rootDir>/libs/criptomus-client/src/$1"
+      "^@app/cryptomus-client(|/.*)$": "<rootDir>/libs/cryptomus-client/src/$1"
     }
   }
 }

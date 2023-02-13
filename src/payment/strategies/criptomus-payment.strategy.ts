@@ -1,12 +1,12 @@
-import { CriptomusClient } from '@app/criptomus-client';
+import { CryptomusClient } from '@app/cryptomus-client';
 import { Injectable } from '@nestjs/common';
 import { Payment } from '../schemas/payment.schema';
 import { PaymentStrategy } from './payment-strategy.interface';
 import { PaymentSystemEnum } from '../enum/payment-system.enum';
 
 @Injectable()
-export class CriptomusPaymentStrategy implements PaymentStrategy {
-  constructor(private readonly criptomusClient: CriptomusClient) {}
+export class CryptomusPaymentStrategy implements PaymentStrategy {
+  constructor(private readonly cryptomusClient: CryptomusClient) {}
 
   async createPayment(data: {
     userId: number;
@@ -18,7 +18,7 @@ export class CriptomusPaymentStrategy implements PaymentStrategy {
     const { userId, chatId, tariffId, tariffPrice, paymentMonths } = data;
 
     const paymentAmount = tariffPrice * paymentMonths;
-    const createPaymentResponse = await this.criptomusClient.createPayment(paymentAmount, `User #${userId} payment`);
+    const createPaymentResponse = await this.cryptomusClient.createPayment(paymentAmount, `User #${userId} payment`);
 
     const payment = new Payment({
       userId,
@@ -44,7 +44,7 @@ export class CriptomusPaymentStrategy implements PaymentStrategy {
   }
 
   async validateTransaction(paymentId: string): Promise<boolean> {
-    const transaction = await this.criptomusClient.checkPaymentStatus(paymentId);
+    const transaction = await this.cryptomusClient.checkPaymentStatus(paymentId);
 
     const paymentStatus = transaction.result.payment_status;
 
