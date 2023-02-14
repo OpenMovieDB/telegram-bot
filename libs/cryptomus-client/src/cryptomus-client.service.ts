@@ -35,7 +35,7 @@ export class CryptomusClient {
   async createPayment(amount: number, orderId: string): Promise<CreatePaymentResponse> {
     const payload: CratePaymentPayload = {
       amount: amount.toString(),
-      currency: 'USD',
+      currency: 'RUB',
       order_id: orderId,
     };
 
@@ -43,6 +43,7 @@ export class CryptomusClient {
       this.httpService
         .post('/payment', payload, {
           headers: this.getHeaders(payload),
+          timeout: 5000,
         })
         .pipe(map((response) => response.data)),
     );

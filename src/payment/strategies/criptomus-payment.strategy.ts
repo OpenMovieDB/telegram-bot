@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { Payment } from '../schemas/payment.schema';
 import { PaymentStrategy } from './payment-strategy.interface';
 import { PaymentSystemEnum } from '../enum/payment-system.enum';
-
+import { v4 as uuidv4 } from 'uuid';
 @Injectable()
 export class CryptomusPaymentStrategy implements PaymentStrategy {
   constructor(private readonly cryptomusClient: CryptomusClient) {}
@@ -18,7 +18,7 @@ export class CryptomusPaymentStrategy implements PaymentStrategy {
     const { userId, chatId, tariffId, tariffPrice, paymentMonths } = data;
 
     const paymentAmount = tariffPrice * paymentMonths;
-    const createPaymentResponse = await this.cryptomusClient.createPayment(paymentAmount, `User #${userId} payment`);
+    const createPaymentResponse = await this.cryptomusClient.createPayment(paymentAmount, uuidv4());
 
     const payment = new Payment({
       userId,
