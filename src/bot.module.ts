@@ -17,10 +17,12 @@ import { IHaveTokenScene } from './scenes/i-have-token.scene';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PaymentModule } from './payment/payment.module';
+import { PaymentScene } from './scenes/payment.scene';
 import { QuestionScene } from './scenes/question.scene';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SetImdbRelationScene } from './scenes/set-imdb-relation.scene';
 import { StartScene } from './scenes/start.scene';
+import { StudentTariffScene } from './scenes/student-tariff.scene';
 import { TariffModule } from './tariff/tariff.module';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { UnlimitedTariffScene } from './scenes/unlimited-tariff.scene';
@@ -80,6 +82,9 @@ import { session } from 'telegraf';
     UpdateMovieScene,
     SetImdbRelationScene,
     UpdateTariffScene,
+    PaymentScene,
+    DeveloperTariffScene,
+    StudentTariffScene,
   ],
 })
 export class BotModule {}

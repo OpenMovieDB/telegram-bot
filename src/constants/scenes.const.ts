@@ -1,6 +1,5 @@
 import { BUTTONS } from './buttons.const';
 import { CommandEnum } from '../enum/command.enum';
-import { Payment } from 'src/payment/schemas/payment.schema';
 import { Tariff } from 'src/tariff/schemas/tariff.schema';
 import { splitArrayIntoPairs } from 'src/utils/split-array-into-pairs';
 
@@ -60,9 +59,7 @@ export const SCENES = {
     buttons: [BUTTONS[CommandEnum.PAY_WITH_CRYPTOMUS]],
     actions: {
       [CommandEnum.PAY_WITH_CRYPTOMUS]: {
-        text: (payment: Payment) =>
-          `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти по ссылке: <a href="${payment.url}">${payment.url}</a>\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
-        buttons: [BUTTONS[CommandEnum.CONFIRM_PAYMENT]],
+        text: `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
       },
       [CommandEnum.CONFIRM_PAYMENT]: {
         success: (tariffName: string) => ({

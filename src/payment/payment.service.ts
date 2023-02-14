@@ -37,15 +37,13 @@ export class PaymentService {
 
     const paymentStrategy = this.paymentStrategyFactory.createPaymentStrategy(paymentSystem);
 
-    const payment = await paymentStrategy.createPayment({
+    return paymentStrategy.createPayment({
       userId,
       chatId,
       tariffId,
       tariffPrice: tariff.price,
       paymentMonths,
     });
-
-    return payment;
   }
 
   async getPendingPayments(): Promise<Payment[]> {
