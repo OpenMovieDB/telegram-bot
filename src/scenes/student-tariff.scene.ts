@@ -2,11 +2,11 @@ import { CommandEnum } from '../enum/command.enum';
 import { AbstractScene } from '../abstract/abstract.scene';
 import { Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { Logger } from '@nestjs/common';
-import { TariffService } from 'src/tariff/tariff.service';
 import { Context } from 'src/interfaces/context.interface';
+import { TariffService } from 'src/tariff/tariff.service';
 
-@Scene(CommandEnum.UNLIMITED_TARIFF)
-export class UnlimitedTariffScene extends AbstractScene {
+@Scene(CommandEnum.STUDENT_TARIFF)
+export class StudentTariffScene extends AbstractScene {
   public logger = new Logger(AbstractScene.name);
 
   constructor(private readonly tariffService: TariffService) {
