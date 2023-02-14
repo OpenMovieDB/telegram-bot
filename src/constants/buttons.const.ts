@@ -9,7 +9,7 @@ export const BUTTONS = {
   [CommandEnum.I_HAVE_TOKEN]: Markup.button.callback('уже есть токен 🤓', CommandEnum.I_HAVE_TOKEN),
   [CommandEnum.FREE_TARIFF]: Markup.button.callback('FREE', CommandEnum.FREE_TARIFF),
   [CommandEnum.DEVELOPER_TARIFF]: Markup.button.callback('DEVELOPER', CommandEnum.DEVELOPER_TARIFF),
-  [CommandEnum.UNLIMITED_TARIFF]: Markup.button.callback('UNLIMIT', CommandEnum.UNLIMITED_TARIFF),
+  [CommandEnum.UNLIMITED_TARIFF]: Markup.button.callback('UNLIMITED', CommandEnum.UNLIMITED_TARIFF),
   [CommandEnum.STUDENT_TARIFF]: Markup.button.callback('STUDENT', CommandEnum.STUDENT_TARIFF),
   [CommandEnum.JOIN_CHAT]: Markup.button.url('вступить в чат 📣', 'https://t.me/+hdOSHbV8SJo2NmJi'),
   [CommandEnum.CONFIRM_JOIN_CHAT]: Markup.button.callback('🔥 я вступил в чат 🔥', CommandEnum.CONFIRM_JOIN_CHAT),
