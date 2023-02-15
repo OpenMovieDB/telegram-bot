@@ -13,6 +13,9 @@ export class Payment {
   @Prop()
   paymentId: string;
 
+  @Prop()
+  orderId: string;
+
   @Prop({ default: () => PaymentStatusEnum.PENDING })
   status: string;
 

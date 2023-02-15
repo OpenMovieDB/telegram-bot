@@ -49,9 +49,9 @@ export class CryptomusClient {
     );
   }
 
-  checkPaymentStatus(orderUuid: string): Promise<CheckPaymentResponse> {
+  checkPaymentStatus(paymentId: string): Promise<CheckPaymentResponse> {
     const payload: CheckPaymentPayload = {
-      uuid: orderUuid,
+      uuid: paymentId,
     };
 
     return lastValueFrom(

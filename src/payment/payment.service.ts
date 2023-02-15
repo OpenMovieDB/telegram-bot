@@ -36,22 +36,22 @@ export class PaymentService {
     if (!tariff) throw new Error(`Tariff with id ${tariffId} not found`);
 
     const paymentStrategy = this.paymentStrategyFactory.createPaymentStrategy(paymentSystem);
-
-    return paymentStrategy.createPayment({
+    const payment = await paymentStrategy.createPayment({
       userId,
       chatId,
       tariffId,
       tariffPrice: tariff.price,
       paymentMonths,
     });
+    return this.paymentModel.create(payment);
   }
 
   async getPendingPayments(): Promise<Payment[]> {
-    return this.paymentModel.find({ status: 'pending' }).exec();
+    return this.paymentModel.find({ status: PaymentStatusEnum.PENDING }).exec();
   }
 
-  async updatePaymentStatus(id: string, status: string, isFinal: boolean): Promise<void> {
-    await this.paymentModel.updateOne({ _id: id }, { status, isFinal }).exec();
+  async updatePaymentStatus(paymentId: string, status: string, isFinal: boolean): Promise<void> {
+    await this.paymentModel.updateOne({ paymentId }, { status, isFinal }).exec();
   }
 
   async findPaymentById(id: string): Promise<Payment> {
@@ -59,12 +59,12 @@ export class PaymentService {
   }
 
   async validatePayment(paymentId: string): Promise<boolean> {
-    const payment = await this.paymentModel.findById(paymentId).exec();
+    const payment = await this.paymentModel.findOne({ paymentId }).exec();
     if (!payment) throw new Error(`Payment with id ${paymentId} not found`);
 
     const paymentStrategy = this.paymentStrategyFactory.createPaymentStrategy(payment.paymentSystem);
 
-    const isPaid = paymentStrategy.validateTransaction(payment.paymentId);
+    const isPaid = await paymentStrategy.validateTransaction(payment.paymentId);
 
     if (isPaid) {
       const startAt = DateTime.local();

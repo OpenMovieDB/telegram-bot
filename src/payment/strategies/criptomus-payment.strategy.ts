@@ -21,6 +21,8 @@ export class CryptomusPaymentStrategy implements PaymentStrategy {
     const createPaymentResponse = await this.cryptomusClient.createPayment(paymentAmount, uuidv4());
 
     const payment = new Payment({
+      orderId: createPaymentResponse.result.order_id,
+      paymentId: createPaymentResponse.result.uuid,
       userId,
       chatId,
       tariffId,
