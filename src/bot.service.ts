@@ -12,6 +12,7 @@ import { UserService } from './user/user.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { User } from './user/schemas/user.schema';
+import { DateTime } from 'luxon';
 
 @Injectable()
 export class BotService {
@@ -36,6 +37,19 @@ export class BotService {
       ctx,
       SCENES[CommandEnum.START].navigateText,
       Markup.inlineKeyboard(SCENES[CommandEnum.START].navigateButtons),
+    );
+  }
+
+  async sendMessage(chatId: number, message: string): Promise<void> {
+    await this.bot.telegram.sendMessage(chatId, message);
+  }
+
+  async sendPaymentSuccessMessage(chatId: number, tariffName: string, subscriptionEndDate: Date): Promise<void> {
+    await this.sendMessage(
+      chatId,
+      `Тариф ${tariffName} успешно оплачен 🎉 \n\nПодписка действует до: ${DateTime.fromJSDate(
+        subscriptionEndDate,
+      ).toFormat('dd MMMM yyyy', { locale: 'ru' })}`,
     );
   }
 

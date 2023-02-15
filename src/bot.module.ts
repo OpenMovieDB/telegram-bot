@@ -86,5 +86,6 @@ import { session } from 'telegraf';
     DeveloperTariffScene,
     StudentTariffScene,
   ],
+  exports: [BotService],
 })
 export class BotModule {}
