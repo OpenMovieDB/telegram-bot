@@ -31,6 +31,7 @@ export class PaymentService {
     const user = await this.userService.findOneByUserId(userId);
 
     if (!user) throw new Error('User not found');
+    if (!user?.chatId) await this.userService.update(user.userId, { chatId });
 
     const tariff: Tariff = await this.tariffService.getOneById(tariffId);
     if (!tariff) throw new Error(`Tariff with id ${tariffId} not found`);

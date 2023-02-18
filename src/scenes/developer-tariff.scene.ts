@@ -3,8 +3,6 @@ import { AbstractScene } from '../abstract/abstract.scene';
 import { Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { Logger } from '@nestjs/common';
 import { Context } from 'src/interfaces/context.interface';
-import { SCENES } from 'src/constants/scenes.const';
-import { Markup } from 'telegraf';
 import { TariffService } from 'src/tariff/tariff.service';
 
 @Scene(CommandEnum.DEVELOPER_TARIFF)

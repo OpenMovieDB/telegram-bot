@@ -30,6 +30,7 @@ export class FreeTariffScene extends AbstractScene {
           } else {
             await this.userService.create({
               userId: ctx.from.id,
+              chatId: ctx.chat.id,
               username: ctx.from.username,
             });
             token = await this.userService.getUserToken(ctx.from.id);

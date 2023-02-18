@@ -13,6 +13,9 @@ export class User {
   })
   userId: number;
 
+  @Prop()
+  chatId?: number;
+
   @Prop({
     required: true,
     unique: true,
