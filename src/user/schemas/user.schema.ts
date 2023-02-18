@@ -16,6 +16,9 @@ export class User {
   @Prop()
   chatId?: number;
 
+  @Prop()
+  sendWarnNotification?: boolean;
+
   @Prop({
     required: true,
     unique: true,

@@ -101,6 +101,7 @@ export class UserService {
       .find({
         subscriptionEndDate: { $lte: expirationDate },
         tariffId: { $in: tariffIds },
+        sendWarnNotification: { $ne: true },
       })
       .populate('tariffId')
       .exec();

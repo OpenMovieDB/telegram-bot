@@ -52,10 +52,12 @@ export class PaymentScheduler {
   @Cron(CronExpression.EVERY_10_SECONDS)
   async handleExpiredSubscription() {
     const now = DateTime.local();
+    const expirationDate = now.plus({ days: 2 });
 
     const tariffs = await this.tariffService.getAllTariffs();
     const freeTariff = tariffs.find((tariff) => tariff.name === 'FREE')._id;
     const paidTariffs = tariffs.filter((tariff) => tariff.name !== 'FREE').map((tariff) => tariff._id.toString());
+
     const usersWithExpiredSubscription = await this.userService.getUsersWithExpiredSubscription(
       now.toJSDate(),
       paidTariffs,
@@ -70,6 +72,7 @@ export class PaymentScheduler {
             tariffId: freeTariff,
             subscriptionStartDate: null,
             subscriptionEndDate: null,
+            sendWarnNotification: false,
           });
 
           this.logger.debug(`User ${user.userId} tariff has been changed to free`);
@@ -80,6 +83,26 @@ export class PaymentScheduler {
       }
 
       this.logger.debug('Finish handling expired subscriptions');
+    }
+
+    const usersWithExpiringSubscription = await this.userService.getUsersWithExpiredSubscription(
+      expirationDate.toJSDate(),
+      paidTariffs,
+    );
+
+    if (usersWithExpiringSubscription.length) {
+      this.logger.debug('Start handling expiring subscriptions');
+
+      for (const user of usersWithExpiringSubscription) {
+        try {
+          await this.botService.sendSubscriptionExpirationWarningMessage(user.chatId, user.subscriptionEndDate);
+          await this.userService.update(user.userId, { sendWarnNotification: true });
+        } catch (error) {
+          this.logger.error(`Error handling expiring subscription for user ${user.userId}: ${error.message}`);
+        }
+      }
+
+      this.logger.debug('Finish handling expiring subscriptions');
     }
   }
 }

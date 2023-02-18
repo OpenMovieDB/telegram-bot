@@ -58,6 +58,11 @@ export class BotService {
     await this.bot.telegram.sendMessage(chatId, message);
   }
 
+  async sendSubscriptionExpirationWarningMessage(chatId: number, expirationDate: Date) {
+    const message = `Срок действия вашей подписки истекает ${expirationDate.toLocaleDateString()} ⚠️ Пожалуйста, не забудьте продлить свою подписку.`;
+    await this.bot.telegram.sendMessage(chatId, message);
+  }
+
   async createInvitedUser(ctx: Context) {
     const members: TelegramUser[] = ctx.update?.['message']?.['new_chat_members'];
     this.logger.log(`NewChatMembers: ${members.map((member: any) => member.username).join(', ')}`);
