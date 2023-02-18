@@ -20,8 +20,8 @@ export const SCENES = {
         BUTTONS[CommandEnum.UPDATE_MOVIE],
         BUTTONS[CommandEnum.SET_IMDB_RELATION],
       ],
-      [BUTTONS[CommandEnum.GET_MY_TOKEN], BUTTONS[CommandEnum.CHANGE_TOKEN], BUTTONS[CommandEnum.UPDATE_TARIFF]],
-      [BUTTONS[CommandEnum.QUESTION]],
+      [BUTTONS[CommandEnum.GET_MY_TOKEN], BUTTONS[CommandEnum.CHANGE_TOKEN], BUTTONS[CommandEnum.QUESTION]],
+      [BUTTONS[CommandEnum.UPDATE_TARIFF]],
     ],
   },
   [CommandEnum.GET_ACCESS]: {

@@ -5,7 +5,7 @@ export const BUTTONS = {
   [CommandEnum.BACK]: Markup.button.callback('⬅ назад', CommandEnum.BACK),
   [CommandEnum.HOME]: Markup.button.callback('📱в меню', CommandEnum.HOME),
   [CommandEnum.GET_ACCESS]: Markup.button.callback('получить доступ 🚀', CommandEnum.GET_ACCESS),
-  [CommandEnum.QUESTION]: Markup.button.callback('🆘', CommandEnum.QUESTION),
+  [CommandEnum.QUESTION]: Markup.button.callback('🆘 поддержка', CommandEnum.QUESTION),
   [CommandEnum.I_HAVE_TOKEN]: Markup.button.callback('уже есть токен 🤓', CommandEnum.I_HAVE_TOKEN),
   [CommandEnum.FREE_TARIFF]: Markup.button.callback('FREE', CommandEnum.FREE_TARIFF),
   [CommandEnum.DEVELOPER_TARIFF]: Markup.button.callback('DEVELOPER', CommandEnum.DEVELOPER_TARIFF),
@@ -23,7 +23,7 @@ export const BUTTONS = {
   [CommandEnum.NO]: Markup.button.callback('❌ нет', CommandEnum.NO),
   [CommandEnum.DOCUMENTATION]: Markup.button.url('📑 документация', 'https://kinopoiskdev.docs.apiary.io/'),
   [CommandEnum.UPDATE_MOVIE]: Markup.button.callback('🔄️ фильмы', CommandEnum.UPDATE_MOVIE),
-  [CommandEnum.SET_IMDB_RELATION]: Markup.button.callback('🔗 связать с IMDB', CommandEnum.SET_IMDB_RELATION),
+  [CommandEnum.SET_IMDB_RELATION]: Markup.button.callback('🔗 с IMDB', CommandEnum.SET_IMDB_RELATION),
   [CommandEnum.PAY_WITH_CRYPTOMUS]: Markup.button.callback('🪙 криптовалютой', CommandEnum.PAY_WITH_CRYPTOMUS),
   [CommandEnum.CONFIRM_PAYMENT]: Markup.button.callback('✅ Я оплатил', CommandEnum.CONFIRM_PAYMENT),
 };
