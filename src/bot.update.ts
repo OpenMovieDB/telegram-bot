@@ -40,6 +40,7 @@ export class BotUpdate {
       if (!user)
         await this.userService.create({
           userId: ctx.from.id,
+          chatId: ctx.chat.id,
           username: ctx.from.username,
         });
       ctx.session.messageId = undefined;

@@ -53,6 +53,11 @@ export class BotService {
     );
   }
 
+  async sendSubscriptionExpiredMessage(chatId: number) {
+    const message = 'Срок действия вашей подписки истек. Тариф был изменен на бесплатный 🫣';
+    await this.bot.telegram.sendMessage(chatId, message);
+  }
+
   async createInvitedUser(ctx: Context) {
     const members: TelegramUser[] = ctx.update?.['message']?.['new_chat_members'];
     this.logger.log(`NewChatMembers: ${members.map((member: any) => member.username).join(', ')}`);

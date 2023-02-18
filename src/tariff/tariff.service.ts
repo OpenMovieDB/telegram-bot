@@ -16,6 +16,6 @@ export class TariffService {
   }
 
   async getAllTariffs(): Promise<TariffDocument[]> {
-    return this.tariffModel.find().sort({ price: 1 });
+    return this.tariffModel.find().sort({ price: 1 }).exec();
   }
 }
