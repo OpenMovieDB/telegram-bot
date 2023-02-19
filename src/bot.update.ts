@@ -1,5 +1,5 @@
 import { Logger, UseFilters, UseInterceptors } from '@nestjs/common';
-import { Action, Ctx, Hears, InjectBot, On, Start, Update } from 'nestjs-telegraf';
+import { Action, Command, Ctx, Hears, InjectBot, On, Start, Update } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import { BotService } from './bot.service';
 import { BOT_NAME } from './constants/bot-name.const';
@@ -10,18 +10,31 @@ import { SceneContext } from 'telegraf/typings/scenes';
 import { CommandEnum } from './enum/command.enum';
 import { UserService } from './user/user.service';
 import { BUTTONS } from './constants/buttons.const';
+import { ConfigService } from '@nestjs/config';
+import { PaymentService } from './payment/payment.service';
+import { TariffService } from './tariff/tariff.service';
+import { PaymentSystemEnum } from './payment/enum/payment-system.enum';
+import { DateTime } from 'luxon';
+import { PaymentStatusEnum } from './payment/enum/payment-status.enum';
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
 @UseFilters(AllExceptionFilter)
 export class BotUpdate {
+  private readonly adminChatId: number;
+
   private readonly logger = new Logger(BotUpdate.name);
   constructor(
     @InjectBot(BOT_NAME)
     private readonly bot: Telegraf<Context>,
     private readonly botService: BotService,
     private readonly userService: UserService,
-  ) {}
+    private readonly tariffService: TariffService,
+    private readonly configService: ConfigService,
+    private readonly paymentService: PaymentService,
+  ) {
+    this.adminChatId = Number(configService.get('ADMIN_CHAT_ID'));
+  }
 
   @Start()
   async onStart(@Ctx() ctx: Context & { update: any }) {
@@ -47,6 +60,38 @@ export class BotUpdate {
       await ctx.scene.enter(CommandEnum.START);
     } catch (e) {
       this.logger.log(e);
+    }
+  }
+
+  @Command('pay')
+  async onPayCommand(@Ctx() ctx: Context & { update: any }) {
+    if (this.isAdmin(ctx)) {
+      const [token, tariffName, monthCount, startAt] = ctx.state.command.args;
+      if (!(token && tariffName && monthCount && startAt))
+        throw new Error('Не указан один из обязательных параметров!');
+      const paymentAt = DateTime.fromFormat(startAt, 'dd.MM.yyyy').toJSDate();
+      const user = await this.userService.findUserByToken(token.toUpperCase());
+      const tariff = await this.tariffService.getOneByName(tariffName.toUpperCase());
+      const payment = await this.paymentService.createPayment(
+        user.userId,
+        user.chatId,
+        tariff._id.toString(),
+        PaymentSystemEnum.CASH,
+        monthCount,
+        paymentAt,
+      );
+
+      await this.bot.telegram.sendMessage(this.adminChatId, `Создан заказ с id: ${payment.paymentId}`);
+    }
+  }
+
+  @Command('confirm')
+  async onConfirmCommand(@Ctx() ctx: Context & { update: any }) {
+    if (this.isAdmin(ctx)) {
+      const [paymentId] = ctx.state.command.args;
+      if (!paymentId) throw new Error('Не указан один из обязательных параметров!');
+      await this.paymentService.updatePaymentStatus(paymentId, PaymentStatusEnum.PENDING, true);
+      await this.bot.telegram.sendMessage(this.adminChatId, `Оплата подтверждена`);
     }
   }
 
@@ -84,6 +129,8 @@ export class BotUpdate {
 
   @Hears(/.*/)
   async onStatsHears(@Ctx() ctx: Context & { update: any }) {
+    const user = await this.userService.findOneByUserId(ctx.from.id);
+    if (!user.chatId) await this.userService.update(user.userId, { chatId: ctx.chat.id });
     try {
       const message = ctx.update.message;
       const [command] = Object.entries(BUTTONS).find(([_, button]) => button.text === message.text);
@@ -106,5 +153,9 @@ export class BotUpdate {
   async onLeftChatMember(@Ctx() ctx: Context & { update: any }) {
     this.logger.log('left_chat_member', ctx);
     this.botService.leftTheChat(ctx);
+  }
+
+  private isAdmin(ctx: Context): boolean {
+    return ctx.chat.id === this.adminChatId;
   }
 }

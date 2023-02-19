@@ -33,6 +33,9 @@ export class Payment {
   amount: number;
 
   @Prop()
+  paymentAt: Date;
+
+  @Prop()
   paymentAmount: number;
 
   @Prop()

@@ -28,6 +28,7 @@ export class PaymentService {
     tariffId: string,
     paymentSystem: PaymentSystemEnum,
     paymentMonths: number,
+    paymentAt?: Date,
   ): Promise<Payment> {
     const user = await this.userService.findOneByUserId(userId);
 
@@ -44,6 +45,7 @@ export class PaymentService {
       tariffId,
       tariffPrice: tariff.price,
       paymentMonths,
+      paymentAt: paymentAt || DateTime.local().toJSDate(),
     });
     return this.paymentModel.create(payment);
   }
@@ -70,7 +72,7 @@ export class PaymentService {
     const isPaid = paymentStatus === PaymentStatusEnum.PAID;
 
     if (isPaid) {
-      const startAt = DateTime.local();
+      const startAt = DateTime.fromJSDate(payment.paymentAt);
       const expiredAt = startAt.plus({ months: payment.monthCount });
 
       const user = await this.userService.findOneByUserId(payment.userId);

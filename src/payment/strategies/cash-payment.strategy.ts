@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Payment, PaymentDocument } from '../schemas/payment.schema';
-import { PaymentStrategy } from './payment-strategy.interface';
+import { CreatePaymentData, PaymentStrategy } from './payment-strategy.interface';
 import { PaymentSystemEnum } from '../enum/payment-system.enum';
 import { v4 as uuidv4 } from 'uuid';
 import { Model } from 'mongoose';
@@ -10,23 +10,13 @@ import { PaymentStatusEnum } from '../enum/payment-status.enum';
 export class CashPaymentStrategy implements PaymentStrategy {
   constructor(private readonly paymentModel: Model<PaymentDocument>) {}
 
-  async createPayment(data: {
-    userId: number;
-    chatId: number;
-    tariffId: string;
-    tariffPrice: number;
-    paymentMonths: number;
-  }): Promise<Payment> {
-    const { userId, chatId, tariffId, tariffPrice, paymentMonths } = data;
-
+  async createPayment({ tariffPrice, paymentMonths, ...data }: CreatePaymentData): Promise<Payment> {
     const paymentAmount = tariffPrice * paymentMonths;
 
     const payment = new Payment({
+      ...data,
       orderId: uuidv4(),
       paymentId: uuidv4(),
-      userId,
-      chatId,
-      tariffId,
       amount: tariffPrice,
       paymentSystem: PaymentSystemEnum.CASH,
       paymentAmount,
