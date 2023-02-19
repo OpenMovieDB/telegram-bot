@@ -31,6 +31,7 @@ import { UpdateMovieScene } from './scenes/update-movie.scene';
 import { UpdateTariffScene } from './scenes/update-tariff.scene';
 import { UserModule } from './user/user.module';
 import { session } from 'telegraf';
+import { commandArgs } from './middlewares/command-args.middleware';
 
 @Module({
   imports: [
@@ -43,7 +44,7 @@ import { session } from 'telegraf';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         token: configService.get('BOT_TOKEN'),
-        middlewares: [session()],
+        middlewares: [session(), commandArgs()],
         include: [BotModule],
       }),
     }),
