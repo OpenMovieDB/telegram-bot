@@ -53,6 +53,13 @@ export class BotService {
     );
   }
 
+  async sendPaymentSuccessMessageToAdmin(userId: number, tariffName: string): Promise<void> {
+    await this.bot.telegram.sendMessage(
+      this.adminChatId,
+      `Пользователь с ID: ${userId} оплатил тариф ${tariffName} 🎉`,
+    );
+  }
+
   async sendSubscriptionExpiredMessage(chatId: number) {
     const message = 'Срок действия вашей подписки истек. Тариф был изменен на бесплатный 🫣';
     await this.bot.telegram.sendMessage(chatId, message);
