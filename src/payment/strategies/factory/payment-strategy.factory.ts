@@ -6,7 +6,7 @@ import { PaymentSystemEnum } from 'src/payment/enum/payment-system.enum';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Payment, PaymentDocument } from 'src/payment/schemas/payment.schema';
-import { LocalPaymentStrategy } from '../local-payment.strategy';
+import { CashPaymentStrategy } from '../cash-payment.strategy';
 
 @Injectable()
 export class PaymentStrategyFactory {
@@ -19,8 +19,8 @@ export class PaymentStrategyFactory {
     switch (paymentSystem) {
       case PaymentSystemEnum.CYPTOMUS:
         return new CryptomusPaymentStrategy(this.cryptomusClient);
-      case PaymentSystemEnum.LOCAL:
-        return new LocalPaymentStrategy(this.paymentModel);
+      case PaymentSystemEnum.CASH:
+        return new CashPaymentStrategy(this.paymentModel);
       default:
         throw new Error(`Unsupported payment system: ${paymentSystem}`);
     }

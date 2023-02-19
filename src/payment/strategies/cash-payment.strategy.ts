@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Model } from 'mongoose';
 
 @Injectable()
-export class LocalPaymentStrategy implements PaymentStrategy {
+export class CashPaymentStrategy implements PaymentStrategy {
   constructor(private readonly paymentModel: Model<PaymentDocument>) {}
 
   async createPayment(data: {
@@ -27,7 +27,7 @@ export class LocalPaymentStrategy implements PaymentStrategy {
       chatId,
       tariffId,
       amount: tariffPrice,
-      paymentSystem: PaymentSystemEnum.LOCAL,
+      paymentSystem: PaymentSystemEnum.CASH,
       paymentAmount,
       monthCount: paymentMonths,
       isFinal: false,
