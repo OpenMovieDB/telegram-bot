@@ -26,6 +26,9 @@ export class UpdateTariffScene extends AbstractScene {
     const tariffs = (await this.tariffService.getAllTariffs()).filter((tariff) => tariff.price !== 0).reverse();
     const scene = SCENES[ctx.scene.session.current];
 
-    await ctx.replyWithHTML(scene.text(tariffs, user.tariffId.name), Markup.inlineKeyboard(scene.buttons(tariffs)));
+    await ctx.replyWithHTML(
+      scene.text(tariffs, user.tariffId.name, user.subscriptionEndDate),
+      Markup.inlineKeyboard(scene.buttons(tariffs)),
+    );
   }
 }
