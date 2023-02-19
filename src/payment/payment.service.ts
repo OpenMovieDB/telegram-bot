@@ -1,7 +1,7 @@
 import { Payment, PaymentDocument } from './schemas/payment.schema';
 
 import { InjectModel } from '@nestjs/mongoose';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import mongoose, { Model } from 'mongoose';
 
 import { PaymentStrategyFactory } from './strategies/factory/payment-strategy.factory';
@@ -14,6 +14,7 @@ import { DateTime } from 'luxon';
 
 @Injectable()
 export class PaymentService {
+  private readonly logger = new Logger(PaymentService.name);
   constructor(
     private readonly userService: UserService,
     private readonly tariffService: TariffService,
@@ -65,7 +66,8 @@ export class PaymentService {
 
     const paymentStrategy = this.paymentStrategyFactory.createPaymentStrategy(payment.paymentSystem);
 
-    const isPaid = await paymentStrategy.validateTransaction(payment.paymentId);
+    const paymentStatus = await paymentStrategy.validateTransaction(payment.paymentId);
+    const isPaid = paymentStatus === PaymentStatusEnum.PAID;
 
     if (isPaid) {
       const startAt = DateTime.local();
@@ -81,7 +83,13 @@ export class PaymentService {
         });
       }
 
-      await this.updatePaymentStatus(paymentId, PaymentStatusEnum.PAID, true);
+      this.logger.debug(`Change status for ${paymentId} on ${paymentStatus}. IsPaid: ${isPaid}`);
+      await this.updatePaymentStatus(paymentId, PaymentStatusEnum.PAID, isPaid);
+    } else {
+      if (paymentStatus !== payment.status) {
+        this.logger.debug(`Change status for ${paymentId} on ${paymentStatus}, IsPaid: ${isPaid}`);
+        await this.updatePaymentStatus(paymentId, paymentStatus, isPaid);
+      }
     }
 
     return isPaid;

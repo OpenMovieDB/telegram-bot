@@ -4,6 +4,7 @@ import { PaymentStrategy } from './payment-strategy.interface';
 import { PaymentSystemEnum } from '../enum/payment-system.enum';
 import { v4 as uuidv4 } from 'uuid';
 import { Model } from 'mongoose';
+import { PaymentStatusEnum } from '../enum/payment-status.enum';
 
 @Injectable()
 export class CashPaymentStrategy implements PaymentStrategy {
@@ -36,9 +37,9 @@ export class CashPaymentStrategy implements PaymentStrategy {
     return payment;
   }
 
-  async validateTransaction(paymentId: string): Promise<boolean> {
+  async validateTransaction(paymentId: string): Promise<PaymentStatusEnum> {
     const transaction = await this.paymentModel.findOne({ paymentId });
 
-    return transaction.isFinal;
+    return transaction.isFinal ? PaymentStatusEnum.PAID : PaymentStatusEnum.PENDING;
   }
 }

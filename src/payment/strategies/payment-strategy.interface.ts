@@ -1,3 +1,4 @@
+import { PaymentStatusEnum } from '../enum/payment-status.enum';
 import { Payment } from '../schemas/payment.schema';
 
 export interface PaymentStrategy {
@@ -8,5 +9,5 @@ export interface PaymentStrategy {
     tariffPrice: number;
     paymentMonths: number;
   }): Promise<Payment>;
-  validateTransaction(paymentId: string): Promise<boolean>;
+  validateTransaction(paymentId: string): Promise<PaymentStatusEnum>;
 }

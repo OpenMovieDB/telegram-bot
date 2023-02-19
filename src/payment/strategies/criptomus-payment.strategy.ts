@@ -4,6 +4,8 @@ import { Payment } from '../schemas/payment.schema';
 import { PaymentStrategy } from './payment-strategy.interface';
 import { PaymentSystemEnum } from '../enum/payment-system.enum';
 import { v4 as uuidv4 } from 'uuid';
+import { DateTime } from 'luxon';
+import { PaymentStatusEnum } from '../enum/payment-status.enum';
 @Injectable()
 export class CryptomusPaymentStrategy implements PaymentStrategy {
   constructor(private readonly cryptomusClient: CryptomusClient) {}
@@ -45,11 +47,16 @@ export class CryptomusPaymentStrategy implements PaymentStrategy {
     return payment;
   }
 
-  async validateTransaction(paymentId: string): Promise<boolean> {
+  async validateTransaction(paymentId: string): Promise<PaymentStatusEnum> {
     const transaction = await this.cryptomusClient.checkPaymentStatus(paymentId);
-
     const paymentStatus = transaction.result.payment_status;
 
-    return Boolean(paymentStatus === 'paid');
+    if (paymentStatus === 'paid') return PaymentStatusEnum.PAID;
+    const nowAt = DateTime.local({ zone: 'utc' }).toUnixInteger();
+    const isExpired = nowAt >= transaction.result.expired_at;
+
+    if (isExpired) return PaymentStatusEnum.CANCELED;
+
+    return PaymentStatusEnum.PENDING;
   }
 }
