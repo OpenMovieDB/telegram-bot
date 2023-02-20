@@ -42,11 +42,10 @@ export const SCENES = {
       splitArrayIntoPairs(tariffs.map((tariff) => BUTTONS[CommandEnum[tariff.name + '_TARIFF']])),
   },
   [CommandEnum.UPDATE_TARIFF]: {
-    text: (tariffs: Tariff[], currentTariff: string, subscriptionEndDate: Date) =>
-      `Ваш текущий тариф: <b>${currentTariff}</b>. \nДействует до: ${DateTime.fromJSDate(subscriptionEndDate).toFormat(
-        'dd MMMM yyyy',
-        { locale: 'ru' },
-      )}\n\n` +
+    text: (tariffs: Tariff[], currentTariff: string, subscriptionEndDate?: Date) =>
+      `Ваш текущий тариф: <b>${currentTariff}</b>. \nДействует до: ${
+        subscriptionEndDate ? DateTime.fromJSDate(subscriptionEndDate).toFormat('dd MMMM yyyy', { locale: 'ru' }) : '∞'
+      }\n\n` +
       'Доступные тарифы: \n' +
       tariffs
         .map(
