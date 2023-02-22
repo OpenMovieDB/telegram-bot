@@ -35,7 +35,7 @@ export const SCENES = {
           (tariff) =>
             `<b>${BUTTONS[CommandEnum[tariff.name + '_TARIFF']].text}</b>: <i>${
               tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit
-            }</i> запросов в сутки. <b>${tariff.price === 0 ? 'Всегда бесплатно' : tariff.price + 'руб'}</b>.\n`,
+            }</i> запросов в сутки. <b>${tariff.price === 0 ? 'Всегда бесплатно' : tariff.price + 'руб./месяц'}</b>.\n`,
         )
         .join(''),
     buttons: (tariffs: Tariff[]) =>
@@ -52,7 +52,7 @@ export const SCENES = {
           (tariff) =>
             `<b>${BUTTONS[CommandEnum[tariff.name + '_TARIFF']].text}</b>: <i>${
               tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit
-            }</i> запросов в сутки. <b>${tariff.price === 0 ? 'Всегда бесплатно' : tariff.price + 'руб'}</b>.\n`,
+            }</i> запросов в сутки. <b>${tariff.price === 0 ? 'Всегда бесплатно' : tariff.price + 'руб./месяц'}</b>.\n`,
         )
         .join(''),
     buttons: (tariffs: Tariff[]) =>
