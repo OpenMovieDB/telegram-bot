@@ -21,7 +21,7 @@ export const BUTTONS = {
   [CommandEnum.CHANGE_TOKEN]: Markup.button.callback('✏️ токен', CommandEnum.CHANGE_TOKEN),
   [CommandEnum.YES]: Markup.button.callback('✅ да', CommandEnum.YES),
   [CommandEnum.NO]: Markup.button.callback('❌ нет', CommandEnum.NO),
-  [CommandEnum.DOCUMENTATION]: Markup.button.url('📑 документация', 'https://kinopoiskdev.docs.apiary.io/'),
+  [CommandEnum.DOCUMENTATION]: Markup.button.url('📑 документация', 'https://kinopoisk.dev/documentation'),
   [CommandEnum.UPDATE_MOVIE]: Markup.button.callback('🔄️ фильмы', CommandEnum.UPDATE_MOVIE),
   [CommandEnum.SET_IMDB_RELATION]: Markup.button.callback('🔗 с IMDB', CommandEnum.SET_IMDB_RELATION),
   [CommandEnum.PAY_WITH_CRYPTOMUS]: Markup.button.callback('🪙 криптовалютой', CommandEnum.PAY_WITH_CRYPTOMUS),
