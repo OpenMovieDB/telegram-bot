@@ -87,7 +87,7 @@ export const SCENES = {
     actions: {
       [CommandEnum.CONFIRM_JOIN_CHAT]: {
         success: (token: string) => ({
-          navigateText: `Теперь, ты можешь пользоваться API: \n\n<code>${token}</code>`,
+          navigateText: `Теперь, ты можешь пользоваться API: \n\n<code>${token}</code>\n\nДокументация по API: <code>https://kinopoisk.dev/documentation</code>\nОна описана в формате OpenAPI и поможет тебе быстро составить запрос к API.\n\n Если тебе снова нужна будет документация, в основном меню будет кнопка "🆘 поддержка".`,
           navigateButtons: [BUTTONS[CommandEnum.HOME]],
         }),
         error: () => ({
