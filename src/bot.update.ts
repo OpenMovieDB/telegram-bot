@@ -48,19 +48,9 @@ export class BotUpdate {
       return;
     }
 
-    try {
-      const user = await this.userService.findOneByUserId(ctx.from.id);
-      if (!user)
-        await this.userService.create({
-          userId: ctx.from.id,
-          chatId: ctx.chat.id,
-          username: ctx.from.username,
-        });
-      ctx.session.messageId = undefined;
-      await ctx.scene.enter(CommandEnum.START);
-    } catch (e) {
-      this.logger.log(e);
-    }
+    ctx.session.messageId = undefined;
+
+    await ctx.scene.enter(CommandEnum.START);
   }
 
   @Command('pay')
@@ -128,9 +118,9 @@ export class BotUpdate {
   }
 
   @Hears(/.*/)
-  async onStatsHears(@Ctx() ctx: Context & { update: any }) {
+  async onHears(@Ctx() ctx: Context & { update: any }) {
     const user = await this.userService.findOneByUserId(ctx.from.id);
-    if (!user.chatId) await this.userService.update(user.userId, { chatId: ctx.chat.id });
+    if (user && !user.chatId) await this.userService.update(user.userId, { chatId: ctx.chat.id });
     try {
       const message = ctx.update.message;
       const [command] = Object.entries(BUTTONS).find(([_, button]) => button.text === message.text);

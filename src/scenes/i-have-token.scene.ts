@@ -43,6 +43,7 @@ export class IHaveTokenScene extends AbstractScene {
         await this.userService.updateUserByToken(token, {
           userId: ctx.from.id,
           username: ctx.from.username || null,
+          chatId: ctx.chat.id,
         });
         await ctx.replyWithHTML(action.success.text);
         await ctx.scene.enter(CommandEnum.HOME);
