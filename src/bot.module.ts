@@ -32,6 +32,7 @@ import { UpdateTariffScene } from './scenes/update-tariff.scene';
 import { UserModule } from './user/user.module';
 import { session } from 'telegraf';
 import { commandArgs } from './middlewares/command-args.middleware';
+import { SelectMonthsScene } from './scenes/select-months.scene';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { commandArgs } from './middlewares/command-args.middleware';
     PaymentScene,
     DeveloperTariffScene,
     StudentTariffScene,
+    SelectMonthsScene,
   ],
   exports: [BotService],
 })
