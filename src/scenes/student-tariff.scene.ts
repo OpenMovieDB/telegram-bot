@@ -18,7 +18,6 @@ export class StudentTariffScene extends AbstractScene {
     this.logger.log(ctx.scene.session.current);
     const tariff = await this.tariffService.getOneByName(ctx.scene.session.current.split('_')[0]);
     ctx.session.tariffId = tariff._id.toString();
-    ctx.session.paymentMonths = 1;
-    ctx.scene.enter(CommandEnum.PAYMENT);
+    ctx.scene.enter(CommandEnum.SELECT_MONTHS);
   }
 }
