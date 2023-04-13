@@ -41,7 +41,7 @@ export class CryptomusPaymentStrategy implements PaymentStrategy {
     const transaction = await this.cryptomusClient.checkPaymentStatus(paymentId);
     const paymentStatus = transaction.result.payment_status;
 
-    if (paymentStatus === 'paid') return PaymentStatusEnum.PAID;
+    if (paymentStatus === 'paid' || paymentStatus === 'paid_over') return PaymentStatusEnum.PAID;
     const nowAt = DateTime.local({ zone: 'utc' }).toUnixInteger();
     const isExpired = nowAt >= transaction.result.expired_at;
 

@@ -2,7 +2,7 @@ import * as crypto from 'crypto';
 
 import { CheckPaymentPayload, CheckPaymentResponse } from './types/check-payment.type';
 import { CratePaymentPayload, CreatePaymentResponse } from './types/create-payment.type';
-import { lastValueFrom, map } from 'rxjs';
+import { lastValueFrom } from 'rxjs';
 
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
@@ -39,27 +39,26 @@ export class CryptomusClient {
       order_id: orderId,
     };
 
-    return lastValueFrom(
-      this.httpService
-        .post('/payment', payload, {
-          headers: this.getHeaders(payload),
-          timeout: 5000,
-        })
-        .pipe(map((response) => response.data)),
+    const { data } = await lastValueFrom(
+      this.httpService.post('/payment', payload, {
+        headers: this.getHeaders(payload),
+        timeout: 5000,
+      }),
     );
+    return data;
   }
 
-  checkPaymentStatus(paymentId: string): Promise<CheckPaymentResponse> {
+  async checkPaymentStatus(paymentId: string): Promise<CheckPaymentResponse> {
     const payload: CheckPaymentPayload = {
       uuid: paymentId,
     };
 
-    return lastValueFrom(
-      this.httpService
-        .post('/payment/info', payload, {
-          headers: this.getHeaders(payload),
-        })
-        .pipe(map((response) => response.data)),
+    const { data } = await lastValueFrom(
+      this.httpService.post('/payment/info', payload, {
+        headers: this.getHeaders(payload),
+      }),
     );
+
+    return data;
   }
 }
