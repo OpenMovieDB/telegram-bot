@@ -9,6 +9,8 @@ import { PaymentService } from './payment.service';
 import { PaymentStrategyFactory } from './strategies/factory/payment-strategy.factory';
 import { TariffModule } from 'src/tariff/tariff.module';
 import { UserModule } from 'src/user/user.module';
+import { YooMoneyClientModule } from '@app/yoomoney-client';
+import { PaymentController } from './payment.controller';
 
 @Module({
   imports: [
@@ -16,9 +18,11 @@ import { UserModule } from 'src/user/user.module';
     UserModule,
     TariffModule,
     CryptomusClientModule,
+    YooMoneyClientModule,
     forwardRef(() => BotModule),
   ],
   providers: [PaymentService, PaymentStrategyFactory, PaymentScheduler],
+  controllers: [PaymentController],
   exports: [PaymentService],
 })
 export class PaymentModule {}

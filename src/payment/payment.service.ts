@@ -11,14 +11,20 @@ import { TariffService } from 'src/tariff/tariff.service';
 import { UserService } from 'src/user/user.service';
 import { PaymentStatusEnum } from './enum/payment-status.enum';
 import { DateTime } from 'luxon';
+import { YooMoneyNotification } from '@app/update-client/types/notification.type';
+import { createHash } from 'crypto';
+import { ConfigService } from '@nestjs/config';
+import { YooMoneyClient } from '@app/yoomoney-client';
 
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
   constructor(
+    private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly tariffService: TariffService,
     private readonly paymentStrategyFactory: PaymentStrategyFactory,
+    private readonly yooMoney: YooMoneyClient,
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
   ) {}
 
@@ -95,5 +101,54 @@ export class PaymentService {
     }
 
     return isPaid;
+  }
+
+  async getPaymentForm(paymentId: string): Promise<string> {
+    const payment = await this.paymentModel.findOne({ paymentId });
+    if (!payment) throw new Error(`Payment with id ${paymentId} not found`);
+
+    return payment.form;
+  }
+
+  async yooMoneyWebHook({
+    operation_id,
+    notification_type,
+    datetime,
+    sha1_hash,
+    sender,
+    codepro,
+    currency,
+    amount,
+    label,
+  }: YooMoneyNotification): Promise<boolean> {
+    const secret = this.configService.get('YOOMONEY_SECRET');
+
+    const hashString = [
+      notification_type,
+      operation_id,
+      amount,
+      currency,
+      datetime,
+      sender,
+      codepro,
+      secret,
+      label,
+    ].join('&');
+    const calculatedHash = createHash('sha1').update(hashString).digest('hex');
+
+    if (calculatedHash !== sha1_hash) return false;
+
+    const operationDetails = await this.yooMoney.getOperationDetails(operation_id);
+    if (
+      operationDetails.operation_id === operation_id &&
+      operationDetails.amount === parseFloat(amount) &&
+      operationDetails.sender === sender &&
+      operationDetails.label === label
+    ) {
+      await this.updatePaymentStatus(label, PaymentStatusEnum.PAID, true);
+      return true;
+    }
+
+    return false;
   }
 }

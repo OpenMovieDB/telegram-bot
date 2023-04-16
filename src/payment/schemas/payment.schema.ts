@@ -72,6 +72,9 @@ export class Payment {
   txid?: string;
 
   @Prop()
+  form: string;
+
+  @Prop()
   isFinal?: boolean;
 
   constructor(payment: Partial<Payment>) {

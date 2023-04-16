@@ -42,4 +42,24 @@ export class PaymentScene extends AbstractScene {
       Markup.inlineKeyboard([[Markup.button.url('👉 перейти к оплате', payment.url)]]),
     );
   }
+
+  @Action(CommandEnum.PAY_WITH_YOOMONEY)
+  async payWithYooMoney(@Ctx() ctx: Context) {
+    const { paymentMonths, tariffId } = ctx.session;
+
+    const paymentSystem = PaymentSystemEnum.YOOMONEY;
+
+    const payment = await this.paymentService.createPayment(
+      ctx.from.id,
+      ctx.chat.id,
+      tariffId,
+      paymentSystem,
+      paymentMonths,
+    );
+    await replyOrEdit(
+      ctx,
+      `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
+      Markup.inlineKeyboard([[Markup.button.url('👉 перейти к оплате', payment.url)]]),
+    );
+  }
 }

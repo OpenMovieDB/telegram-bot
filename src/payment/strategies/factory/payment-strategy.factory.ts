@@ -7,16 +7,23 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Payment, PaymentDocument } from 'src/payment/schemas/payment.schema';
 import { CashPaymentStrategy } from '../cash-payment.strategy';
+import { YooMoneyPaymentStrategy } from '../yoomoney-payment.strategy';
+import { YooMoneyClient } from '@app/yoomoney-client';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PaymentStrategyFactory {
   constructor(
     private readonly cryptomusClient: CryptomusClient,
+    private readonly yooMoneyClient: YooMoneyClient,
+    private readonly configService: ConfigService,
     @InjectModel(Payment.name) private readonly paymentModel: Model<PaymentDocument>,
   ) {}
 
   createPaymentStrategy(paymentSystem: PaymentSystemEnum): PaymentStrategy {
     switch (paymentSystem) {
+      case PaymentSystemEnum.YOOMONEY:
+        return new YooMoneyPaymentStrategy(this.yooMoneyClient, this.configService);
       case PaymentSystemEnum.CYPTOMUS:
         return new CryptomusPaymentStrategy(this.cryptomusClient);
       case PaymentSystemEnum.CASH:
