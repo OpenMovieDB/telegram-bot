@@ -27,7 +27,7 @@ export class YooMoneyClient {
   generatePaymentForm(amount: number, paymentId: string, comment: string): string {
     const builder = new YMPaymentFromBuilder({
       quickPayForm: 'donate',
-      sum: 10,
+      sum: amount,
       successURL: this.successURL,
       paymentType: YMFormPaymentType.FromCard,
       receiver: this.receiver,
