@@ -28,6 +28,9 @@ export class SetImdbRelationScene extends AbstractScene {
         }
         await ctx.replyWithHTML(scene.success.text);
         await ctx.scene.enter(CommandEnum.HOME);
+      } else {
+        await ctx.replyWithHTML(scene.error.text);
+        await ctx.scene.enter(CommandEnum.HOME);
       }
     }
   }

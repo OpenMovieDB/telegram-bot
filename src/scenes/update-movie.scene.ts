@@ -28,6 +28,9 @@ export class UpdateMovieScene extends AbstractScene {
 
         ctx.replyWithHTML(scene.success.text);
         ctx.scene.enter(CommandEnum.HOME);
+      } else {
+        ctx.replyWithHTML(scene.error.text);
+        ctx.scene.enter(CommandEnum.HOME);
       }
     }
   }
