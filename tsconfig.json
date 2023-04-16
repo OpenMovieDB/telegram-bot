@@ -29,6 +29,12 @@
       ],
       "@app/cryptomus-client/*": [
         "libs/cryptomus-client/src/*"
+      ],
+      "@app/yoomoney-client": [
+        "libs/yoomoney-client/src"
+      ],
+      "@app/yoomoney-client/*": [
+        "libs/yoomoney-client/src/*"
       ]
     }
   }

@@ -37,7 +37,8 @@
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0",
     "telegraf": "^4.11.2",
-    "uuid-apikey": "^1.5.3"
+    "uuid-apikey": "^1.5.3",
+    "yoomoney-sdk": "^1.5.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",
@@ -85,7 +86,8 @@
     ],
     "moduleNameMapper": {
       "^@app/update-client(|/.*)$": "<rootDir>/libs/update-client/src/$1",
-      "^@app/cryptomus-client(|/.*)$": "<rootDir>/libs/cryptomus-client/src/$1"
+      "^@app/cryptomus-client(|/.*)$": "<rootDir>/libs/cryptomus-client/src/$1",
+      "^@app/yoomoney-client(|/.*)$": "<rootDir>/libs/yoomoney-client/src/$1"
     }
   }
 }

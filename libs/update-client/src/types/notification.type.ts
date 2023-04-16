@@ -1,0 +1,23 @@
+export type YooMoneyNotification = {
+  notification_type: string;
+  operation_id: string;
+  amount: string;
+  currency: string;
+  datetime: string;
+  sender: string;
+  codepro: string;
+  label: string;
+  sha1_hash: string;
+  lastname?: string;
+  firstname?: string;
+  fathersname?: string;
+  zip?: string;
+  city?: string;
+  street?: string;
+  building?: string;
+  suite?: string;
+  flat?: string;
+  phone?: string;
+  email?: string;
+  withdraw_amount: string;
+};

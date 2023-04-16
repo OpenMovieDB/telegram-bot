@@ -20,6 +20,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/cryptomus-client/tsconfig.lib.json"
       }
+    },
+    "yoomoney-client": {
+      "type": "library",
+      "root": "libs/yoomoney-client",
+      "entryFile": "index",
+      "sourceRoot": "libs/yoomoney-client/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/yoomoney-client/tsconfig.lib.json"
+      }
     }
   },
   "compilerOptions": {
