@@ -2,7 +2,7 @@ import { ExtraEditMessageText } from 'telegraf/typings/telegram-types';
 import { Context } from '../interfaces/context.interface';
 import { FmtString } from 'telegraf/src/format';
 
-export const replyOrEdit = async (ctx: Context, text: string, extra: ExtraEditMessageText) => {
+export const replyOrEdit = async (ctx: Context, text: string, extra: ExtraEditMessageText): Promise<any> => {
   const messageId = ctx.update.callback_query?.message.message_id
     ? ctx.update.callback_query?.message.message_id
     : ctx.session.messageId;
@@ -18,5 +18,5 @@ export const replyOrEdit = async (ctx: Context, text: string, extra: ExtraEditMe
   }
   const reply = await ctx.replyWithHTML(text, extra);
   ctx.session.messageId = reply.message_id;
-  return;
+  return reply;
 };

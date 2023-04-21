@@ -25,29 +25,16 @@ export class PaymentScene extends AbstractScene {
 
   @Action(CommandEnum.PAY_WITH_CRYPTOMUS)
   async payWithCriptomus(@Ctx() ctx: Context) {
-    const { paymentMonths, tariffId } = ctx.session;
-
-    const paymentSystem = PaymentSystemEnum.CYPTOMUS;
-
-    const payment = await this.paymentService.createPayment(
-      ctx.from.id,
-      ctx.chat.id,
-      tariffId,
-      paymentSystem,
-      paymentMonths,
-    );
-    await replyOrEdit(
-      ctx,
-      `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
-      Markup.inlineKeyboard([[Markup.button.url('👉 перейти к оплате', payment.url)]]),
-    );
+    await this.createPaymentAndReply(ctx, PaymentSystemEnum.CYPTOMUS);
   }
 
   @Action(CommandEnum.PAY_WITH_YOOMONEY)
   async payWithYooMoney(@Ctx() ctx: Context) {
-    const { paymentMonths, tariffId } = ctx.session;
+    await this.createPaymentAndReply(ctx, PaymentSystemEnum.YOOMONEY);
+  }
 
-    const paymentSystem = PaymentSystemEnum.YOOMONEY;
+  private async createPaymentAndReply(ctx: Context, paymentSystem: PaymentSystemEnum) {
+    const { paymentMonths, tariffId } = ctx.session;
 
     const payment = await this.paymentService.createPayment(
       ctx.from.id,
@@ -56,10 +43,24 @@ export class PaymentScene extends AbstractScene {
       paymentSystem,
       paymentMonths,
     );
-    await replyOrEdit(
+    const sentMessage = await replyOrEdit(
       ctx,
       `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
       Markup.inlineKeyboard([[Markup.button.url('👉 перейти к оплате', payment.url)]]),
     );
+
+    // Удаление кнопки через 10 минут
+    setTimeout(async () => {
+      const chatId = ctx.chat.id;
+      const messageId = sentMessage.message_id;
+
+      await ctx.telegram.editMessageText(
+        chatId,
+        messageId,
+        undefined,
+        `Ссылка на оплату истекла. Пожалуйста, попробуйте снова, если вы хотите оплатить подписку.`,
+        { parse_mode: 'HTML' },
+      );
+    }, 600000);
   }
 }
