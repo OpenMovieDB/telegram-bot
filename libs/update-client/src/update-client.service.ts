@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
 
+type UpdateResponse = {
+  movieStatuses: { id: number; status: 'found' | 'not found' }[];
+};
+
 @Injectable()
 export class UpdateClientService {
   private readonly updateData = [
@@ -22,13 +26,14 @@ export class UpdateClientService {
 
   constructor(private readonly httpService: HttpService) {}
 
-  async update(ids: number[]): Promise<void> {
-    await lastValueFrom(
-      this.httpService.put('/movie', {
+  async update(ids: number[]): Promise<UpdateResponse> {
+    const { data } = await lastValueFrom(
+      this.httpService.put<UpdateResponse>('/movie/sync', {
         updateData: this.updateData,
         ids,
       }),
     );
+    return data;
   }
 
   async setImdbRelation(kinopoiskId: number, imdbId: string): Promise<void> {

@@ -22,11 +22,19 @@ export class UpdateMovieScene extends AbstractScene {
       if (isValidIdList) {
         const ids = message.split(',').map((id) => parseInt(id));
 
-        this.updateClient.update(ids).catch((err) => {
-          console.log(err);
-        });
+        const { movieStatuses } = await this.updateClient.update(ids);
+        const found = movieStatuses
+          .filter((movie) => movie.status === 'found')
+          .map((s) => s.id)
+          .join(', ');
 
-        ctx.replyWithHTML(scene.success.text);
+        const notFound = movieStatuses
+          .filter((movie) => movie.status === 'not found')
+          .map((s) => s.id)
+          .join(', ');
+
+        ctx.replyWithHTML(`<b>Добавлены в очередь:</b> ${found}\n<b>Не найдены:</b> ${notFound}
+        `);
         ctx.scene.enter(CommandEnum.HOME);
       } else {
         ctx.replyWithHTML(scene.error.text);
