@@ -36,16 +36,11 @@ export class UpdateClientService {
     return data;
   }
 
-  async setImdbRelation(kinopoiskId: number, imdbId: string): Promise<void> {
+  async setImdbRelation(id: number, imdbId: string): Promise<void> {
     await lastValueFrom(
-      this.httpService.put('/movie', {
-        updateData: ['base'],
-        ids: [kinopoiskId],
-        data: {
-          externalId: {
-            imdb: imdbId,
-          },
-        },
+      this.httpService.patch('/movie/set-imdb-id', {
+        id,
+        imdbId,
       }),
     );
   }
