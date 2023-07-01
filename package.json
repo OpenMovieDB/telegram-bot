@@ -21,6 +21,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@liaoliaots/nestjs-redis": "^9.0.5",
     "@nestjs/axios": "^1.0.1",
     "@nestjs/common": "^9.0.0",
     "@nestjs/config": "^2.2.0",
@@ -30,6 +31,7 @@
     "@nestjs/platform-express": "^9.0.0",
     "@nestjs/schedule": "^2.1.0",
     "eslint-plugin-unused-imports": "^2.0.0",
+    "ioredis": "^5.3.2",
     "luxon": "^3.2.1",
     "mongoose": "^6.8.1",
     "nestjs-telegraf": "^2.6.3",

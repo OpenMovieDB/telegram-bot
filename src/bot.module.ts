@@ -33,6 +33,7 @@ import { UserModule } from './user/user.module';
 import { session } from 'telegraf';
 import { commandArgs } from './middlewares/command-args.middleware';
 import { SelectMonthsScene } from './scenes/select-months.scene';
+import { RedisModule } from '@liaoliaots/nestjs-redis';
 
 @Module({
   imports: [
@@ -61,6 +62,15 @@ import { SelectMonthsScene } from './scenes/select-months.scene';
     UpdateClientModule,
     PaymentModule,
     TariffModule,
+    RedisModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        config: {
+          url: configService.get<string>('REDIS_URL'),
+        },
+      }),
+    }),
   ],
   controllers: [BotController],
   providers: [
