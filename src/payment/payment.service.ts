@@ -15,6 +15,9 @@ import { YooMoneyNotification } from '@app/update-client/types/notification.type
 import { createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { YooMoneyClient } from '@app/yoomoney-client';
+import * as ApiKey from 'uuid-apikey';
+import { InjectRedis } from '@liaoliaots/nestjs-redis';
+import Redis from 'ioredis';
 
 @Injectable()
 export class PaymentService {
@@ -26,6 +29,7 @@ export class PaymentService {
     private readonly paymentStrategyFactory: PaymentStrategyFactory,
     private readonly yooMoney: YooMoneyClient,
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
+    @InjectRedis() private readonly redis: Redis,
   ) {}
 
   async createPayment(
@@ -84,8 +88,14 @@ export class PaymentService {
       const user = await this.userService.findOneByUserId(payment.userId);
 
       if (user) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const key = ApiKey.toAPIKey(user.token);
+        await this.redis.del(key);
+
         await this.userService.update(user.userId, {
           tariffId: new mongoose.Types.ObjectId(payment.tariffId),
+          requestsUsed: 0,
           subscriptionStartDate: startAt.toJSDate(),
           subscriptionEndDate: expiredAt.toJSDate(),
         });
