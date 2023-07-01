@@ -14,6 +14,7 @@ export class UserService {
   ) {}
 
   async create(user: User): Promise<User> {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const token = ApiKey.create().uuid;
     return this.userModel.create({ ...user, token });
@@ -46,6 +47,7 @@ export class UserService {
   async getUserToken(userId: number): Promise<string | null> {
     const user = await this.findOneByUserId(userId);
     if (!user?.token) return null;
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return ApiKey.toAPIKey(user.token);
   }
@@ -67,6 +69,7 @@ export class UserService {
     try {
       const user = await this.userModel
         .findOne({
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
           token: ApiKey.toUUID(token),
         })
@@ -79,6 +82,7 @@ export class UserService {
   }
 
   async updateUserByToken(token: string, user: Partial<User>): Promise<User> {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return this.userModel.updateOne({ token: ApiKey.toUUID(token) }, user);
   }
@@ -89,6 +93,7 @@ export class UserService {
     await this.userModel.updateOne(
       { userId },
       {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         token: ApiKey.create().uuid,
       },
