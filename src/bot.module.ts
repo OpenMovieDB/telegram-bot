@@ -6,7 +6,6 @@ import { BOT_NAME } from './constants/bot-name.const';
 import { BotController } from './bot.controller';
 import { BotService } from './bot.service';
 import { BotUpdate } from './bot.update';
-import { ChangeTokenScene } from './scenes/change-token.scene';
 import { DeveloperTariffScene } from './scenes/developer-tariff.scene';
 import { FreeTariffScene } from './scenes/free-tariff.scene';
 import { GetAccessScene } from './scenes/get-access.scene';
@@ -90,7 +89,6 @@ import { RedisModule } from '@liaoliaots/nestjs-redis';
     GetRequestStatsScene,
     IHaveTokenScene,
     GetMyTokenScene,
-    ChangeTokenScene,
     UpdateMovieScene,
     SetImdbRelationScene,
     UpdateTariffScene,

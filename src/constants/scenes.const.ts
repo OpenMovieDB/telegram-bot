@@ -21,7 +21,7 @@ export const SCENES = {
         BUTTONS[CommandEnum.UPDATE_MOVIE],
         BUTTONS[CommandEnum.SET_IMDB_RELATION],
       ],
-      [BUTTONS[CommandEnum.GET_MY_TOKEN], BUTTONS[CommandEnum.CHANGE_TOKEN], BUTTONS[CommandEnum.QUESTION]],
+      [BUTTONS[CommandEnum.GET_MY_TOKEN], BUTTONS[CommandEnum.QUESTION]],
       [BUTTONS[CommandEnum.UPDATE_TARIFF]],
     ],
   },
@@ -132,24 +132,6 @@ export const SCENES = {
       text: `У тебя еще нет токена. \n\n Чтобы получить токен, нажми на кнопку ниже.`,
       buttons: [BUTTONS[CommandEnum.GET_ACCESS]],
     }),
-  },
-  [CommandEnum.CHANGE_TOKEN]: {
-    text: `Ты точно хочешь сменить токен? \n\n Его необходимо будет поменять во всех приложениях, которые используют его.`,
-    buttons: [BUTTONS[CommandEnum.YES], BUTTONS[CommandEnum.NO]],
-    actions: {
-      [CommandEnum.YES]: {
-        success: (token: string) => ({
-          text: `Вот новый токен: \n\n<code>${token}</code>`,
-        }),
-        error: () => ({
-          text: `У тебя еще нет токена. \n\n Чтобы получить токен, нажми на кнопку ниже.`,
-          buttons: [BUTTONS[CommandEnum.GET_ACCESS]],
-        }),
-      },
-      [CommandEnum.NO]: {
-        text: `Отлично!`,
-      },
-    },
   },
   [CommandEnum.UPDATE_MOVIE]: {
     text: `Я могу обновить или добавить фильмы. Пожалуйста, пришли мне список ID из кинопоиска разделенные запятой. \n\n Например: 666, 326, 435. \n\n Учитывай пожалуйста, что на обновление фильмов может потребоваться некоторое время. А так же, учитывай, что кеш действует сутки. Чтобы посмотреть результат без кеша, добавь в запрос параметр v= и любым значением.`,
