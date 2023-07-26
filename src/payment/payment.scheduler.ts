@@ -55,6 +55,8 @@ export class PaymentScheduler {
     const now = DateTime.local();
     const expirationDate = now.plus({ days: 2 });
 
+    this.logger.debug(`Start handling expired subscription. Expiration date: ${expirationDate.toISODate()}`);
+
     const tariffs = await this.tariffService.getAllTariffs();
     const freeTariff = tariffs.find((tariff) => tariff.name === 'FREE')._id;
     const paidTariffs = tariffs.filter((tariff) => tariff.name !== 'FREE').map((tariff) => tariff._id.toString());
@@ -95,11 +97,13 @@ export class PaymentScheduler {
       this.logger.debug('Start handling expiring subscriptions');
 
       for (const user of usersWithExpiringSubscription) {
-        try {
-          await this.botService.sendSubscriptionExpirationWarningMessage(user.chatId, user.subscriptionEndDate);
-          await this.userService.update(user.userId, { sendWarnNotification: true });
-        } catch (error) {
-          this.logger.error(`Error handling expiring subscription for user ${user.userId}: ${error.message}`);
+        if (!user.sendWarnNotification) {
+          try {
+            await this.botService.sendSubscriptionExpirationWarningMessage(user.chatId, user.subscriptionEndDate);
+            await this.userService.update(user.userId, { sendWarnNotification: true });
+          } catch (error) {
+            this.logger.error(`Error handling expiring subscription for user ${user.userId}: ${error.message}`);
+          }
         }
       }
 
