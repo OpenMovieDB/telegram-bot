@@ -29,6 +29,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/yoomoney-client/tsconfig.lib.json"
       }
+    },
+    "yookassa-client": {
+      "type": "library",
+      "root": "libs/yookassa-client",
+      "entryFile": "index",
+      "sourceRoot": "libs/yookassa-client/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/yookassa-client/tsconfig.lib.json"
+      }
     }
   },
   "compilerOptions": {

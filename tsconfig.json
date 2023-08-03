@@ -35,6 +35,12 @@
       ],
       "@app/yoomoney-client/*": [
         "libs/yoomoney-client/src/*"
+      ],
+      "@app/yookassa-client": [
+        "libs/yookassa-client/src"
+      ],
+      "@app/yookassa-client/*": [
+        "libs/yookassa-client/src/*"
       ]
     }
   }
