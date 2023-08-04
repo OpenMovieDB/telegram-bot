@@ -33,7 +33,6 @@ import { session } from 'telegraf';
 import { commandArgs } from './middlewares/command-args.middleware';
 import { SelectMonthsScene } from './scenes/select-months.scene';
 import { RedisModule } from '@liaoliaots/nestjs-redis';
-import { YookassaClientModule, YookassaClientService } from '@app/yookassa-client';
 
 @Module({
   imports: [

@@ -13,8 +13,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { User } from './user/schemas/user.schema';
 import { DateTime } from 'luxon';
-import { YookassaClientService } from '@app/yookassa-client';
-import { v4 } from 'uuid';
+
 @Injectable()
 export class BotService {
   private readonly chatId: string;

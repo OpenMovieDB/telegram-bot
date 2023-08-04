@@ -57,9 +57,10 @@ export class BotUpdate {
   async onPayCommand(@Ctx() ctx: Context & { update: any }) {
     if (this.isAdmin(ctx)) {
       const [token, tariffName, monthCount, startAt] = ctx.state.command.args;
-      if (!(token && tariffName && monthCount && startAt))
-        throw new Error('Не указан один из обязательных параметров!');
-      const paymentAt = DateTime.fromFormat(startAt, 'dd.MM.yyyy').toJSDate();
+      if (!(token && tariffName)) throw new Error('Не указан один из обязательных параметров!');
+      const paymentMonths = monthCount || 1;
+      const paymentAt = startAt ? DateTime.fromFormat(startAt, 'dd.MM.yyyy').toJSDate() : undefined;
+
       const user = await this.userService.findUserByToken(token.toUpperCase());
       const tariff = await this.tariffService.getOneByName(tariffName.toUpperCase());
       const payment = await this.paymentService.createPayment(
@@ -67,7 +68,8 @@ export class BotUpdate {
         user.chatId,
         tariff._id.toString(),
         PaymentSystemEnum.CASH,
-        monthCount,
+        paymentMonths,
+        '',
         paymentAt,
       );
 
