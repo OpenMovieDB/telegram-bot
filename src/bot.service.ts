@@ -27,12 +27,10 @@ export class BotService {
     private readonly bot: Telegraf<Context>,
     private readonly userService: UserService,
     private readonly configService: ConfigService,
-    private readonly yookassaClientService: YookassaClientService,
   ) {
     this.chatId = configService.get('CHAT_ID');
     this.adminChatId = configService.get('ADMIN_CHAT_ID');
     this.isProd = configService.get('NODE_ENV') === 'production';
-    yookassaClientService.generatePayment(100, v4(), 'test');
   }
 
   async start(ctx: Context) {

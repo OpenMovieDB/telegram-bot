@@ -51,7 +51,7 @@ export class YookassaClientService {
             description: comment,
             quantity: quantity.toString(),
             amount: {
-              value: amount.toString(),
+              value: sum.toFixed(2),
               currency: 'RUB',
             },
             vat_code: 1,

@@ -71,7 +71,6 @@ import { YookassaClientModule, YookassaClientService } from '@app/yookassa-clien
         },
       }),
     }),
-    YookassaClientModule,
   ],
   controllers: [BotController],
   providers: [
