@@ -19,12 +19,18 @@ export class YookassaClientService {
     this.yooKassa = new YooCheckout({ shopId: this.shopId, secretKey: this.token });
   }
 
-  async generatePayment(amount: number, paymentId: string, comment: string, receipt: IReceipt): Promise<Payment> {
-    const checkout = new YooCheckout({ shopId: this.shopId, secretKey: this.token });
+  async createPayment(
+    sum: number,
+    quantity: number,
+    paymentId: string,
+    email: string,
+    comment: string,
+  ): Promise<Payment> {
+    const amount = (sum * quantity).toFixed(2);
 
     const createPayload: ICreatePayment = {
       amount: {
-        value: amount.toString(),
+        value: amount,
         currency: 'RUB',
       },
       capture: true,
@@ -32,10 +38,32 @@ export class YookassaClientService {
         type: 'redirect',
         return_url: this.successURL,
       },
-      receipt,
-      description: comment,
+      description: `Заказ ${paymentId}`,
+      metadata: {
+        order_id: paymentId,
+      },
+      receipt: {
+        customer: {
+          email,
+        },
+        items: [
+          {
+            description: comment,
+            quantity: quantity.toString(),
+            amount: {
+              value: amount.toString(),
+              currency: 'RUB',
+            },
+            vat_code: 1,
+          },
+        ],
+      },
     };
 
-    return await checkout.createPayment(createPayload, paymentId);
+    return await this.yooKassa.createPayment(createPayload, paymentId);
+  }
+
+  async checkPaymentStatus(paymentId: string): Promise<Payment> {
+    return await this.yooKassa.getPayment(paymentId);
   }
 }

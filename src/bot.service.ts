@@ -13,7 +13,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { User } from './user/schemas/user.schema';
 import { DateTime } from 'luxon';
-
+import { YookassaClientService } from '@app/yookassa-client';
+import { v4 } from 'uuid';
 @Injectable()
 export class BotService {
   private readonly chatId: string;
@@ -26,10 +27,12 @@ export class BotService {
     private readonly bot: Telegraf<Context>,
     private readonly userService: UserService,
     private readonly configService: ConfigService,
+    private readonly yookassaClientService: YookassaClientService,
   ) {
     this.chatId = configService.get('CHAT_ID');
     this.adminChatId = configService.get('ADMIN_CHAT_ID');
     this.isProd = configService.get('NODE_ENV') === 'production';
+    yookassaClientService.generatePayment(100, v4(), 'test');
   }
 
   async start(ctx: Context) {
