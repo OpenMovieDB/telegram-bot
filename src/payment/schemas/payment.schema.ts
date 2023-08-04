@@ -77,6 +77,9 @@ export class Payment {
   @Prop()
   isFinal?: boolean;
 
+  @Prop()
+  email?: string;
+
   constructor(payment: Partial<Payment>) {
     Object.assign(this, payment);
   }

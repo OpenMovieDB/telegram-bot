@@ -24,6 +24,6 @@ export const BUTTONS = {
   [CommandEnum.UPDATE_MOVIE]: Markup.button.callback('🔄️ фильмы', CommandEnum.UPDATE_MOVIE),
   [CommandEnum.SET_IMDB_RELATION]: Markup.button.callback('🔗 с IMDB', CommandEnum.SET_IMDB_RELATION),
   [CommandEnum.PAY_WITH_CRYPTOMUS]: Markup.button.callback('🪙 криптовалютой', CommandEnum.PAY_WITH_CRYPTOMUS),
-  [CommandEnum.PAY_WITH_YOOMONEY]: Markup.button.callback('💳 картой РФ', CommandEnum.PAY_WITH_YOOMONEY),
+  [CommandEnum.PAY_WITH_YOOKASSA]: Markup.button.callback('💳 картой РФ', CommandEnum.PAY_WITH_YOOKASSA),
   [CommandEnum.CONFIRM_PAYMENT]: Markup.button.callback('✅ Я оплатил', CommandEnum.CONFIRM_PAYMENT),
 };

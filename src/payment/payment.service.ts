@@ -38,6 +38,7 @@ export class PaymentService {
     tariffId: string,
     paymentSystem: PaymentSystemEnum,
     paymentMonths: number,
+    email?: string,
     paymentAt?: Date,
   ): Promise<Payment> {
     const user = await this.userService.findOneByUserId(userId);
@@ -55,7 +56,9 @@ export class PaymentService {
       tariffId,
       tariffPrice: tariff.price,
       paymentMonths,
+      email,
       paymentAt: paymentAt || DateTime.local().toJSDate(),
+      limit: tariff.requestsLimit,
     });
     return this.paymentModel.create(payment);
   }

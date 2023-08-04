@@ -11,6 +11,7 @@ import { TariffModule } from 'src/tariff/tariff.module';
 import { UserModule } from 'src/user/user.module';
 import { YooMoneyClientModule } from '@app/yoomoney-client';
 import { PaymentController } from './payment.controller';
+import { YookassaClientModule } from '@app/yookassa-client';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PaymentController } from './payment.controller';
     TariffModule,
     CryptomusClientModule,
     YooMoneyClientModule,
+    YookassaClientModule,
     forwardRef(() => BotModule),
   ],
   providers: [PaymentService, PaymentStrategyFactory, PaymentScheduler],
