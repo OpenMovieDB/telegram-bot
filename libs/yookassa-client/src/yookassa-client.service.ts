@@ -5,7 +5,7 @@ import { IReceipt } from '@a2seven/yoo-checkout/build/types/IReceipt';
 import { Payment } from '@a2seven/yoo-checkout/build/models';
 
 @Injectable()
-export class YookassaClientService {
+export class YookassaClient {
   private readonly token: string;
   private readonly shopId: string;
   private readonly successURL: string;
@@ -14,7 +14,7 @@ export class YookassaClientService {
   constructor(private readonly configService: ConfigService) {
     this.token = this.configService.get('YOOKASSA_SECRET');
     this.shopId = this.configService.get('YOOKASSA_SHOP_ID');
-    this.successURL = this.configService.get('DOMAIN') + '/payment/yookassa/success';
+    this.successURL = this.configService.get('BOT_URL');
 
     this.yooKassa = new YooCheckout({ shopId: this.shopId, secretKey: this.token });
   }
@@ -22,7 +22,7 @@ export class YookassaClientService {
   async createPayment(
     sum: number,
     quantity: number,
-    paymentId: string,
+    orderId: string,
     email: string,
     comment: string,
   ): Promise<Payment> {
@@ -38,9 +38,9 @@ export class YookassaClientService {
         type: 'redirect',
         return_url: this.successURL,
       },
-      description: `Заказ ${paymentId}`,
+      description: `Заказ ${orderId}`,
       metadata: {
-        order_id: paymentId,
+        order_id: orderId,
       },
       receipt: {
         customer: {
@@ -60,10 +60,10 @@ export class YookassaClientService {
       },
     };
 
-    return await this.yooKassa.createPayment(createPayload, paymentId);
+    return await this.yooKassa.createPayment(createPayload, orderId);
   }
 
-  async checkPaymentStatus(paymentId: string): Promise<Payment> {
+  async getPaymentInfo(paymentId: string): Promise<Payment> {
     return await this.yooKassa.getPayment(paymentId);
   }
 }

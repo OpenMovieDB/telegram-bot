@@ -7,7 +7,9 @@ export type CreatePaymentData = {
   tariffId: string;
   tariffPrice: number;
   paymentMonths: number;
+  email?: string;
   paymentAt?: Date;
+  limit?: number;
 };
 export interface PaymentStrategy {
   createPayment(data: CreatePaymentData): Promise<Payment>;

@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { YookassaClientService } from './yookassa-client.service';
+import { YookassaClient } from '@app/yookassa-client/yookassa-client.service';
 
 @Module({
-  providers: [YookassaClientService],
-  exports: [YookassaClientService],
+  providers: [YookassaClient],
+  exports: [YookassaClient],
 })
 export class YookassaClientModule {}

@@ -1,4 +1,4 @@
-import { Action, Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
+import { Action, Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf';
 
 import { AbstractScene } from '../abstract/abstract.scene';
 import { CommandEnum } from '../enum/command.enum';
@@ -28,12 +28,23 @@ export class PaymentScene extends AbstractScene {
     await this.createPaymentAndReply(ctx, PaymentSystemEnum.CYPTOMUS);
   }
 
-  @Action(CommandEnum.PAY_WITH_YOOMONEY)
-  async payWithYooMoney(@Ctx() ctx: Context) {
-    await this.createPaymentAndReply(ctx, PaymentSystemEnum.YOOMONEY);
+  @Action(CommandEnum.PAY_WITH_YOOKASSA)
+  async payWithYookassa(@Ctx() ctx: Context) {
+    // await this.createPaymentAndReply(ctx, PaymentSystemEnum.YOOKASSA);
+    await replyOrEdit(
+      ctx,
+      'Отлично! Чтобы отправить вам чек, мне нужет ваш email! Пришлите его!',
+      Markup.inlineKeyboard([]),
+    );
   }
 
-  private async createPaymentAndReply(ctx: Context, paymentSystem: PaymentSystemEnum) {
+  @Hears(/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/)
+  async email(@Ctx() ctx: Context) {
+    const email = ctx.message?.['text'];
+    await this.createPaymentAndReply(ctx, PaymentSystemEnum.YOOKASSA, email);
+  }
+
+  private async createPaymentAndReply(ctx: Context, paymentSystem: PaymentSystemEnum, email?: string) {
     const { paymentMonths, tariffId } = ctx.session;
 
     const payment = await this.paymentService.createPayment(
@@ -42,6 +53,7 @@ export class PaymentScene extends AbstractScene {
       tariffId,
       paymentSystem,
       paymentMonths,
+      email,
     );
     const sentMessage = await replyOrEdit(
       ctx,

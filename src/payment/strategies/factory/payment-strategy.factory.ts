@@ -10,12 +10,15 @@ import { CashPaymentStrategy } from '../cash-payment.strategy';
 import { YooMoneyPaymentStrategy } from '../yoomoney-payment.strategy';
 import { YooMoneyClient } from '@app/yoomoney-client';
 import { ConfigService } from '@nestjs/config';
+import { YookassaPaymentStrategy } from '../yookassa-payment.strategy';
+import { YookassaClient } from '@app/yookassa-client';
 
 @Injectable()
 export class PaymentStrategyFactory {
   constructor(
     private readonly cryptomusClient: CryptomusClient,
     private readonly yooMoneyClient: YooMoneyClient,
+    private readonly yookassaClient: YookassaClient,
     private readonly configService: ConfigService,
     @InjectModel(Payment.name) private readonly paymentModel: Model<PaymentDocument>,
   ) {}
@@ -24,6 +27,8 @@ export class PaymentStrategyFactory {
     switch (paymentSystem) {
       case PaymentSystemEnum.YOOMONEY:
         return new YooMoneyPaymentStrategy(this.yooMoneyClient, this.configService);
+      case PaymentSystemEnum.YOOKASSA:
+        return new YookassaPaymentStrategy(this.yookassaClient, this.configService);
       case PaymentSystemEnum.CYPTOMUS:
         return new CryptomusPaymentStrategy(this.cryptomusClient);
       case PaymentSystemEnum.CASH:
