@@ -12,8 +12,8 @@ export class YookassaPaymentStrategy implements PaymentStrategy {
   constructor(private readonly yooMoneyClient: YookassaClient, private readonly configService: ConfigService) {}
 
   async createPayment({ tariffPrice, paymentMonths, ...data }: CreatePaymentData): Promise<Payment> {
-    const tariffDescription = data.limit <= 5000 ? 'с ограничением на ' + data.limit : 'без огнаничения на количество';
-    const comment = `Предоставление доступа к базе данных с информацией о кино сроком на ${paymentMonths} месяц/месяцев, ${tariffDescription} обращений в сутки.`;
+    const tariffDescription = data.limit <= 5000 ? 'с ограничением на ' + data.limit : 'без лимита на количество';
+    const comment = `Доступ к базе данных о кино сроком на ${paymentMonths} м., ${tariffDescription} обращений в сутки.`;
     const orderId = uuidv4();
 
     const createPaymentResponse = await this.yooMoneyClient.createPayment(
