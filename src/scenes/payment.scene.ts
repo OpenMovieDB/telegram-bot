@@ -38,7 +38,7 @@ export class PaymentScene extends AbstractScene {
     );
   }
 
-  @Hears(/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/)
+  @Hears(/.+@.+\..+/)
   async email(@Ctx() ctx: Context) {
     const email = ctx.message?.['text'];
     await this.createPaymentAndReply(ctx, PaymentSystemEnum.YOOKASSA, email);

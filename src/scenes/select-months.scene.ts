@@ -10,6 +10,7 @@ import { Markup } from 'telegraf';
 @Scene(CommandEnum.SELECT_MONTHS)
 export class SelectMonthsScene extends AbstractScene {
   public logger = new Logger(AbstractScene.name);
+  private maxMonths = 60;
 
   constructor(private readonly tariffService: TariffService) {
     super();
@@ -26,9 +27,36 @@ export class SelectMonthsScene extends AbstractScene {
   @Action('plus')
   async plus(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    if (ctx.session.paymentMonths < 25) {
+    if (ctx.session.paymentMonths <= this.maxMonths) {
       ctx.session.paymentMonths += 1;
 
+      await this.sendMessage(ctx);
+    }
+  }
+
+  @Action('tree')
+  async tree(@Ctx() ctx: Context) {
+    this.logger.log(ctx.scene.session.current);
+    if (ctx.session.paymentMonths <= this.maxMonths) {
+      ctx.session.paymentMonths = 3;
+      await this.sendMessage(ctx);
+    }
+  }
+
+  @Action('six')
+  async six(@Ctx() ctx: Context) {
+    this.logger.log(ctx.scene.session.current);
+    if (ctx.session.paymentMonths <= this.maxMonths) {
+      ctx.session.paymentMonths = 6;
+      await this.sendMessage(ctx);
+    }
+  }
+
+  @Action('twelve')
+  async twelve(@Ctx() ctx: Context) {
+    this.logger.log(ctx.scene.session.current);
+    if (ctx.session.paymentMonths <= this.maxMonths) {
+      ctx.session.paymentMonths = 12;
       await this.sendMessage(ctx);
     }
   }
@@ -36,7 +64,7 @@ export class SelectMonthsScene extends AbstractScene {
   @Action('minus')
   async minus(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    if (ctx.session.paymentMonths > 1) {
+    if (ctx.session.paymentMonths <= this.maxMonths) {
       ctx.session.paymentMonths -= 1;
 
       await this.sendMessage(ctx);
@@ -62,7 +90,13 @@ export class SelectMonthsScene extends AbstractScene {
         price * paymentMonths
       } руб.</b>`,
       Markup.inlineKeyboard([
-        [Markup.button.callback('-', 'minus'), Markup.button.callback('+', 'plus')],
+        [
+          Markup.button.callback('-', 'minus'),
+          Markup.button.callback('3', 'tree'),
+          Markup.button.callback('6', 'six'),
+          Markup.button.callback('12', 'twelve'),
+          Markup.button.callback('+', 'plus'),
+        ],
         [Markup.button.callback('✅ подтвердить', 'ok')],
       ]),
     );
