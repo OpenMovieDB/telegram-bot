@@ -50,7 +50,7 @@ export class PaymentScheduler {
     }
   }
 
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(CronExpression.EVERY_5_HOURS)
   async handleExpiredSubscription() {
     const now = DateTime.local();
     const expirationDate = now.plus({ days: 2 });
