@@ -45,34 +45,39 @@ export class PaymentScene extends AbstractScene {
   }
 
   private async createPaymentAndReply(ctx: Context, paymentSystem: PaymentSystemEnum, email?: string) {
-    const { paymentMonths, tariffId } = ctx.session;
+    try {
+      const { paymentMonths, tariffId } = ctx.session;
 
-    const payment = await this.paymentService.createPayment(
-      ctx.from.id,
-      ctx.chat.id,
-      tariffId,
-      paymentSystem,
-      paymentMonths,
-      email,
-    );
-    const sentMessage = await replyOrEdit(
-      ctx,
-      `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
-      Markup.inlineKeyboard([[Markup.button.url('👉 перейти к оплате', payment.url)]]),
-    );
-
-    // Удаление кнопки через 10 минут
-    setTimeout(async () => {
-      const chatId = ctx.chat.id;
-      const messageId = sentMessage.message_id;
-
-      await ctx.telegram.editMessageText(
-        chatId,
-        messageId,
-        undefined,
-        `Ссылка на оплату истекла. Пожалуйста, попробуйте снова, если вы хотите оплатить подписку.`,
-        { parse_mode: 'HTML' },
+      const payment = await this.paymentService.createPayment(
+        ctx.from.id,
+        ctx.chat.id,
+        tariffId,
+        paymentSystem,
+        paymentMonths,
+        email,
       );
-    }, 600000);
+      const sentMessage = await replyOrEdit(
+        ctx,
+        `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
+        Markup.inlineKeyboard([[Markup.button.url('👉 перейти к оплате', payment.url)]]),
+      );
+
+      // Удаление кнопки через 10 минут
+      setTimeout(async () => {
+        const chatId = ctx.chat.id;
+        const messageId = sentMessage.message_id;
+
+        await ctx.telegram.editMessageText(
+          chatId,
+          messageId,
+          undefined,
+          `Ссылка на оплату истекла. Пожалуйста, попробуйте снова, если вы хотите оплатить подписку.`,
+          { parse_mode: 'HTML' },
+        );
+      }, 600000);
+    } catch (error) {
+      console.log(error);
+      await ctx.reply('Произошла ошибка. Пожалуйста, попробуйте снова.');
+    }
   }
 }
