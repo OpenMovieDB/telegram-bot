@@ -15,6 +15,7 @@ export class UpdateClientService {
     'fees',
     'budget',
     'videos',
+    'seasons',
     'similarMovies',
     'images',
     'imagesInfo',
