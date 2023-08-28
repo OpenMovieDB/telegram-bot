@@ -13,6 +13,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { User } from './user/schemas/user.schema';
 import { DateTime } from 'luxon';
+import { PaymentSystemEnum } from './payment/enum/payment-system.enum';
 
 @Injectable()
 export class BotService {
@@ -53,10 +54,16 @@ export class BotService {
     );
   }
 
-  async sendPaymentSuccessMessageToAdmin(userId: number, tariffName: string): Promise<void> {
+  async sendPaymentSuccessMessageToAdmin(
+    username: string,
+    tariffName: string,
+    monthCount: number,
+    amount: number,
+    paymentSystem: PaymentSystemEnum,
+  ): Promise<void> {
     await this.bot.telegram.sendMessage(
       this.adminChatId,
-      `Пользователь с ID: ${userId} оплатил тариф ${tariffName} 🎉`,
+      `Пользователь ${username} оплатил тариф ${tariffName} на срок ${monthCount}. Оплаченная сумма: ${amount}. Платежная система ${paymentSystem}  🎉`,
     );
   }
 

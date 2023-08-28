@@ -39,7 +39,13 @@ export class PaymentScheduler {
               user.tariffId.name,
               user.subscriptionEndDate,
             );
-            await this.botService.sendPaymentSuccessMessageToAdmin(payment.userId, user.tariffId.name);
+            await this.botService.sendPaymentSuccessMessageToAdmin(
+              user.username,
+              user.tariffId.name,
+              payment.monthCount,
+              payment.amount,
+              payment.paymentSystem,
+            );
           }
         } catch (error) {
           this.logger.error(`Error validating payment with id ${payment.paymentId}: ${error.message}`);
