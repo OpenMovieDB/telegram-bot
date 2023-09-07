@@ -38,6 +38,11 @@ export class PaymentScene extends AbstractScene {
     );
   }
 
+  @Action(CommandEnum.PAY_WITH_WALLET)
+  async payWithWallet(@Ctx() ctx: Context) {
+    await this.createPaymentAndReply(ctx, PaymentSystemEnum.WALLET);
+  }
+
   @Hears(/.+@.+\..+/)
   async email(@Ctx() ctx: Context) {
     const email = ctx.message?.['text'];
@@ -64,7 +69,9 @@ export class PaymentScene extends AbstractScene {
       const sentMessage = await replyOrEdit(
         ctx,
         `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
-        Markup.inlineKeyboard([[Markup.button.url('👉 перейти к оплате', payment.url)]]),
+        Markup.inlineKeyboard([
+          [Markup.button.url(paymentSystem === 'WALLET' ? '👛 Pay via Wallet' : '👉 перейти к оплате', payment.url)],
+        ]),
       );
       this.logger.debug(`sentMessage ${JSON.stringify(sentMessage)}`);
 

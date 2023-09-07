@@ -74,8 +74,9 @@ export class SelectMonthsScene extends AbstractScene {
   @Action('ok')
   async ok(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
+
     if (ctx.session.paymentMonths >= 1) {
-      ctx.scene.enter(CommandEnum.PAYMENT);
+      await ctx.scene.enter(CommandEnum.PAYMENT);
     } else {
       this.logger.warn('ctx.session.paymentMonths >= 1', ctx.session.paymentMonths >= 1);
     }

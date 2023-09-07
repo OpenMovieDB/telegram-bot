@@ -12,6 +12,7 @@ import { UserModule } from 'src/user/user.module';
 import { YooMoneyClientModule } from '@app/yoomoney-client';
 import { PaymentController } from './payment.controller';
 import { YookassaClientModule } from '@app/yookassa-client';
+import { WalletClientModule } from '@app/wallet-client';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { YookassaClientModule } from '@app/yookassa-client';
     CryptomusClientModule,
     YooMoneyClientModule,
     YookassaClientModule,
+    WalletClientModule,
     forwardRef(() => BotModule),
   ],
   providers: [PaymentService, PaymentStrategyFactory, PaymentScheduler],
