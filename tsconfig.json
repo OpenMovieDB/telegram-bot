@@ -41,6 +41,12 @@
       ],
       "@app/yookassa-client/*": [
         "libs/yookassa-client/src/*"
+      ],
+      "@app/wallet-client": [
+        "libs/wallet-client/src"
+      ],
+      "@app/wallet-client/*": [
+        "libs/wallet-client/src/*"
       ]
     }
   }

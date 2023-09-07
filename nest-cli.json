@@ -38,6 +38,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/yookassa-client/tsconfig.lib.json"
       }
+    },
+    "wallet-client": {
+      "type": "library",
+      "root": "libs/wallet-client",
+      "entryFile": "index",
+      "sourceRoot": "libs/wallet-client/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/wallet-client/tsconfig.lib.json"
+      }
     }
   },
   "compilerOptions": {
