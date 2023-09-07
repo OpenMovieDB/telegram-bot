@@ -5,7 +5,6 @@ import { Payment } from '../schemas/payment.schema';
 import { PaymentStrategy, CreatePaymentData } from './payment-strategy.interface';
 import { v4 as uuidv4 } from 'uuid';
 import { ConfigService } from '@nestjs/config';
-import { YookassaClient } from '@app/yookassa-client';
 import { WalletClient } from '@app/wallet-client';
 
 @Injectable()
@@ -30,7 +29,7 @@ export class WalletPaymentStrategy implements PaymentStrategy {
       orderId,
       paymentId: createPaymentResponse.id.toString(),
       amount: tariffPrice,
-      paymentSystem: PaymentSystemEnum.YOOKASSA,
+      paymentSystem: PaymentSystemEnum.WALLET,
       paymentAmount: Number(createPaymentResponse.amount.amount),
       paymentCurrency: createPaymentResponse.amount.currencyCode,
       url: createPaymentResponse.directPayLink,
