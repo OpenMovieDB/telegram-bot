@@ -47,7 +47,7 @@ export class WalletClient {
       this.httpService
         .get(`/order/preview`, {
           headers: {
-            'x-api-key': this.WALLET_API_KEY,
+            'Wpay-Store-Api-Key': this.WALLET_API_KEY,
           },
           params: {
             id: walletPaymentId,
