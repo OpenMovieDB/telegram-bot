@@ -62,7 +62,7 @@ export const SCENES = {
     text: `Выберите способ оплаты:`,
     buttons: [
       BUTTONS[CommandEnum.PAY_WITH_WALLET],
-      // BUTTONS[CommandEnum.PAY_WITH_YOOKASSA],
+      BUTTONS[CommandEnum.PAY_WITH_YOOKASSA],
       BUTTONS[CommandEnum.PAY_WITH_CRYPTOMUS],
     ],
     actions: {
