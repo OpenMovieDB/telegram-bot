@@ -1,15 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { PaymentResponse, CreatePaymentRquest } from '@app/wallet-client/types/create-payment.type';
-import { lastValueFrom, map } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
+import { CreateOrderRequest, CreateOrderResponse, CurrencyCodeEnum, WalletPay } from 'wallet-pay';
 
 @Injectable()
 export class WalletClient {
-  private WALLET_API_KEY: string;
+  private walletPay: WalletPay;
   private readonly TIMEOUT = 6000;
-  constructor(private readonly httpService: HttpService, private readonly configService: ConfigService) {
-    this.WALLET_API_KEY = this.configService.get('WALLET_API_KEY');
+  constructor(private readonly configService: ConfigService) {
+    this.walletPay = new WalletPay(this.configService.get('WALLET_API_KEY'));
   }
 
   async createPayment(
@@ -18,12 +16,12 @@ export class WalletClient {
     orderId: string,
     userId: number,
     comment: string,
-  ): Promise<PaymentResponse> {
+  ): Promise<CreateOrderResponse> {
     const amount = (price * quantity).toFixed(2);
 
-    const payload: CreatePaymentRquest = {
+    const payload: CreateOrderRequest = {
       amount: {
-        currencyCode: 'RUB',
+        currencyCode: CurrencyCodeEnum.RUB,
         amount: amount,
       },
       description: comment,
@@ -31,29 +29,10 @@ export class WalletClient {
       timeoutSeconds: this.TIMEOUT,
       customerTelegramUserId: userId,
     };
-    return await lastValueFrom(
-      this.httpService
-        .post('/order', payload, {
-          headers: {
-            'Wpay-Store-Api-Key': this.WALLET_API_KEY,
-          },
-        })
-        .pipe(map((res) => res.data)),
-    );
+    return await this.walletPay.createOrder(payload);
   }
 
-  async getPaymentInfo(walletPaymentId: number): Promise<PaymentResponse> {
-    return await lastValueFrom(
-      this.httpService
-        .get(`/order/preview`, {
-          headers: {
-            'Wpay-Store-Api-Key': this.WALLET_API_KEY,
-          },
-          params: {
-            id: walletPaymentId,
-          },
-        })
-        .pipe(map((res) => res.data)),
-    );
+  async getPaymentInfo(walletPaymentId: number): Promise<CreateOrderResponse> {
+    return await this.walletPay.getOrderPreview(walletPaymentId.toString());
   }
 }

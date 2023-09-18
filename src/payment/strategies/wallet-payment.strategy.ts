@@ -6,6 +6,7 @@ import { PaymentStrategy, CreatePaymentData } from './payment-strategy.interface
 import { v4 as uuidv4 } from 'uuid';
 import { ConfigService } from '@nestjs/config';
 import { WalletClient } from '@app/wallet-client';
+import { OrderStatus } from 'wallet-pay';
 
 @Injectable()
 export class WalletPaymentStrategy implements PaymentStrategy {
@@ -44,13 +45,13 @@ export class WalletPaymentStrategy implements PaymentStrategy {
       const { data } = await this.walletClient.getPaymentInfo(Number(paymentId));
 
       switch (data.status) {
-        case 'PAID':
+        case OrderStatus.PAID:
           return PaymentStatusEnum.PAID;
-        case 'CANCELED':
+        case OrderStatus.CANCELLED:
           return PaymentStatusEnum.CANCELED;
-        case 'FAILED':
+        case OrderStatus.EXPIRED:
           return PaymentStatusEnum.FAILED;
-        case 'PENDING':
+        case OrderStatus.ACTIVE:
           return PaymentStatusEnum.PENDING;
         default:
           return PaymentStatusEnum.PENDING;
