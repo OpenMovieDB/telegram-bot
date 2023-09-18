@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PaymentStatusEnum } from '../enum/payment-status.enum';
 import { PaymentSystemEnum } from '../enum/payment-system.enum';
 import { Payment } from '../schemas/payment.schema';
@@ -10,6 +10,7 @@ import { OrderStatus } from 'wallet-pay';
 
 @Injectable()
 export class WalletPaymentStrategy implements PaymentStrategy {
+  private readonly logger = new Logger(WalletPaymentStrategy.name);
   constructor(private readonly walletClient: WalletClient, private readonly configService: ConfigService) {}
 
   async createPayment({ tariffPrice, paymentMonths, ...data }: CreatePaymentData): Promise<Payment> {
@@ -42,8 +43,8 @@ export class WalletPaymentStrategy implements PaymentStrategy {
 
   async validateTransaction(paymentId: string): Promise<PaymentStatusEnum> {
     try {
-      const { data } = await this.walletClient.getPaymentInfo(Number(paymentId));
-
+      const { data } = await this.walletClient.getPaymentInfo(paymentId);
+      this.logger.log(paymentId, data);
       switch (data.status) {
         case OrderStatus.PAID:
           return PaymentStatusEnum.PAID;
@@ -57,6 +58,7 @@ export class WalletPaymentStrategy implements PaymentStrategy {
           return PaymentStatusEnum.PENDING;
       }
     } catch (error) {
+      this.logger.error(error);
       return PaymentStatusEnum.FAILED;
     }
   }

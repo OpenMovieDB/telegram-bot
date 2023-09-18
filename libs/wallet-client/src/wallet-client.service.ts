@@ -32,7 +32,7 @@ export class WalletClient {
     return await this.walletPay.createOrder(payload);
   }
 
-  async getPaymentInfo(walletPaymentId: number): Promise<CreateOrderResponse> {
+  async getPaymentInfo(walletPaymentId: string): Promise<CreateOrderResponse> {
     return await this.walletPay.getOrderPreview(walletPaymentId.toString());
   }
 }
