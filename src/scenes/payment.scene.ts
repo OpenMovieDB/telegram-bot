@@ -33,7 +33,7 @@ export class PaymentScene extends AbstractScene {
     // await this.createPaymentAndReply(ctx, PaymentSystemEnum.YOOKASSA);
     await replyOrEdit(
       ctx,
-      'Отлично! Чтобы отправить вам чек, мне нужет ваш email! Пришлите его!',
+      'Отлично! Чтобы отправить вам чек, мне нужен ваш email! Пришлите его!',
       Markup.inlineKeyboard([]),
     );
   }
@@ -43,11 +43,20 @@ export class PaymentScene extends AbstractScene {
     await this.createPaymentAndReply(ctx, PaymentSystemEnum.WALLET);
   }
 
-  @Hears(/.+@.+\..+/)
+  @Hears(/[\w-]+@[\w-]+\.\w+/)
   async email(@Ctx() ctx: Context) {
     const email = ctx.message?.['text'];
     this.logger.debug(`user email ${email}`);
-    await this.createPaymentAndReply(ctx, PaymentSystemEnum.YOOKASSA, email);
+    return await this.createPaymentAndReply(ctx, PaymentSystemEnum.YOOKASSA, email);
+  }
+
+  @Hears(/^(?!.*[\w-]+@[\w-]+\.\w+).*$/)
+  async notAnEmail(@Ctx() ctx: Context) {
+    await ctx.reply(
+      'Кажется, возникли проблемы с выставлением счета. Пожалуйста, напишите администратору, или попробуйте снова.',
+      Markup.inlineKeyboard([[Markup.button.url('🚨Связаться с администратором', 'https://t.me/mdwit')]]),
+    );
+    return ctx.scene.leave();
   }
 
   private async createPaymentAndReply(ctx: Context, paymentSystem: PaymentSystemEnum, email?: string) {
@@ -66,8 +75,7 @@ export class PaymentScene extends AbstractScene {
         email,
       );
       this.logger.debug(`payment ${JSON.stringify(payment)}`);
-      const sentMessage = await replyOrEdit(
-        ctx,
+      const sentMessage = await ctx.sendMessage(
         `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
         Markup.inlineKeyboard([
           [Markup.button.url(paymentSystem === 'WALLET' ? '👛 Pay via Wallet' : '👉 перейти к оплате', payment.url)],
