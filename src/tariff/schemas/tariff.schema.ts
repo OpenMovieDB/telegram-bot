@@ -25,6 +25,12 @@ export class Tariff {
     index: true,
   })
   price: number;
+
+  @Prop({
+    type: Boolean,
+    default: false,
+  })
+  isHidden: boolean;
 }
 
 export const TariffSchema = SchemaFactory.createForClass(Tariff);
