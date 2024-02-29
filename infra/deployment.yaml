@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kp-bot
+  namespace: kinopoisk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kp-bot
+  template:
+    metadata:
+      labels:
+        app: kp-bot
+    spec:
+      containers:
+        - name: kp-bot
+          image: mdwit/kp-bot:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: kp-bot
+      imagePullSecrets:
+        - name: regcred
