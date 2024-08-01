@@ -28,9 +28,8 @@ export class PaymentScene extends AbstractScene {
     await this.createPaymentAndReply(ctx, PaymentSystemEnum.CYPTOMUS);
   }
 
-  @Action(CommandEnum.PAY_WITH_YOOKASSA)
-  async payWithYookassa(@Ctx() ctx: Context) {
-    // await this.createPaymentAndReply(ctx, PaymentSystemEnum.YOOKASSA);
+  @Action(CommandEnum.PAY_WITH_TBANK)
+  async payWithTBank(@Ctx() ctx: Context) {
     await replyOrEdit(
       ctx,
       'Отлично! Чтобы отправить вам чек, мне нужен ваш email! Пришлите его!',
@@ -38,16 +37,11 @@ export class PaymentScene extends AbstractScene {
     );
   }
 
-  @Action(CommandEnum.PAY_WITH_WALLET)
-  async payWithWallet(@Ctx() ctx: Context) {
-    await this.createPaymentAndReply(ctx, PaymentSystemEnum.WALLET);
-  }
-
   @Hears(/[\w-]+@[\w-]+\.\w+/)
   async email(@Ctx() ctx: Context) {
     const email = ctx.message?.['text'];
     this.logger.debug(`user email ${email}`);
-    return await this.createPaymentAndReply(ctx, PaymentSystemEnum.YOOKASSA, email);
+    return await this.createPaymentAndReply(ctx, PaymentSystemEnum.TBANK, email);
   }
 
   @Hears(/^(?!.*[\w-]+@[\w-]+\.\w+).*$/)

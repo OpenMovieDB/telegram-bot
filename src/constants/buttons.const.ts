@@ -26,5 +26,6 @@ export const BUTTONS = {
   [CommandEnum.PAY_WITH_WALLET]: Markup.button.callback('👛 кошельком в ТГ', CommandEnum.PAY_WITH_WALLET),
   [CommandEnum.PAY_WITH_CRYPTOMUS]: Markup.button.callback('🪙 криптовалютой', CommandEnum.PAY_WITH_CRYPTOMUS),
   [CommandEnum.PAY_WITH_YOOKASSA]: Markup.button.callback('💳 картой РФ', CommandEnum.PAY_WITH_YOOKASSA),
+  [CommandEnum.PAY_WITH_TBANK]: Markup.button.callback('💳 картой РФ', CommandEnum.PAY_WITH_TBANK),
   [CommandEnum.CONFIRM_PAYMENT]: Markup.button.callback('✅ Я оплатил', CommandEnum.CONFIRM_PAYMENT),
 };

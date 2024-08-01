@@ -14,6 +14,8 @@ import { YookassaPaymentStrategy } from '../yookassa-payment.strategy';
 import { YookassaClient } from '@app/yookassa-client';
 import { WalletPaymentStrategy } from '../wallet-payment.strategy';
 import { WalletClient } from '@app/wallet-client';
+import { TBankClient } from '@app/tbank-client';
+import { TBankPaymentStrategy } from '../tinkoff-payment.strategy';
 
 @Injectable()
 export class PaymentStrategyFactory {
@@ -21,6 +23,7 @@ export class PaymentStrategyFactory {
     private readonly cryptomusClient: CryptomusClient,
     private readonly yooMoneyClient: YooMoneyClient,
     private readonly yookassaClient: YookassaClient,
+    private readonly tbankClient: TBankClient,
     private readonly configService: ConfigService,
     private readonly walletClient: WalletClient,
     @InjectModel(Payment.name) private readonly paymentModel: Model<PaymentDocument>,
@@ -32,6 +35,8 @@ export class PaymentStrategyFactory {
         return new YooMoneyPaymentStrategy(this.yooMoneyClient, this.configService);
       case PaymentSystemEnum.YOOKASSA:
         return new YookassaPaymentStrategy(this.yookassaClient, this.configService);
+      case PaymentSystemEnum.TBANK:
+        return new TBankPaymentStrategy(this.tbankClient, this.configService);
       case PaymentSystemEnum.CYPTOMUS:
         return new CryptomusPaymentStrategy(this.cryptomusClient);
       case PaymentSystemEnum.WALLET:

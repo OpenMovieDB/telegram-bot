@@ -93,7 +93,8 @@
       "^@app/cryptomus-client(|/.*)$": "<rootDir>/libs/cryptomus-client/src/$1",
       "^@app/yoomoney-client(|/.*)$": "<rootDir>/libs/yoomoney-client/src/$1",
       "^@app/yookassa-client(|/.*)$": "<rootDir>/libs/yookassa-client/src/$1",
-      "^@app/wallet-client(|/.*)$": "<rootDir>/libs/wallet-client/src/$1"
+      "^@app/wallet-client(|/.*)$": "<rootDir>/libs/wallet-client/src/$1",
+      "^@app/tbank-client(|/.*)$": "<rootDir>/libs/tbank-client/src/$1"
     }
   }
 }

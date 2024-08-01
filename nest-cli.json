@@ -47,6 +47,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/wallet-client/tsconfig.lib.json"
       }
+    },
+    "tbank-client": {
+      "type": "library",
+      "root": "libs/tbank-client",
+      "entryFile": "index",
+      "sourceRoot": "libs/tbank-client/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/tbank-client/tsconfig.lib.json"
+      }
     }
   },
   "compilerOptions": {
