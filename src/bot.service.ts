@@ -77,6 +77,13 @@ export class BotService {
     await this.bot.telegram.sendMessage(chatId, message);
   }
 
+  async sendTextMessageToAllUsers(message: string) {
+    const usersTgID = await this.userService.getAllUserTgIDs();
+    for (const chatId of usersTgID) {
+      await this.bot.telegram.sendMessage(chatId, message);
+    }
+  }
+
   async createInvitedUser(ctx: Context) {
     const members: TelegramUser[] = ctx.update?.['message']?.['new_chat_members'];
     this.logger.log(`NewChatMembers: ${members.map((member: any) => member.username).join(', ')}`);

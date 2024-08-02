@@ -113,6 +113,12 @@ export class UserService {
     return expiredUsers.filter((user) => this.isSubscriptionExpired(user.subscriptionEndDate, expirationDate));
   }
 
+  async getAllUserTgIDs(): Promise<number[]> {
+    const users = await this.userModel.find({}).exec();
+
+    return users.filter((u) => u?.userId).map((u) => u.userId);
+  }
+
   private isSubscriptionExpired(expirationDate: Date, now: Date): boolean {
     return expirationDate && now >= expirationDate;
   }
