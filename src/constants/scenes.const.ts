@@ -18,8 +18,8 @@ export const SCENES = {
     navigateButtons: [
       [
         BUTTONS[CommandEnum.GET_REQUEST_STATS],
-        BUTTONS[CommandEnum.UPDATE_MOVIE],
-        BUTTONS[CommandEnum.SET_IMDB_RELATION],
+        // BUTTONS[CommandEnum.UPDATE_MOVIE],
+        // BUTTONS[CommandEnum.SET_IMDB_RELATION],
       ],
       [BUTTONS[CommandEnum.GET_MY_TOKEN], BUTTONS[CommandEnum.QUESTION]],
       [BUTTONS[CommandEnum.UPDATE_TARIFF]],
