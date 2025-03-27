@@ -5,7 +5,7 @@ import { Module } from '@nestjs/common';
 @Module({
   imports: [
     HttpModule.register({
-      baseURL: 'https://api.cryptomus.com/v1',
+      baseURL: 'https://api.heleket.com/v1',
     }),
   ],
   providers: [CryptomusClient],
