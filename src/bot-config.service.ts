@@ -41,10 +41,10 @@ export class BotConfigService implements OnModuleInit {
       try {
         const botInfo = await Promise.race([
           this.bot.telegram.getMe(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Bot initialization timeout')), 30000)),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Bot initialization timeout')), 30000)),
         ]);
 
-        this.logger.log(`Bot connected: @${botInfo.username}`);
+        this.logger.log(`Bot connected: @${(botInfo as any)?.username}`);
         return;
       } catch (error) {
         this.retryCount++;

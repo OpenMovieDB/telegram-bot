@@ -6,6 +6,7 @@ import { BOT_NAME } from './constants/bot-name.const';
 import { BotController } from './bot.controller';
 import { BotService } from './bot.service';
 import { BotUpdate } from './bot.update';
+import { BotConfigService } from './bot-config.service';
 import { DeveloperTariffScene } from './scenes/developer-tariff.scene';
 import { FreeTariffScene } from './scenes/free-tariff.scene';
 import { GetAccessScene } from './scenes/get-access.scene';
