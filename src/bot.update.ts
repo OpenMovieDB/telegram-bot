@@ -100,6 +100,12 @@ export class BotUpdate {
     }
   }
 
+  @Command('comfirm')
+  async onComfirmCommand(@Ctx() ctx: Context & { update: any }) {
+    // Redirect to correct command
+    return this.onConfirmCommand(ctx);
+  }
+
   @Action(/.*/)
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
     this.logger.log(ctx);

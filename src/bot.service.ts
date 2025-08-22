@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { User } from './user/schemas/user.schema';
 import { DateTime } from 'luxon';
 import { PaymentSystemEnum } from './payment/enum/payment-system.enum';
+import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
 
 @Injectable()
 export class BotService {
@@ -42,7 +43,10 @@ export class BotService {
   }
 
   async sendMessage(chatId: number, message: string): Promise<void> {
-    await this.bot.telegram.sendMessage(chatId, message);
+    await SafeTelegramHelper.safeSend(
+      () => this.bot.telegram.sendMessage(chatId, message),
+      `Message to chat ${chatId}`,
+    );
   }
 
   async sendPaymentSuccessMessage(chatId: number, tariffName: string, subscriptionEndDate: Date): Promise<void> {
@@ -76,23 +80,32 @@ export class BotService {
 
     message += `Платежная система: ${paymentSystem} 🎉`;
 
-    await this.bot.telegram.sendMessage(this.adminChatId, message);
+    await SafeTelegramHelper.safeSend(
+      () => this.bot.telegram.sendMessage(this.adminChatId, message),
+      'Admin payment notification',
+    );
   }
 
   async sendSubscriptionExpiredMessage(chatId: number) {
     const message = 'Срок действия вашей подписки истек. Тариф был изменен на бесплатный 🫣';
-    await this.bot.telegram.sendMessage(chatId, message);
+    await SafeTelegramHelper.safeSend(
+      () => this.bot.telegram.sendMessage(chatId, message),
+      `Subscription expired notification to ${chatId}`,
+    );
   }
 
   async sendSubscriptionExpirationWarningMessage(chatId: number, expirationDate: Date) {
     const message = `Срок действия вашей подписки истекает ${expirationDate.toLocaleDateString()} ⚠️ Пожалуйста, не забудьте продлить свою подписку.`;
-    await this.bot.telegram.sendMessage(chatId, message);
+    await SafeTelegramHelper.safeSend(
+      () => this.bot.telegram.sendMessage(chatId, message),
+      `Subscription warning to ${chatId}`,
+    );
   }
 
   async sendTextMessageToAllUsers(message: string) {
     const usersTgID = await this.userService.getAllUserTgIDs();
     for (const chatId of usersTgID) {
-      await this.bot.telegram.sendMessage(chatId, message);
+      await SafeTelegramHelper.safeSend(() => this.bot.telegram.sendMessage(chatId, message), `Broadcast to ${chatId}`);
     }
   }
 

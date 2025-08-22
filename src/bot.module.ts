@@ -48,6 +48,7 @@ import { RedisModule } from '@liaoliaots/nestjs-redis';
         token: configService.get('BOT_TOKEN'),
         middlewares: [session(), commandArgs()],
         include: [BotModule],
+        launchOptions: false, // Disable auto-launch
       }),
     }),
     MongooseModule.forRootAsync({
