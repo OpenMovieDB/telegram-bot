@@ -257,6 +257,10 @@ export class PaymentService {
     return payment.form;
   }
 
+  async findPaymentByPaymentId(paymentId: string): Promise<Payment> {
+    return this.paymentModel.findOne({ paymentId }).exec();
+  }
+
   async yooMoneyWebHook({
     operation_id,
     notification_type,
