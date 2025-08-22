@@ -1,24 +1,41 @@
-FROM node:20 AS builder
+FROM node:20-alpine AS builder
 
 # Create app directory
 WORKDIR /app
 
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Copy package files
 COPY package*.json ./
 
-# Install app dependencies
-RUN npm install
+# Install app dependencies with legacy peer deps to avoid conflicts
+RUN npm install --legacy-peer-deps
 
+# Copy source files
 COPY . .
 
+# Build the application
 RUN npm run build
 
-FROM node:20
+FROM node:20-alpine
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/tsconfig.json ./
+# Install runtime dependencies
+RUN apk add --no-cache tini
+
+WORKDIR /app
+
+# Copy package files first
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm install --only=production --legacy-peer-deps
+
+# Copy built application
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
-CMD [ "npm", "run", "start:prod" ]
+
+# Use tini as entrypoint for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/main"]
