@@ -37,7 +37,7 @@ export class PaymentScheduler {
 
             this.logger.debug(`Payment ${payment.paymentId} is successfully paid`);
 
-            // Check if it's a pending tariff change or immediate activation
+            // Send success messages
             await this.botService.sendPaymentSuccessMessage(
               payment.chatId,
               user.tariffId.name,

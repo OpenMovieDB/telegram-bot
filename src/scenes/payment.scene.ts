@@ -80,12 +80,14 @@ export class PaymentScene extends AbstractScene {
   // Handle navigation commands (like "📊 статистика", "🆘 поддержка", etc.)
   @Hears(['📊 статистика', '🆘 поддержка', '🏠 главное меню', '🔄️ тариф', '🫣 токен', '⬅ назад'])
   async handleNavigationCommand(@Ctx() ctx: Context) {
-    this.logger.debug('Navigation command received in payment scene, clearing flags and allowing navigation');
+    this.logger.debug('Navigation command received in payment scene, leaving scene');
+    
     // Clear payment flags before navigation
     ctx.session.paymentInProgress = false;
     ctx.session.waitingForEmail = false;
-    // Don't handle here, let the main bot handler process it
-    return;
+    
+    // Simply leave the scene - the main bot handler will process the command
+    await ctx.scene.leave();
   }
 
   @Hears(/^(?!.*[\w-]+@[\w-]+\.\w+).*$/)
