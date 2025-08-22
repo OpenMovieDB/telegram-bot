@@ -20,8 +20,8 @@ RUN npm run build
 
 FROM node:20-alpine
 
-# Install runtime dependencies
-RUN apk add --no-cache tini
+# Install runtime dependencies and network tools
+RUN apk add --no-cache tini curl
 
 WORKDIR /app
 
@@ -35,6 +35,10 @@ RUN npm install --only=production --legacy-peer-deps
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
+
+# Health check to ensure the app is running
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:3000/ || exit 1
 
 # Use tini as entrypoint for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]

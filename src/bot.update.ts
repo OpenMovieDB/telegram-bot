@@ -82,8 +82,21 @@ export class BotUpdate {
     if (this.isAdmin(ctx)) {
       const [paymentId] = ctx.state.command.args;
       if (!paymentId) throw new Error('Не указан один из обязательных параметров!');
-      await this.paymentService.updatePaymentStatus(paymentId, PaymentStatusEnum.PENDING, true);
-      await this.bot.telegram.sendMessage(this.adminChatId, `Оплата подтверждена`);
+
+      // Mark payment as PAID with final flag
+      await this.paymentService.updatePaymentStatus(paymentId, PaymentStatusEnum.PAID, true);
+
+      // Trigger validation to process the payment immediately
+      const isPaid = await this.paymentService.validatePayment(paymentId);
+
+      if (isPaid) {
+        await this.bot.telegram.sendMessage(this.adminChatId, `✅ Оплата ${paymentId} подтверждена и обработана`);
+      } else {
+        await this.bot.telegram.sendMessage(
+          this.adminChatId,
+          `⚠️ Оплата ${paymentId} подтверждена, но возникла ошибка при обработке`,
+        );
+      }
     }
   }
 

@@ -30,6 +30,12 @@ export class CashPaymentStrategy implements PaymentStrategy {
   async validateTransaction(paymentId: string): Promise<PaymentStatusEnum> {
     const transaction = await this.paymentModel.findOne({ paymentId });
 
-    return transaction.isFinal ? PaymentStatusEnum.PAID : PaymentStatusEnum.PENDING;
+    if (!transaction) {
+      return PaymentStatusEnum.FAILED;
+    }
+
+    // For CASH payments, check the actual status in the database
+    // Admin confirms payment by setting status to PAID
+    return transaction.status as PaymentStatusEnum;
   }
 }

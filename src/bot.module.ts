@@ -78,6 +78,7 @@ import { RedisModule } from '@liaoliaots/nestjs-redis';
       useClass: AllExceptionFilter,
     },
     BotService,
+    BotConfigService,
     BotUpdate,
     StartScene,
     HomeScene,
