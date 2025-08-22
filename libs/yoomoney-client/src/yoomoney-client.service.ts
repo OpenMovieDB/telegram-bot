@@ -7,7 +7,7 @@ import {
   OperationHistoryParameters,
   OperationHistoryResponse,
   YMFormPaymentType,
-  YMPaymentFromBuilder,
+  YMPaymentFormBuilder,
 } from 'yoomoney-sdk';
 
 @Injectable()
@@ -25,7 +25,7 @@ export class YooMoneyClient {
   }
 
   generatePaymentForm(amount: number, paymentId: string, comment: string): string {
-    const builder = new YMPaymentFromBuilder({
+    const builder = new YMPaymentFormBuilder({
       quickPayForm: 'donate',
       sum: amount,
       successURL: this.successURL,

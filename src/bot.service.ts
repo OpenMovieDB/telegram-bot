@@ -60,11 +60,23 @@ export class BotService {
     monthCount: number,
     amount: number,
     paymentSystem: PaymentSystemEnum,
+    discount?: number,
+    originalPrice?: number,
   ): Promise<void> {
-    await this.bot.telegram.sendMessage(
-      this.adminChatId,
-      `Пользователь ${username} оплатил тариф ${tariffName} на срок ${monthCount}. Оплаченная сумма: ${amount}. Платежная система ${paymentSystem}  🎉`,
-    );
+    let message = `Пользователь ${username} оплатил тариф ${tariffName} на срок ${monthCount} мес.\n`;
+
+    if (discount && discount > 0) {
+      message += `💰 Применена скидка за переход с другого тарифа:\n`;
+      message += `├ Полная стоимость: ${originalPrice} ₽\n`;
+      message += `├ Скидка: -${discount} ₽\n`;
+      message += `└ Оплачено: ${amount} ₽\n`;
+    } else {
+      message += `💰 Оплаченная сумма: ${amount} ₽\n`;
+    }
+
+    message += `Платежная система: ${paymentSystem} 🎉`;
+
+    await this.bot.telegram.sendMessage(this.adminChatId, message);
   }
 
   async sendSubscriptionExpiredMessage(chatId: number) {

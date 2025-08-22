@@ -5,6 +5,7 @@ import { Payment, PaymentDocument } from './schemas/payment.schema';
 
 import { BotService } from 'src/bot.service';
 import { PaymentService } from './payment.service';
+import { PaymentStatusEnum } from './enum/payment-status.enum';
 import { TariffService } from 'src/tariff/tariff.service';
 import { UserService } from 'src/user/user.service';
 import { DateTime } from 'luxon';
@@ -25,34 +26,77 @@ export class PaymentScheduler {
     const pendingPayments = await this.paymentService.getPendingPayments();
 
     if (pendingPayments.length) {
-      this.logger.debug('Start validating pending payments');
+      this.logger.debug(`Start validating ${pendingPayments.length} pending payments`);
       for (const payment of pendingPayments) {
         try {
+          this.logger.debug(`Validating payment ${payment.paymentId} (${payment.paymentSystem})`);
           const isPaid = await this.paymentService.validatePayment(payment.paymentId);
 
           if (isPaid) {
             const user = await this.userService.findOneByUserId(payment.userId);
 
-            this.logger.debug(`Payment with id ${payment.paymentId} is paid`);
+            this.logger.debug(`Payment ${payment.paymentId} is successfully paid`);
+
+            // Check if it's a pending tariff change or immediate activation
             await this.botService.sendPaymentSuccessMessage(
               payment.chatId,
               user.tariffId.name,
               user.subscriptionEndDate,
             );
+
             await this.botService.sendPaymentSuccessMessageToAdmin(
               user.username,
               user.tariffId.name,
               payment.monthCount,
               payment.amount,
               payment.paymentSystem,
+              payment.discount,
+              payment.originalPrice,
             );
+          } else {
+            this.logger.debug(`Payment ${payment.paymentId} is not paid yet`);
           }
         } catch (error) {
-          this.logger.error(`Error validating payment with id ${payment.paymentId}: ${error.message}`);
+          this.logger.error(`Error validating payment ${payment.paymentId}: ${error.message}`, error.stack);
         }
       }
 
       this.logger.debug('Finish validating pending payments');
+    }
+  }
+
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async handleExpiredPayments() {
+    const expiredPayments = await this.paymentService.getExpiredPendingPayments();
+
+    if (expiredPayments.length) {
+      this.logger.debug(`Start handling ${expiredPayments.length} expired payments`);
+      for (const payment of expiredPayments) {
+        try {
+          const paymentAge = Date.now() - new Date(payment.paymentAt).getTime();
+          const ageInHours = Math.floor(paymentAge / 3600000);
+          this.logger.debug(`Marking payment ${payment.paymentId} as EXPIRED (age: ${ageInHours} hours)`);
+
+          await this.paymentService.updatePaymentStatus(
+            payment.paymentId,
+            PaymentStatusEnum.FAILED,
+            true, // Mark as final
+          );
+
+          // Notify user that payment expired
+          try {
+            await this.botService.sendMessage(
+              payment.chatId,
+              '⏰ Время оплаты истекло. Платеж был отменен. Если вы хотите оформить подписку, пожалуйста, создайте новый платеж.',
+            );
+          } catch (notifyError) {
+            this.logger.error(`Failed to notify user about expired payment: ${notifyError.message}`);
+          }
+        } catch (error) {
+          this.logger.error(`Error handling expired payment ${payment.paymentId}: ${error.message}`);
+        }
+      }
+      this.logger.debug('Finish handling expired payments');
     }
   }
 
@@ -77,6 +121,7 @@ export class PaymentScheduler {
 
       for (const user of usersWithExpiredSubscription) {
         try {
+          // Switch to free tariff for expired subscription
           await this.userService.update(user.userId, {
             tariffId: freeTariff,
             subscriptionStartDate: null,
@@ -84,8 +129,14 @@ export class PaymentScheduler {
             sendWarnNotification: false,
           });
 
-          this.logger.debug(`User ${user.userId} tariff has been changed to free`);
-          await this.botService.sendSubscriptionExpiredMessage(user.chatId);
+          this.logger.debug(`User ${user.userId} (chatId: ${user.chatId}) tariff has been changed to free`);
+
+          // Check if chatId exists before sending message
+          if (user.chatId) {
+            await this.botService.sendSubscriptionExpiredMessage(user.chatId);
+          } else {
+            this.logger.warn(`User ${user.userId} has no chatId, skipping notification`);
+          }
         } catch (error) {
           this.logger.error(`Error handling expired subscription for user ${user.userId}: ${error.message}`);
         }
@@ -105,8 +156,13 @@ export class PaymentScheduler {
       for (const user of usersWithExpiringSubscription) {
         if (!user.sendWarnNotification) {
           try {
-            await this.botService.sendSubscriptionExpirationWarningMessage(user.chatId, user.subscriptionEndDate);
-            await this.userService.update(user.userId, { sendWarnNotification: true });
+            // Check if chatId exists before sending message
+            if (user.chatId) {
+              await this.botService.sendSubscriptionExpirationWarningMessage(user.chatId, user.subscriptionEndDate);
+              await this.userService.update(user.userId, { sendWarnNotification: true });
+            } else {
+              this.logger.warn(`User ${user.userId} has no chatId, skipping expiration warning`);
+            }
           } catch (error) {
             this.logger.error(`Error handling expiring subscription for user ${user.userId}: ${error.message}`);
           }

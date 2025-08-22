@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PaymentStatusEnum } from '../enum/payment-status.enum';
 import { PaymentSystemEnum } from '../enum/payment-system.enum';
 import { Payment } from '../schemas/payment.schema';
@@ -9,6 +9,8 @@ import { TBankClient } from '@app/tbank-client';
 
 @Injectable()
 export class TBankPaymentStrategy implements PaymentStrategy {
+  private readonly logger = new Logger(TBankPaymentStrategy.name);
+
   constructor(private readonly tBankClient: TBankClient, private readonly configService: ConfigService) {}
 
   async createPayment({ tariffPrice, paymentMonths, ...data }: CreatePaymentData): Promise<Payment> {
@@ -46,14 +48,41 @@ export class TBankPaymentStrategy implements PaymentStrategy {
   async validateTransaction(paymentId: string): Promise<PaymentStatusEnum> {
     try {
       const data = await this.tBankClient.getPaymentInfo(paymentId);
+      this.logger.debug(
+        `TBank payment ${paymentId} status: ${data.Status}, ErrorCode: ${data.ErrorCode}, Success: ${data.Success}`,
+      );
 
-      if (data.Status === 'CONFIRMED') {
-        return PaymentStatusEnum.PAID;
-      } else if (data.Status === 'CANCELED') {
-        return PaymentStatusEnum.CANCELED;
+      // Map TBank statuses to our PaymentStatusEnum
+      switch (data.Status) {
+        case 'CONFIRMED':
+        case 'AUTHORIZED':
+          return PaymentStatusEnum.PAID;
+        case 'CANCELED':
+        case 'REVERSED':
+        case 'REFUNDED':
+        case 'PARTIAL_REFUNDED':
+          return PaymentStatusEnum.CANCELED;
+        case 'REJECTED':
+        case 'DEADLINE_EXPIRED':
+          return PaymentStatusEnum.FAILED;
+        case 'NEW':
+        case 'FORM_SHOWED':
+        case 'AUTHORIZING':
+        case 'CONFIRMING':
+        case '3DS_CHECKING':
+        case '3DS_CHECKED':
+        case 'REVERSING':
+        case 'PARTIAL_REVERSING':
+        case 'REFUNDING':
+        case 'PARTIAL_REFUNDING':
+        case 'ASYNC_REFUNDING':
+          return PaymentStatusEnum.PENDING;
+        default:
+          this.logger.warn(`Unknown TBank payment status: ${data.Status} for payment ${paymentId}`);
+          return PaymentStatusEnum.PENDING;
       }
-      return PaymentStatusEnum.PENDING;
     } catch (error) {
+      this.logger.error(`Error validating TBank payment ${paymentId}: ${error.message}`, error.stack);
       return PaymentStatusEnum.FAILED;
     }
   }

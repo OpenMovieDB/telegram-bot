@@ -74,11 +74,17 @@ export class Payment {
   @Prop()
   form: string;
 
-  @Prop()
+  @Prop({ default: false })
   isFinal?: boolean;
 
   @Prop()
   email?: string;
+
+  @Prop()
+  discount?: number;
+
+  @Prop()
+  originalPrice?: number;
 
   constructor(payment: Partial<Payment>) {
     Object.assign(this, payment);

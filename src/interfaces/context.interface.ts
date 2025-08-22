@@ -13,6 +13,8 @@ interface SessionData extends Scenes.SceneSession<SceneSession> {
   messageId: number;
   tariffId: string;
   paymentMonths: number;
+  paymentInProgress?: boolean;
+  waitingForEmail?: boolean;
 }
 
 interface SceneSession extends Scenes.SceneSessionData {

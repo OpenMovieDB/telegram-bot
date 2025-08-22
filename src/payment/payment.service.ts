@@ -16,12 +16,14 @@ import { createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { YooMoneyClient } from '@app/yoomoney-client';
 import * as ApiKey from 'uuid-apikey';
-import { InjectRedis } from '@liaoliaots/nestjs-redis';
+import { RedisService } from '@liaoliaots/nestjs-redis';
 import Redis from 'ioredis';
 
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
+  private readonly redis: Redis;
+
   constructor(
     private readonly configService: ConfigService,
     private readonly userService: UserService,
@@ -29,8 +31,10 @@ export class PaymentService {
     private readonly paymentStrategyFactory: PaymentStrategyFactory,
     private readonly yooMoney: YooMoneyClient,
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
-    @InjectRedis() private readonly redis: Redis,
-  ) {}
+    private readonly redisService: RedisService,
+  ) {
+    this.redis = this.redisService.getOrThrow();
+  }
 
   async createPayment(
     userId: number,
@@ -49,22 +53,96 @@ export class PaymentService {
     const tariff: Tariff = await this.tariffService.getOneById(tariffId);
     if (!tariff) throw new Error(`Tariff with id ${tariffId} not found`);
 
+    const originalPrice = tariff.price * paymentMonths;
+    let finalPrice = originalPrice;
+    let discount = 0;
+
+    // Check for active subscription and tariff change
+    const hasActiveSubscription =
+      user.subscriptionEndDate && DateTime.fromJSDate(user.subscriptionEndDate) > DateTime.now();
+
+    if (hasActiveSubscription && user.tariffId) {
+      // user.tariffId is populated as Tariff object
+      const currentTariff = user.tariffId as any;
+      const currentTariffId = currentTariff._id ? currentTariff._id.toString() : currentTariff.toString();
+
+      if (currentTariffId !== tariffId) {
+        // Check if user is trying to downgrade
+        if (tariff.price < currentTariff.price) {
+          // Check if subscription expires today (allow downgrade on expiration day)
+          const now = DateTime.now();
+          const endDate = DateTime.fromJSDate(user.subscriptionEndDate);
+          const isExpirationDay = endDate.hasSame(now, 'day');
+
+          if (!isExpirationDay) {
+            // Prevent downgrade while subscription is active
+            const daysRemaining = Math.ceil(endDate.diff(now, 'days').days);
+            const endDateFormatted = endDate.toFormat('dd.MM.yyyy');
+
+            throw new Error(
+              `DOWNGRADE_NOT_ALLOWED:Вы не можете перейти на более дешевый тариф пока действует текущая подписка. ` +
+                `Ваш тариф "${currentTariff.name}" действует еще ${daysRemaining} дней (до ${endDateFormatted}). ` +
+                `Вы сможете сменить тариф на "${tariff.name}" в день истечения подписки или после.`,
+            );
+          }
+          // If it's expiration day, allow the downgrade without discount
+          discount = 0;
+          this.logger.debug(`Allowing downgrade on expiration day from ${currentTariff.name} to ${tariff.name}`);
+        } else {
+          // Calculate discount for upgrade
+          const daysRemaining = DateTime.fromJSDate(user.subscriptionEndDate).diff(DateTime.now(), 'days').days;
+          const dailyRate = currentTariff.price / 30;
+          discount = Math.floor(dailyRate * daysRemaining);
+          finalPrice = Math.max(0, finalPrice - discount);
+
+          this.logger.debug(
+            `Applied discount of ${discount} RUB for tariff upgrade. Days remaining: ${daysRemaining}, Final price: ${finalPrice}`,
+          );
+        }
+      }
+    }
+
     const paymentStrategy = this.paymentStrategyFactory.createPaymentStrategy(paymentSystem);
     const payment = await paymentStrategy.createPayment({
       userId,
       chatId,
       tariffId,
-      tariffPrice: tariff.price,
+      tariffPrice: finalPrice / paymentMonths, // Pass the adjusted price per month
       paymentMonths,
       email,
       paymentAt: paymentAt || DateTime.local().toJSDate(),
       limit: tariff.requestsLimit,
     });
+
+    // Add discount information to payment
+    payment.discount = discount;
+    payment.originalPrice = originalPrice;
+
     return this.paymentModel.create(payment);
   }
 
   async getPendingPayments(): Promise<Payment[]> {
-    return this.paymentModel.find({ status: PaymentStatusEnum.PENDING }).exec();
+    // Get pending payments that are not older than 1 hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    return this.paymentModel
+      .find({
+        status: PaymentStatusEnum.PENDING,
+        paymentAt: { $gte: oneHourAgo },
+        isFinal: false,
+      })
+      .exec();
+  }
+
+  async getExpiredPendingPayments(): Promise<Payment[]> {
+    // Get pending payments older than 1 hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    return this.paymentModel
+      .find({
+        status: PaymentStatusEnum.PENDING,
+        paymentAt: { $lt: oneHourAgo },
+        isFinal: false,
+      })
+      .exec();
   }
 
   async updatePaymentStatus(paymentId: string, status: string, isFinal: boolean): Promise<void> {
@@ -79,15 +157,27 @@ export class PaymentService {
     const payment = await this.paymentModel.findOne({ paymentId }).exec();
     if (!payment) throw new Error(`Payment with id ${paymentId} not found`);
 
+    // Skip if payment is already finalized
+    if (payment.isFinal) {
+      this.logger.debug(`Payment ${paymentId} is already finalized with status ${payment.status}`);
+      return payment.status === PaymentStatusEnum.PAID;
+    }
+
     const paymentStrategy = this.paymentStrategyFactory.createPaymentStrategy(payment.paymentSystem);
 
     const paymentStatus = await paymentStrategy.validateTransaction(payment.paymentId);
     const isPaid = paymentStatus === PaymentStatusEnum.PAID;
 
-    if (isPaid) {
-      const startAt = DateTime.fromJSDate(payment.paymentAt);
-      const expiredAt = startAt.plus({ months: payment.monthCount });
+    // Determine if this status is final
+    const isFinal = [PaymentStatusEnum.PAID, PaymentStatusEnum.FAILED, PaymentStatusEnum.CANCELED].includes(
+      paymentStatus,
+    );
 
+    this.logger.debug(
+      `Payment ${paymentId} validation result: status=${paymentStatus}, isPaid=${isPaid}, isFinal=${isFinal}`,
+    );
+
+    if (isPaid) {
       const user = await this.userService.findOneByUserId(payment.userId);
 
       if (user) {
@@ -96,20 +186,64 @@ export class PaymentService {
         const key = ApiKey.toAPIKey(user.token);
         await this.redis.del(key);
 
-        await this.userService.update(user.userId, {
-          tariffId: new mongoose.Types.ObjectId(payment.tariffId),
+        const now = DateTime.now();
+        // user.tariffId is populated as Tariff object
+        const currentTariff = user.tariffId as any;
+        const currentTariffId = currentTariff?._id ? currentTariff._id.toString() : currentTariff?.toString();
+        const newTariffId = payment.tariffId;
+        const hasActiveSubscription = user.subscriptionEndDate && DateTime.fromJSDate(user.subscriptionEndDate) > now;
+
+        const updateData: any = {
           requestsUsed: 0,
-          subscriptionStartDate: startAt.toJSDate(),
-          subscriptionEndDate: expiredAt.toJSDate(),
-        });
+        };
+
+        if (hasActiveSubscription) {
+          // User has an active subscription
+          if (currentTariffId === newTariffId) {
+            // Same tariff - extend subscription
+            const currentEndDate = DateTime.fromJSDate(user.subscriptionEndDate);
+            const newEndDate = currentEndDate.plus({ months: payment.monthCount }).endOf('day');
+
+            updateData.subscriptionEndDate = newEndDate.toJSDate();
+            this.logger.debug(`Extended subscription for user ${user.userId} until ${newEndDate.toISODate()}`);
+          } else {
+            // Different tariff - immediately change tariff and extend subscription
+            const now = DateTime.now().startOf('day');
+            const newEndDate = now.plus({ months: payment.monthCount }).endOf('day');
+
+            updateData.tariffId = new mongoose.Types.ObjectId(newTariffId);
+            updateData.subscriptionStartDate = now.toJSDate();
+            updateData.subscriptionEndDate = newEndDate.toJSDate();
+
+            this.logger.debug(
+              `Changed tariff for user ${user.userId} to ${newTariffId} until ${newEndDate.toISODate()}`,
+            );
+          }
+        } else {
+          // No active subscription - activate immediately
+          const startAt = DateTime.now().startOf('day');
+          const expiredAt = startAt.plus({ months: payment.monthCount }).endOf('day');
+
+          updateData.tariffId = new mongoose.Types.ObjectId(newTariffId);
+          updateData.subscriptionStartDate = startAt.toJSDate();
+          updateData.subscriptionEndDate = expiredAt.toJSDate();
+
+          this.logger.debug(`Activated new subscription for user ${user.userId} until ${expiredAt.toISODate()}`);
+        }
+
+        await this.userService.update(user.userId, updateData);
       }
 
-      this.logger.debug(`Change status for ${paymentId} on ${paymentStatus}. IsPaid: ${isPaid}`);
-      await this.updatePaymentStatus(paymentId, PaymentStatusEnum.PAID, isPaid);
+      this.logger.debug(
+        `Change status for ${paymentId} from ${payment.status} to ${PaymentStatusEnum.PAID}. IsPaid: ${isPaid}`,
+      );
+      await this.updatePaymentStatus(paymentId, PaymentStatusEnum.PAID, true);
     } else {
       if (paymentStatus !== payment.status) {
-        this.logger.debug(`Change status for ${paymentId} on ${paymentStatus}, IsPaid: ${isPaid}`);
-        await this.updatePaymentStatus(paymentId, paymentStatus, isPaid);
+        this.logger.debug(
+          `Change status for ${paymentId} from ${payment.status} to ${paymentStatus}, IsPaid: ${isPaid}, IsFinal: ${isFinal}`,
+        );
+        await this.updatePaymentStatus(paymentId, paymentStatus, isFinal);
       }
     }
 

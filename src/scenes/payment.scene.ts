@@ -1,4 +1,4 @@
-import { Action, Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf';
+import { Action, Ctx, Hears, Scene, SceneEnter, SceneLeave } from 'nestjs-telegraf';
 
 import { AbstractScene } from '../abstract/abstract.scene';
 import { CommandEnum } from '../enum/command.enum';
@@ -8,10 +8,17 @@ import { Context } from 'src/interfaces/context.interface';
 import { Markup } from 'telegraf';
 import { replyOrEdit } from 'src/utils/reply-or-edit.util';
 import { SCENES } from 'src/constants/scenes.const';
+import { DateTime } from 'luxon';
+import { UserService } from 'src/user/user.service';
+import { TariffService } from 'src/tariff/tariff.service';
 
 @Scene(CommandEnum.PAYMENT)
 export class PaymentScene extends AbstractScene {
-  constructor(private readonly paymentService: PaymentService) {
+  constructor(
+    private readonly paymentService: PaymentService,
+    private readonly userService: UserService,
+    private readonly tariffService: TariffService,
+  ) {
     super();
   }
 
@@ -20,16 +27,34 @@ export class PaymentScene extends AbstractScene {
     this.logger.log(ctx.scene.session.current);
     const scene = SCENES[ctx.scene.session.current];
 
+    // Reset payment flags when entering the scene
+    ctx.session.paymentInProgress = false;
+    ctx.session.waitingForEmail = false;
+
     await replyOrEdit(ctx, scene.text, Markup.inlineKeyboard(scene.buttons));
+  }
+
+  @SceneLeave()
+  async onSceneLeave(@Ctx() ctx: Context) {
+    this.logger.log(`Leaving payment scene`);
+    // Clear payment flags when leaving the scene
+    if (ctx.session) {
+      ctx.session.paymentInProgress = false;
+      ctx.session.waitingForEmail = false;
+    }
   }
 
   @Action(CommandEnum.PAY_WITH_CRYPTOMUS)
   async payWithCriptomus(@Ctx() ctx: Context) {
+    ctx.session.waitingForEmail = false;
+    ctx.session.paymentInProgress = true;
     await this.createPaymentAndReply(ctx, PaymentSystemEnum.CYPTOMUS);
   }
 
   @Action(CommandEnum.PAY_WITH_TBANK)
   async payWithTBank(@Ctx() ctx: Context) {
+    ctx.session.waitingForEmail = true;
+    ctx.session.paymentInProgress = false;
     await replyOrEdit(
       ctx,
       'Отлично! Чтобы отправить вам чек, мне нужен ваш email! Пришлите его!',
@@ -41,16 +66,44 @@ export class PaymentScene extends AbstractScene {
   async email(@Ctx() ctx: Context) {
     const email = ctx.message?.['text'];
     this.logger.debug(`user email ${email}`);
+
+    // Check if we're waiting for email
+    if (!ctx.session.waitingForEmail) {
+      await ctx.reply('Платеж уже в процессе обработки. Пожалуйста, используйте ссылку выше для оплаты.');
+      return;
+    }
+
+    ctx.session.waitingForEmail = false;
     return await this.createPaymentAndReply(ctx, PaymentSystemEnum.TBANK, email);
+  }
+
+  // Handle navigation commands (like "📊 статистика", "🆘 поддержка", etc.)
+  @Hears(['📊 статистика', '🆘 поддержка', '🏠 главное меню', '🔄️ тариф', '🫣 токен', '⬅ назад'])
+  async handleNavigationCommand(@Ctx() ctx: Context) {
+    this.logger.debug('Navigation command received in payment scene, clearing flags and allowing navigation');
+    // Clear payment flags before navigation
+    ctx.session.paymentInProgress = false;
+    ctx.session.waitingForEmail = false;
+    // Don't handle here, let the main bot handler process it
+    return;
   }
 
   @Hears(/^(?!.*[\w-]+@[\w-]+\.\w+).*$/)
   async notAnEmail(@Ctx() ctx: Context) {
-    await ctx.reply(
-      'Кажется, возникли проблемы с выставлением счета. Пожалуйста, напишите администратору, или попробуйте снова.',
-      Markup.inlineKeyboard([[Markup.button.url('🚨Связаться с администратором', 'https://t.me/mdwit')]]),
-    );
-    return ctx.scene.leave();
+    // Check if we're waiting for email
+    if (!ctx.session.waitingForEmail) {
+      // If payment is already in progress, don't interrupt
+      if (ctx.session.paymentInProgress) {
+        await ctx.reply(
+          'Платеж уже в процессе обработки. Пожалуйста, используйте ссылку выше для оплаты или выберите другое действие из меню.',
+        );
+        return;
+      }
+      // Otherwise, just ignore the message
+      return;
+    }
+
+    await ctx.reply('Пожалуйста, введите корректный email адрес для получения чека.');
   }
 
   private async createPaymentAndReply(ctx: Context, paymentSystem: PaymentSystemEnum, email?: string) {
@@ -69,30 +122,73 @@ export class PaymentScene extends AbstractScene {
         email,
       );
       this.logger.debug(`payment ${JSON.stringify(payment)}`);
-      const sentMessage = await ctx.sendMessage(
-        `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
-        Markup.inlineKeyboard([
+      // Set payment in progress flag
+      ctx.session.paymentInProgress = true;
+
+      let message = `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\n`;
+
+      if (payment.discount && payment.discount > 0) {
+        const user = await this.userService.findOneByUserId(ctx.from.id);
+        const currentTariff = user.tariffId; // Already populated as Tariff object
+        const newTariff = await this.tariffService.getOneById(tariffId);
+        const daysRemaining = Math.floor(
+          DateTime.fromJSDate(user.subscriptionEndDate).diff(DateTime.now(), 'days').days,
+        );
+
+        message += `💰 <b>Применена скидка за остаток текущей подписки!</b>\n`;
+        message += `├ Переход с тарифа: ${currentTariff.name} → ${newTariff.name}\n`;
+        message += `├ Осталось дней: ${daysRemaining}\n`;
+        message += `├ Полная стоимость: ${payment.originalPrice} ₽\n`;
+        message += `├ Скидка: -${payment.discount} ₽\n`;
+        message += `└ <b>К оплате: ${payment.amount} ₽</b>\n\n`;
+      } else {
+        message += `💰 К оплате: ${payment.amount} ₽\n\n`;
+      }
+
+      message += `После того как вы оплатите, я автоматически вам поменяю тариф.\n\n⏱ Ссылка действительна 20 минут.`;
+
+      const sentMessage = await ctx.sendMessage(message, {
+        ...Markup.inlineKeyboard([
           [Markup.button.url(paymentSystem === 'WALLET' ? '👛 Pay via Wallet' : '👉 перейти к оплате', payment.url)],
         ]),
-      );
+        parse_mode: 'HTML',
+      });
       this.logger.debug(`sentMessage ${JSON.stringify(sentMessage)}`);
 
-      // Удаление кнопки через 10 минут
+      // Удаление кнопки через 20 минут
       setTimeout(async () => {
         const chatId = ctx.chat.id;
         const messageId = sentMessage.message_id;
 
-        await ctx.telegram.editMessageText(
-          chatId,
-          messageId,
-          undefined,
-          `Ссылка на оплату истекла. Пожалуйста, попробуйте снова, если вы хотите оплатить подписку.`,
-          { parse_mode: 'HTML' },
-        );
-      }, 600000);
+        try {
+          await ctx.telegram.editMessageText(
+            chatId,
+            messageId,
+            undefined,
+            `Ссылка на оплату истекла. Пожалуйста, попробуйте снова, если вы хотите оплатить подписку.`,
+            { parse_mode: 'HTML' },
+          );
+
+          // Reset payment flags for this user
+          if (ctx.session) {
+            ctx.session.paymentInProgress = false;
+            ctx.session.waitingForEmail = false;
+          }
+        } catch (error) {
+          this.logger.error(`Failed to edit expired payment message: ${error.message}`);
+        }
+      }, 1200000);
     } catch (error) {
       console.log(error);
-      await ctx.reply('Произошла ошибка. Пожалуйста, попробуйте снова.');
+
+      // Check if it's a downgrade attempt error
+      if (error.message && error.message.startsWith('DOWNGRADE_NOT_ALLOWED:')) {
+        const errorMessage = error.message.replace('DOWNGRADE_NOT_ALLOWED:', '');
+        await ctx.reply(`⚠️ <b>Невозможно понизить тариф</b>\n\n${errorMessage}`, { parse_mode: 'HTML' });
+        await ctx.scene.enter(CommandEnum.HOME);
+      } else {
+        await ctx.reply('Произошла ошибка. Пожалуйста, попробуйте снова.');
+      }
     }
   }
 }

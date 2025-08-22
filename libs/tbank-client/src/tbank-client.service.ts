@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
@@ -7,6 +7,7 @@ import { CheckPaymentPayload, InitPaymentPayload, PaymentResponse } from '@app/t
 
 @Injectable()
 export class TBankClient {
+  private readonly logger = new Logger(TBankClient.name);
   private readonly terminalKey: string;
   private readonly password: string;
   private readonly httpService: HttpService;
@@ -87,13 +88,28 @@ export class TBankClient {
 
     payload.Token = this.generateToken(payload);
 
-    const { data } = await lastValueFrom(
-      this.httpService.post<PaymentResponse>('/GetState', payload, {
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        timeout: 5000,
-      }),
-    );
+    try {
+      const { data } = await lastValueFrom(
+        this.httpService.post<PaymentResponse>('/GetState', payload, {
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          timeout: 5000,
+        }),
+      );
 
-    return data;
+      this.logger.debug(
+        `TBank GetState response for payment ${paymentId}: Status=${data.Status}, Success=${data.Success}, ErrorCode=${data.ErrorCode}`,
+      );
+
+      if (data.ErrorCode && data.ErrorCode !== '0') {
+        this.logger.warn(
+          `TBank GetState error for payment ${paymentId}: ErrorCode=${data.ErrorCode}, Message=${data.Message}`,
+        );
+      }
+
+      return data;
+    } catch (error) {
+      this.logger.error(`Failed to get TBank payment info for ${paymentId}: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 }
