@@ -5,7 +5,7 @@ import { Context } from './interfaces/context.interface';
 import { InjectBot } from 'nestjs-telegraf';
 import { SCENES } from './constants/scenes.const';
 import { CommandEnum } from './enum/command.enum';
-import { replyOrEdit } from './utils/reply-or-edit.util';
+import { safeReply } from './utils/safe-reply.util';
 import { BOT_NAME } from './constants/bot-name.const';
 import { User as TelegramUser } from 'typegram/manage';
 import { UserService } from './user/user.service';
@@ -35,7 +35,7 @@ export class BotService {
   }
 
   async start(ctx: Context) {
-    await replyOrEdit(
+    await safeReply(
       ctx,
       SCENES[CommandEnum.START].navigateText,
       Markup.inlineKeyboard(SCENES[CommandEnum.START].navigateButtons),

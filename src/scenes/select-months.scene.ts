@@ -4,7 +4,7 @@ import { Action, Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { Logger } from '@nestjs/common';
 import { Context } from 'src/interfaces/context.interface';
 import { TariffService } from 'src/tariff/tariff.service';
-import { replyOrEdit } from 'src/utils/reply-or-edit.util';
+import { safeReplyOrEdit } from 'src/utils/safe-reply.util';
 import { Markup } from 'telegraf';
 
 @Scene(CommandEnum.SELECT_MONTHS)
@@ -85,7 +85,7 @@ export class SelectMonthsScene extends AbstractScene {
   private async sendMessage(ctx) {
     const { paymentMonths, tariffId } = ctx.session;
     const { price } = await this.tariffService.getOneById(tariffId);
-    return replyOrEdit(
+    return safeReplyOrEdit(
       ctx,
       `Установите время действия подписки 🔢\n\nПодписка на: <b>${paymentMonths} мес</b>. \n\nФинальная стоимость: <b>${
         price * paymentMonths

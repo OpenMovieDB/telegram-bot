@@ -6,7 +6,7 @@ import { PaymentService } from '../payment/payment.service';
 import { PaymentSystemEnum } from 'src/payment/enum/payment-system.enum';
 import { Context } from 'src/interfaces/context.interface';
 import { Markup } from 'telegraf';
-import { replyOrEdit } from 'src/utils/reply-or-edit.util';
+import { safeReply } from 'src/utils/safe-reply.util';
 import { SCENES } from 'src/constants/scenes.const';
 import { DateTime } from 'luxon';
 import { UserService } from 'src/user/user.service';
@@ -31,7 +31,7 @@ export class PaymentScene extends AbstractScene {
     ctx.session.paymentInProgress = false;
     ctx.session.waitingForEmail = false;
 
-    await replyOrEdit(ctx, scene.text, Markup.inlineKeyboard(scene.buttons));
+    await safeReply(ctx, scene.text, Markup.inlineKeyboard(scene.buttons));
   }
 
   @SceneLeave()
@@ -55,7 +55,7 @@ export class PaymentScene extends AbstractScene {
   async payWithTBank(@Ctx() ctx: Context) {
     ctx.session.waitingForEmail = true;
     ctx.session.paymentInProgress = false;
-    await replyOrEdit(
+    await safeReply(
       ctx,
       'Отлично! Чтобы отправить вам чек, мне нужен ваш email! Пришлите его!',
       Markup.inlineKeyboard([]),

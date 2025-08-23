@@ -16,6 +16,7 @@ import { TariffService } from './tariff/tariff.service';
 import { PaymentSystemEnum } from './payment/enum/payment-system.enum';
 import { DateTime } from 'luxon';
 import { PaymentStatusEnum } from './payment/enum/payment-status.enum';
+import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -73,7 +74,10 @@ export class BotUpdate {
         paymentAt,
       );
 
-      await this.bot.telegram.sendMessage(this.adminChatId, `Создан заказ с id: ${payment.paymentId}`);
+      await SafeTelegramHelper.safeSend(
+        () => this.bot.telegram.sendMessage(this.adminChatId, `Создан заказ с id: ${payment.paymentId}`),
+        'Admin notification: payment created',
+      );
     }
   }
 
@@ -90,24 +94,31 @@ export class BotUpdate {
       const isPaid = await this.paymentService.validatePayment(paymentId);
 
       if (isPaid) {
-        await this.bot.telegram.sendMessage(this.adminChatId, `✅ Оплата ${paymentId} подтверждена и обработана`);
-        
+        await SafeTelegramHelper.safeSend(
+          () => this.bot.telegram.sendMessage(this.adminChatId, `✅ Оплата ${paymentId} подтверждена и обработана`),
+          'Admin notification: payment confirmed',
+        );
+
         // Send notification to user
         const payment = await this.paymentService.findPaymentByPaymentId(paymentId);
         if (payment) {
           const tariff = await this.tariffService.getOneById(payment.tariffId);
-          await this.bot.telegram.sendMessage(
-            payment.chatId,
-            `✅ Ваша оплата подтверждена!\n\n` +
-            `Тариф: ${tariff.name}\n` +
-            `Период: ${payment.monthCount} мес.\n\n` +
-            `Подписка активирована. Спасибо за оплату!`
+          await SafeTelegramHelper.safeSend(
+            () =>
+              this.bot.telegram.sendMessage(
+                payment.chatId,
+                `✅ Ваша оплата подтверждена!\n\n` +
+                  `Тариф: ${tariff.name}\n` +
+                  `Период: ${payment.monthCount} мес.\n\n` +
+                  `Подписка активирована. Спасибо за оплату!`,
+              ),
+            `User payment confirmation to ${payment.chatId}`,
           );
         }
       } else {
-        await this.bot.telegram.sendMessage(
-          this.adminChatId,
-          `⚠️ Оплата ${paymentId} не может быть подтверждена`,
+        await SafeTelegramHelper.safeSend(
+          () => this.bot.telegram.sendMessage(this.adminChatId, `⚠️ Оплата ${paymentId} не может быть подтверждена`),
+          'Admin notification: payment error',
         );
       }
     }
