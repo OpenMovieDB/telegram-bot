@@ -151,6 +151,8 @@ export class BotUpdate {
 
     try {
       this.logger.log('hears', ctx.message);
+      // Clear messageId when navigating via text commands
+      ctx.session.messageId = undefined;
       const existUser = await this.userService.findOneByUserId(ctx.from.id);
       if (existUser) {
         ctx.scene.enter(CommandEnum.HOME);
@@ -173,6 +175,8 @@ export class BotUpdate {
       if (!['private'].includes(message.chat.type)) return;
 
       this.logger.log('stats', ctx.message);
+      // Clear messageId when navigating via text commands
+      ctx.session.messageId = undefined;
       ctx.scene.enter(command);
     } catch (e) {
       this.logger.log(e);
