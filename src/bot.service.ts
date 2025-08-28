@@ -86,6 +86,30 @@ export class BotService {
     );
   }
 
+  async sendPaymentErrorToAdmin(
+    username: string,
+    userId: number,
+    paymentId: string,
+    paymentSystem: string,
+    amount: number,
+    errorMessage: string,
+    errorStack?: string,
+  ): Promise<void> {
+    const message = 
+      `🚨 ОШИБКА ПЛАТЕЖА\n\n` +
+      `👤 Пользователь: @${username} (ID: ${userId})\n` +
+      `🔖 ID платежа: ${paymentId}\n` +
+      `💳 Платежная система: ${paymentSystem}\n` +
+      `💰 Сумма: ${amount} ₽\n\n` +
+      `❌ Ошибка: ${errorMessage}\n\n` +
+      `📋 Детали:\n\`\`\`\n${errorStack ? errorStack.substring(0, 1000) : 'Нет дополнительной информации'}\n\`\`\``;
+
+    await SafeTelegramHelper.safeSend(
+      () => this.bot.telegram.sendMessage(this.adminChatId, message, { parse_mode: 'Markdown' }),
+      'Admin payment error notification',
+    );
+  }
+
   async sendSubscriptionExpiredMessage(chatId: number) {
     const message = 'Срок действия вашей подписки истек. Тариф был изменен на бесплатный 🫣';
     await SafeTelegramHelper.safeSend(

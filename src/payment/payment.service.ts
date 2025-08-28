@@ -122,24 +122,24 @@ export class PaymentService {
   }
 
   async getPendingPayments(): Promise<Payment[]> {
-    // Get pending payments that are not older than 1 hour
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    // Get pending payments that are not older than 24 hours
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return this.paymentModel
       .find({
         status: PaymentStatusEnum.PENDING,
-        paymentAt: { $gte: oneHourAgo },
+        paymentAt: { $gte: oneDayAgo },
         isFinal: false,
       })
       .exec();
   }
 
   async getExpiredPendingPayments(): Promise<Payment[]> {
-    // Get pending payments older than 1 hour
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    // Get pending payments older than 24 hours
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return this.paymentModel
       .find({
         status: PaymentStatusEnum.PENDING,
-        paymentAt: { $lt: oneHourAgo },
+        paymentAt: { $lt: oneDayAgo },
         isFinal: false,
       })
       .exec();
