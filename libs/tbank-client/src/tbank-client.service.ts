@@ -74,7 +74,7 @@ export class TBankClient {
     const { data } = await lastValueFrom(
       this.httpService.post<PaymentResponse>('/Init', payload, {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        timeout: 5000,
+        timeout: 15000,
       }),
     );
 
@@ -88,28 +88,46 @@ export class TBankClient {
 
     payload.Token = this.generateToken(payload);
 
-    try {
-      const { data } = await lastValueFrom(
-        this.httpService.post<PaymentResponse>('/GetState', payload, {
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          timeout: 5000,
-        }),
-      );
+    const maxRetries = 3;
+    let lastError: any;
 
-      this.logger.debug(
-        `TBank GetState response for payment ${paymentId}: Status=${data.Status}, Success=${data.Success}, ErrorCode=${data.ErrorCode}`,
-      );
-
-      if (data.ErrorCode && data.ErrorCode !== '0') {
-        this.logger.warn(
-          `TBank GetState error for payment ${paymentId}: ErrorCode=${data.ErrorCode}, Message=${data.Message}`,
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const { data } = await lastValueFrom(
+          this.httpService.post<PaymentResponse>('/GetState', payload, {
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            timeout: 15000,
+          }),
         );
-      }
 
-      return data;
-    } catch (error) {
-      this.logger.error(`Failed to get TBank payment info for ${paymentId}: ${error.message}`, error.stack);
-      throw error;
+        this.logger.debug(
+          `TBank GetState response for payment ${paymentId}: Status=${data.Status}, Success=${data.Success}, ErrorCode=${data.ErrorCode}`,
+        );
+
+        if (data.ErrorCode && data.ErrorCode !== '0') {
+          this.logger.warn(
+            `TBank GetState error for payment ${paymentId}: ErrorCode=${data.ErrorCode}, Message=${data.Message}`,
+          );
+        }
+
+        return data;
+      } catch (error) {
+        lastError = error;
+        this.logger.warn(
+          `TBank GetState attempt ${attempt}/${maxRetries} failed for payment ${paymentId}: ${error.message}`,
+        );
+        
+        if (attempt < maxRetries) {
+          // Wait before retry: 1s, 2s, 3s
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        }
+      }
     }
+    
+    this.logger.error(
+      `Failed to get TBank payment info for ${paymentId} after ${maxRetries} attempts: ${lastError.message}`, 
+      lastError.stack
+    );
+    throw lastError;
   }
 }

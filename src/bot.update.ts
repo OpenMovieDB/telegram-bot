@@ -130,6 +130,91 @@ export class BotUpdate {
     return this.onConfirmCommand(ctx);
   }
 
+  @Command('retry')
+  async onRetryCommand(@Ctx() ctx: Context & { update: any }) {
+    if (this.isAdmin(ctx)) {
+      const [paymentId] = ctx.state.command.args;
+      if (!paymentId) {
+        await SafeTelegramHelper.safeSend(
+          () => this.bot.telegram.sendMessage(this.adminChatId, '❌ Не указан ID платежа!\nИспользование: /retry <paymentId>'),
+          'Admin retry command error',
+        );
+        return;
+      }
+
+      try {
+        // Find the payment
+        const payment = await this.paymentService.findPaymentByPaymentId(paymentId);
+        if (!payment) {
+          await SafeTelegramHelper.safeSend(
+            () => this.bot.telegram.sendMessage(this.adminChatId, `❌ Платеж с ID ${paymentId} не найден`),
+            'Admin retry: payment not found',
+          );
+          return;
+        }
+
+        // Reset payment status to PENDING and clear final flag
+        await this.paymentService.updatePaymentStatus(paymentId, PaymentStatusEnum.PENDING, false);
+        
+        await SafeTelegramHelper.safeSend(
+          () => this.bot.telegram.sendMessage(
+            this.adminChatId, 
+            `🔄 Платеж ${paymentId} сброшен в статус PENDING\n` +
+            `💳 Система: ${payment.paymentSystem}\n` +
+            `💰 Сумма: ${payment.amount} ₽\n` +
+            `👤 User ID: ${payment.userId}\n\n` +
+            `⏱ Платеж будет проверен в течение 10 секунд`
+          ),
+          'Admin retry command success',
+        );
+
+        // Try to validate immediately
+        this.logger.debug(`Manually retrying payment ${paymentId}`);
+        const isPaid = await this.paymentService.validatePayment(paymentId);
+        
+        if (isPaid) {
+          const user = await this.userService.findOneByUserId(payment.userId);
+          
+          await SafeTelegramHelper.safeSend(
+            () => this.bot.telegram.sendMessage(this.adminChatId, `✅ Платеж ${paymentId} успешно оплачен после повторной проверки!`),
+            'Admin retry: payment success',
+          );
+          
+          // Send success messages to user
+          await this.botService.sendPaymentSuccessMessage(
+            payment.chatId,
+            user.tariffId.name,
+            user.subscriptionEndDate,
+          );
+          
+          await this.botService.sendPaymentSuccessMessageToAdmin(
+            user.username,
+            user.tariffId.name,
+            payment.monthCount,
+            payment.amount,
+            payment.paymentSystem,
+            payment.discount,
+            payment.originalPrice,
+          );
+        } else {
+          await SafeTelegramHelper.safeSend(
+            () => this.bot.telegram.sendMessage(this.adminChatId, `⏳ Платеж ${paymentId} все еще не оплачен. Будет проверяться автоматически.`),
+            'Admin retry: payment still pending',
+          );
+        }
+      } catch (error) {
+        this.logger.error(`Error in retry command: ${error.message}`, error.stack);
+        await SafeTelegramHelper.safeSend(
+          () => this.bot.telegram.sendMessage(
+            this.adminChatId, 
+            `❌ Ошибка при повторной проверке платежа ${paymentId}:\n${error.message}`
+          ),
+          'Admin retry command error',
+        );
+      }
+    }
+  }
+
   @Action(/.*/)
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
     this.logger.log(ctx);

@@ -58,41 +58,8 @@ export class PaymentScheduler {
           }
         } catch (error) {
           this.logger.error(`Error validating payment ${payment.paymentId}: ${error.message}`, error.stack);
-          
-          // Check if payment was marked as FAILED (timeout or other validation errors)
-          const updatedPayment = await this.paymentService.findPaymentByPaymentId(payment.paymentId);
-          if (updatedPayment && updatedPayment.status === PaymentStatusEnum.FAILED && updatedPayment.isFinal) {
-            // Get user info for admin notification
-            const user = await this.userService.findOneByUserId(payment.userId);
-            
-            // Notify user about the error
-            try {
-              await this.botService.sendMessage(
-                payment.chatId,
-                '❌ Произошла ошибка при обработке вашего платежа.\n\n' +
-                '⚠️ Пожалуйста, свяжитесь с администратором для решения проблемы.\n\n' +
-                '📧 Администратор: @mdwit\n' +
-                `🔖 ID платежа: ${payment.paymentId}`
-              );
-            } catch (notifyError) {
-              this.logger.error(`Failed to notify user about payment error: ${notifyError.message}`);
-            }
-            
-            // Notify admin about the error
-            try {
-              await this.botService.sendPaymentErrorToAdmin(
-                user?.username || 'Unknown',
-                payment.userId,
-                payment.paymentId,
-                payment.paymentSystem,
-                payment.amount,
-                error.message,
-                error.stack
-              );
-            } catch (adminError) {
-              this.logger.error(`Failed to notify admin about payment error: ${adminError.message}`);
-            }
-          }
+          // Errors are now handled in PaymentService - payments stay as PENDING on temporary errors
+          // No need to send notifications here as payment will be retried
         }
       }
 

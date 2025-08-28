@@ -13,10 +13,18 @@ async function bootstrap() {
     // Enable graceful shutdown
     app.enableShutdownHooks();
 
-    const port = process.env.PORT || 3000;
-    await app.listen(port);
-
-    logger.log(`Server running on port ${port}`);
+    // Check if HTTP server is needed (for webhooks, etc.)
+    const enableHttpServer = process.env.ENABLE_HTTP_SERVER === 'true';
+    
+    if (enableHttpServer) {
+      const port = process.env.PORT || 3000;
+      await app.listen(port);
+      logger.log(`HTTP Server running on port ${port}`);
+    } else {
+      // Initialize the app without listening on a port
+      await app.init();
+      logger.log('Telegram Bot started without HTTP server (webhook mode disabled)');
+    }
 
     // Handle uncaught exceptions
     process.on('uncaughtException', (error) => {

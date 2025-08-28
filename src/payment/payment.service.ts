@@ -165,13 +165,28 @@ export class PaymentService {
 
     const paymentStrategy = this.paymentStrategyFactory.createPaymentStrategy(payment.paymentSystem);
 
-    const paymentStatus = await paymentStrategy.validateTransaction(payment.paymentId);
+    let paymentStatus: PaymentStatusEnum;
+    let isFinal = false;
+    
+    try {
+      paymentStatus = await paymentStrategy.validateTransaction(payment.paymentId);
+    } catch (error) {
+      this.logger.error(`Error during payment validation for ${paymentId}: ${error.message}`, error.stack);
+      // On validation errors, keep payment as PENDING, not FAILED
+      // This allows retry on the next scheduler run
+      paymentStatus = PaymentStatusEnum.PENDING;
+      // Don't mark as final so it can be retried
+      isFinal = false;
+    }
+    
     const isPaid = paymentStatus === PaymentStatusEnum.PAID;
 
-    // Determine if this status is final
-    const isFinal = [PaymentStatusEnum.PAID, PaymentStatusEnum.FAILED, PaymentStatusEnum.CANCELED].includes(
-      paymentStatus,
-    );
+    // Determine if this status is final (only if no error occurred)
+    if (!isFinal && paymentStatus !== PaymentStatusEnum.PENDING) {
+      isFinal = [PaymentStatusEnum.PAID, PaymentStatusEnum.FAILED, PaymentStatusEnum.CANCELED].includes(
+        paymentStatus,
+      );
+    }
 
     this.logger.debug(
       `Payment ${paymentId} validation result: status=${paymentStatus}, isPaid=${isPaid}, isFinal=${isFinal}`,

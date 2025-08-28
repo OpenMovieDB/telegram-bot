@@ -83,7 +83,14 @@ export class TBankPaymentStrategy implements PaymentStrategy {
       }
     } catch (error) {
       this.logger.error(`Error validating TBank payment ${paymentId}: ${error.message}`, error.stack);
-      return PaymentStatusEnum.FAILED;
+      // Don't mark as FAILED on network/timeout errors - keep as PENDING
+      // Only mark as FAILED if it's explicitly rejected by the payment system
+      if (error.message && error.message.includes('timeout')) {
+        this.logger.warn(`TBank payment ${paymentId} validation timed out, keeping as PENDING`);
+        return PaymentStatusEnum.PENDING;
+      }
+      // For other errors, throw to let the payment service handle it
+      throw error;
     }
   }
 }
