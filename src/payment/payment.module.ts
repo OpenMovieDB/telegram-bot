@@ -14,12 +14,14 @@ import { PaymentController } from './payment.controller';
 import { YookassaClientModule } from '@app/yookassa-client';
 import { WalletClientModule } from '@app/wallet-client';
 import { TBankClientModule } from '@app/tbank-client';
+import { CacheModule } from '../cache/cache.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Payment.name, schema: PaymentSchema }]),
     UserModule,
     TariffModule,
+    CacheModule,
     CryptomusClientModule,
     YooMoneyClientModule,
     YookassaClientModule,

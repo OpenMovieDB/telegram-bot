@@ -18,6 +18,7 @@ import { YooMoneyClient } from '@app/yoomoney-client';
 import * as ApiKey from 'uuid-apikey';
 import { RedisService } from '@liaoliaots/nestjs-redis';
 import Redis from 'ioredis';
+import { CacheResetService } from '../cache/cache-reset.service';
 
 @Injectable()
 export class PaymentService {
@@ -32,6 +33,7 @@ export class PaymentService {
     private readonly yooMoney: YooMoneyClient,
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
     private readonly redisService: RedisService,
+    private readonly cacheResetService: CacheResetService,
   ) {
     this.redis = this.redisService.getOrThrow();
   }
@@ -167,7 +169,7 @@ export class PaymentService {
 
     let paymentStatus: PaymentStatusEnum;
     let isFinal = false;
-    
+
     try {
       paymentStatus = await paymentStrategy.validateTransaction(payment.paymentId);
     } catch (error) {
@@ -178,14 +180,12 @@ export class PaymentService {
       // Don't mark as final so it can be retried
       isFinal = false;
     }
-    
+
     const isPaid = paymentStatus === PaymentStatusEnum.PAID;
 
     // Determine if this status is final (only if no error occurred)
     if (!isFinal && paymentStatus !== PaymentStatusEnum.PENDING) {
-      isFinal = [PaymentStatusEnum.PAID, PaymentStatusEnum.FAILED, PaymentStatusEnum.CANCELED].includes(
-        paymentStatus,
-      );
+      isFinal = [PaymentStatusEnum.PAID, PaymentStatusEnum.FAILED, PaymentStatusEnum.CANCELED].includes(paymentStatus);
     }
 
     this.logger.debug(
@@ -247,6 +247,18 @@ export class PaymentService {
         }
 
         await this.userService.update(user.userId, updateData);
+
+        if (updateData.tariffId) {
+          try {
+            const newTariff = await this.tariffService.getOneById(newTariffId);
+            if (newTariff && user.token) {
+              await this.cacheResetService.resetUserCacheAndLimits(user.userId, user.token, newTariff.requestsLimit);
+              this.logger.log(`Reset cache and limits for user ${user.userId}, new limit: ${newTariff.requestsLimit}`);
+            }
+          } catch (cacheError) {
+            this.logger.error(`Failed to reset cache for user ${user.userId}:`, cacheError);
+          }
+        }
       }
 
       this.logger.debug(

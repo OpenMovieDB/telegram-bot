@@ -34,6 +34,7 @@ import { session } from 'telegraf';
 import { commandArgs } from './middlewares/command-args.middleware';
 import { SelectMonthsScene } from './scenes/select-months.scene';
 import { RedisModule } from '@liaoliaots/nestjs-redis';
+import { CacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { RedisModule } from '@liaoliaots/nestjs-redis';
     UpdateClientModule,
     PaymentModule,
     TariffModule,
+    CacheModule,
     RedisModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
