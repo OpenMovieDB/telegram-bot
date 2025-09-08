@@ -175,4 +175,41 @@ export class CacheResetService {
       return null;
     }
   }
+
+  async transferTokenLimits(oldToken: string, newToken: string): Promise<number> {
+    try {
+      // @ts-ignore
+      const oldApiKey = ApiKey.toAPIKey(oldToken);
+      // @ts-ignore
+      const newApiKey = ApiKey.toAPIKey(newToken);
+
+      const remainingLimit = await this.redis.get(oldApiKey);
+      const transferAmount = remainingLimit ? parseInt(remainingLimit, 10) : 0;
+
+      if (transferAmount > 0) {
+        await this.redis.set(newApiKey, transferAmount);
+        this.logger.log(`Transferred ${transferAmount} requests from ${oldApiKey} to ${newApiKey}`);
+      }
+
+      await this.redis.del(oldApiKey);
+      this.logger.log(`Deleted old token ${oldApiKey}`);
+
+      return transferAmount;
+    } catch (error) {
+      this.logger.error(`Failed to transfer token limits from ${oldToken} to ${newToken}:`, error);
+      return 0;
+    }
+  }
+
+  async getTokenLimit(userToken: string): Promise<number> {
+    try {
+      // @ts-ignore
+      const apiKey = ApiKey.toAPIKey(userToken);
+      const limit = await this.redis.get(apiKey);
+      return limit ? parseInt(limit, 10) : 0;
+    } catch (error) {
+      this.logger.error(`Failed to get token limit:`, error);
+      return 0;
+    }
+  }
 }

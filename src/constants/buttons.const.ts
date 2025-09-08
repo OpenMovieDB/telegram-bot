@@ -18,6 +18,7 @@ export const BUTTONS = {
   [CommandEnum.GET_REQUEST_STATS]: Markup.button.callback('📊 статистика', CommandEnum.GET_REQUEST_STATS),
   [CommandEnum.UPDATE_TARIFF]: Markup.button.callback('🔄️ тариф', CommandEnum.UPDATE_TARIFF),
   [CommandEnum.GET_MY_TOKEN]: Markup.button.callback('🫣 токен', CommandEnum.GET_MY_TOKEN),
+  [CommandEnum.CHANGE_TOKEN]: Markup.button.callback('🔄 сменить токен', CommandEnum.CHANGE_TOKEN),
   [CommandEnum.YES]: Markup.button.callback('✅ да', CommandEnum.YES),
   [CommandEnum.NO]: Markup.button.callback('❌ нет', CommandEnum.NO),
   [CommandEnum.DOCUMENTATION]: Markup.button.url('📑 документация', 'https://kinopoisk.dev/documentation'),

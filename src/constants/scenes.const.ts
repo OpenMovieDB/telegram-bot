@@ -127,10 +127,19 @@ export const SCENES = {
   [CommandEnum.GET_MY_TOKEN]: {
     success: (token: string) => ({
       text: `Вот твой токен: \n\n<code>${token}</code>`,
+      buttons: [BUTTONS[CommandEnum.CHANGE_TOKEN], BUTTONS[CommandEnum.BACK]],
     }),
     error: () => ({
       text: `У тебя еще нет токена. \n\n Чтобы получить токен, нажми на кнопку ниже.`,
       buttons: [BUTTONS[CommandEnum.GET_ACCESS]],
+    }),
+  },
+  [CommandEnum.CHANGE_TOKEN]: {
+    success: (newToken: string, transferredRequests: number) => ({
+      text: `✅ Токен успешно изменен!\n\n🔑 Новый токен: \n<code>${newToken}</code>\n\n${transferredRequests > 0 ? `📊 Перенесено ${transferredRequests} запросов` : ''}`,
+    }),
+    error: () => ({
+      text: `❌ Ошибка при смене токена. Попробуйте позже или обратитесь в поддержку.`,
     }),
   },
   [CommandEnum.UPDATE_MOVIE]: {

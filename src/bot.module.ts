@@ -13,6 +13,7 @@ import { GetAccessScene } from './scenes/get-access.scene';
 import { GetMyTokenScene } from './scenes/get-my-token.scene';
 import { GetRequestStatsScene } from './scenes/get-request-stats.scene';
 import { HomeScene } from './scenes/home.scene';
+import { ChangeTokenScene } from './scenes/change-token.scene';
 import { IHaveTokenScene } from './scenes/i-have-token.scene';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -94,6 +95,7 @@ import { CacheModule } from './cache/cache.module';
     GetRequestStatsScene,
     IHaveTokenScene,
     GetMyTokenScene,
+    ChangeTokenScene,
     UpdateMovieScene,
     SetImdbRelationScene,
     UpdateTariffScene,
