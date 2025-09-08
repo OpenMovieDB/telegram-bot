@@ -29,14 +29,12 @@ export class ChangeTokenScene extends AbstractScene {
       const oldToken = user.token;
       const newToken = await this.userService.changeToken(ctx.from.id);
       
-      let transferredRequests = 0;
       if (oldToken && newToken) {
-        transferredRequests = await this.cacheResetService.transferTokenLimits(oldToken, newToken);
-        await this.cacheResetService.resetUserCacheByUserId(ctx.from.id);
+        await this.cacheResetService.transferTokenLimits(oldToken, newToken);
       }
 
       if (newToken) {
-        await ctx.replyWithHTML(scene.success(newToken, transferredRequests).text);
+        await ctx.replyWithHTML(scene.success(newToken).text);
       } else {
         await ctx.replyWithHTML(scene.error().text);
       }

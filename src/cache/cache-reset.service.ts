@@ -176,7 +176,7 @@ export class CacheResetService {
     }
   }
 
-  async transferTokenLimits(oldToken: string, newToken: string): Promise<number> {
+  async transferTokenLimits(oldToken: string, newToken: string): Promise<void> {
     try {
       // @ts-ignore
       const oldApiKey = ApiKey.toAPIKey(oldToken);
@@ -191,10 +191,8 @@ export class CacheResetService {
       }
 
       this.logger.log(`Transferred ${remainingLimit || 0} requests from ${oldApiKey} to ${newApiKey}`);
-      return parseInt(remainingLimit) || 0;
     } catch (error) {
       this.logger.error(`Failed to transfer token limits from ${oldToken} to ${newToken}:`, error);
-      return 0;
     }
   }
 

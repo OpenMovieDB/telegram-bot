@@ -135,8 +135,8 @@ export const SCENES = {
     }),
   },
   [CommandEnum.CHANGE_TOKEN]: {
-    success: (newToken: string, transferredRequests: number) => ({
-      text: `✅ Токен успешно изменен!\n\n🔑 Новый токен: \n<code>${newToken}</code>\n\n${transferredRequests > 0 ? `📊 Перенесено ${transferredRequests} запросов` : ''}`,
+    success: (newToken: string) => ({
+      text: `✅ Токен успешно изменен!\n\n🔑 Новый токен: \n<code>${newToken}</code>`,
     }),
     error: () => ({
       text: `❌ Ошибка при смене токена. Попробуйте позже или обратитесь в поддержку.`,
