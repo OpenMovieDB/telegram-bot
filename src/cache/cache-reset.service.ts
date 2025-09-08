@@ -184,17 +184,14 @@ export class CacheResetService {
       const newApiKey = ApiKey.toAPIKey(newToken);
 
       const remainingLimit = await this.redis.get(oldApiKey);
-      const transferAmount = remainingLimit ? parseInt(remainingLimit, 10) : 0;
-
-      if (transferAmount > 0) {
-        await this.redis.set(newApiKey, transferAmount);
-        this.logger.log(`Transferred ${transferAmount} requests from ${oldApiKey} to ${newApiKey}`);
+      
+      await this.redis.del(oldApiKey);
+      if (remainingLimit) {
+        await this.redis.set(newApiKey, remainingLimit);
       }
 
-      await this.redis.del(oldApiKey);
-      this.logger.log(`Deleted old token ${oldApiKey}`);
-
-      return transferAmount;
+      this.logger.log(`Transferred ${remainingLimit || 0} requests from ${oldApiKey} to ${newApiKey}`);
+      return parseInt(remainingLimit) || 0;
     } catch (error) {
       this.logger.error(`Failed to transfer token limits from ${oldToken} to ${newToken}:`, error);
       return 0;

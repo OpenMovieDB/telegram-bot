@@ -26,21 +26,13 @@ export class ChangeTokenScene extends AbstractScene {
         return;
       }
 
-      // Получаем старый токен для переноса лимитов
       const oldToken = user.token;
-      let transferredRequests = 0;
-
-      // Создаем новый токен
       const newToken = await this.userService.changeToken(ctx.from.id);
       
+      let transferredRequests = 0;
       if (oldToken && newToken) {
-        // Переносим лимиты со старого токена на новый
         transferredRequests = await this.cacheResetService.transferTokenLimits(oldToken, newToken);
-        
-        // Очищаем кэш пользователя
         await this.cacheResetService.resetUserCacheByUserId(ctx.from.id);
-        
-        this.logger.log(`Token changed for user ${ctx.from.id}, transferred ${transferredRequests} requests`);
       }
 
       if (newToken) {
