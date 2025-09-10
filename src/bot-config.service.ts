@@ -33,8 +33,10 @@ export class BotConfigService implements OnModuleInit {
 
       // Configure HTTP timeouts for better reliability
       if (this.bot.telegram.options) {
-        this.bot.telegram.options.timeout = 30000; // 30 seconds timeout
-        this.bot.telegram.options.handlerTimeout = 60000; // 60 seconds for handlers
+        // Cast to any since timeout properties are not in TypeScript definitions
+        // but are supported by the underlying HTTP client
+        (this.bot.telegram.options as any).timeout = 30000; // 30 seconds timeout
+        (this.bot.telegram.options as any).handlerTimeout = 60000; // 60 seconds for handlers
       }
 
       // Try to get bot info with retry logic

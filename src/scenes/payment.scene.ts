@@ -160,7 +160,9 @@ export class PaymentScene extends AbstractScene {
         });
         this.logger.debug(`sentMessage ${JSON.stringify(sentMessage)}`);
       } catch (messageError) {
-        this.logger.error(`Failed to send payment message, but payment ${payment.paymentId} is created: ${messageError.message}`);
+        this.logger.error(
+          `Failed to send payment message, but payment ${payment.paymentId} is created: ${messageError.message}`,
+        );
         // Payment is created - user can still pay via other means, so continue
         return;
       }
@@ -194,14 +196,14 @@ export class PaymentScene extends AbstractScene {
       // Check if it's a downgrade attempt error
       if (error.message && error.message.startsWith('DOWNGRADE_NOT_ALLOWED:')) {
         const errorMessage = error.message.replace('DOWNGRADE_NOT_ALLOWED:', '');
-        // Send error message asynchronously to avoid blocking scene navigation  
-        ctx.reply(`⚠️ <b>Невозможно понизить тариф</b>\n\n${errorMessage}`, { parse_mode: 'HTML' }).catch(err => {
+        // Send error message asynchronously to avoid blocking scene navigation
+        ctx.reply(`⚠️ <b>Невозможно понизить тариф</b>\n\n${errorMessage}`, { parse_mode: 'HTML' }).catch((err) => {
           this.logger.error(`Failed to send downgrade error message: ${err.message}`);
         });
         await ctx.scene.enter(CommandEnum.HOME);
       } else {
         // Send generic error message asynchronously
-        ctx.reply('Произошла ошибка. Пожалуйста, попробуйте снова.').catch(err => {
+        ctx.reply('Произошла ошибка. Пожалуйста, попробуйте снова.').catch((err) => {
           this.logger.error(`Failed to send generic error message: ${err.message}`);
         });
       }
