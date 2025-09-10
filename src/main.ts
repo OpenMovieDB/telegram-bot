@@ -15,7 +15,7 @@ async function bootstrap() {
 
     // Check if HTTP server is needed (for webhooks, etc.)
     const enableHttpServer = process.env.ENABLE_HTTP_SERVER === 'true';
-    
+
     if (enableHttpServer) {
       const port = process.env.PORT || 3000;
       await app.listen(port);

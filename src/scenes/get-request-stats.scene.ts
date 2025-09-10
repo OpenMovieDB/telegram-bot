@@ -8,10 +8,7 @@ import { CacheResetService } from '../cache/cache-reset.service';
 
 @Scene(CommandEnum.GET_REQUEST_STATS)
 export class GetRequestStatsScene extends AbstractScene {
-  constructor(
-    private readonly userService: UserService,
-    private readonly cacheResetService: CacheResetService,
-  ) {
+  constructor(private readonly userService: UserService, private readonly cacheResetService: CacheResetService) {
     super();
   }
 
@@ -19,11 +16,13 @@ export class GetRequestStatsScene extends AbstractScene {
   async onSceneEnter(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
     const scene = SCENES[ctx.scene.session.current];
-    
+
     const cacheStats = await this.cacheResetService.getUserStats(ctx.from.id);
-    
+
     if (cacheStats) {
-      this.logger.log(`Cache stats for user ${ctx.from.id}: used=${cacheStats.requestsUsed}, left=${cacheStats.requestsLeft}`);
+      this.logger.log(
+        `Cache stats for user ${ctx.from.id}: used=${cacheStats.requestsUsed}, left=${cacheStats.requestsLeft}`,
+      );
       await ctx.replyWithHTML(scene.success(cacheStats.requestsUsed, cacheStats.requestsLeft).text);
     } else {
       this.logger.log(`Cache miss for user ${ctx.from.id}, falling back to MongoDB`);

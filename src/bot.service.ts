@@ -95,7 +95,7 @@ export class BotService {
     errorMessage: string,
     errorStack?: string,
   ): Promise<void> {
-    const message = 
+    const message =
       `🚨 ОШИБКА ПЛАТЕЖА\n\n` +
       `👤 Пользователь: @${username} (ID: ${userId})\n` +
       `🔖 ID платежа: ${paymentId}\n` +
@@ -176,15 +176,22 @@ export class BotService {
     }
 
     if (leavedUsers.length) {
-      await this.bot.telegram.sendMessage(
-        this.adminChatId,
-        `😵‍💫Пользователи, которые вчера покинули чат: ${leavedUsers
-          .map((user) => user.username || user.userId)
-          .join(', ')}`,
+      await SafeTelegramHelper.safeSend(
+        () =>
+          this.bot.telegram.sendMessage(
+            this.adminChatId,
+            `😵‍💫Пользователи, которые вчера покинули чат: ${leavedUsers
+              .map((user) => user.username || user.userId)
+              .join(', ')}`,
+          ),
+        'Admin notification: users left chat',
       );
       await this.blockUsers(leavedUsers);
     } else {
-      await this.bot.telegram.sendMessage(this.adminChatId, '😎 Никто не покинул чат');
+      await SafeTelegramHelper.safeSend(
+        () => this.bot.telegram.sendMessage(this.adminChatId, '😎 Никто не покинул чат'),
+        'Admin notification: no users left chat',
+      );
     }
   }
 

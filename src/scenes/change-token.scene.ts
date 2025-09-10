@@ -8,17 +8,14 @@ import { CacheResetService } from '../cache/cache-reset.service';
 
 @Scene(CommandEnum.CHANGE_TOKEN)
 export class ChangeTokenScene extends AbstractScene {
-  constructor(
-    private readonly userService: UserService,
-    private readonly cacheResetService: CacheResetService,
-  ) {
+  constructor(private readonly userService: UserService, private readonly cacheResetService: CacheResetService) {
     super();
   }
 
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
     const scene = SCENES[ctx.scene.session.current];
-    
+
     try {
       const user = await this.userService.findOneByUserId(ctx.from.id);
       if (!user) {
@@ -28,7 +25,7 @@ export class ChangeTokenScene extends AbstractScene {
 
       const oldToken = user.token;
       const newToken = await this.userService.changeToken(ctx.from.id);
-      
+
       if (oldToken && newToken) {
         await this.cacheResetService.transferTokenLimits(oldToken, newToken);
       }
@@ -38,7 +35,6 @@ export class ChangeTokenScene extends AbstractScene {
       } else {
         await ctx.replyWithHTML(scene.error().text);
       }
-
     } catch (error) {
       this.logger.error(`Failed to change token for user ${ctx.from.id}:`, error);
       await ctx.replyWithHTML(scene.error().text);

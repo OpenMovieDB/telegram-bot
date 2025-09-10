@@ -149,13 +149,21 @@ export class PaymentScene extends AbstractScene {
 
       message += `После того как вы оплатите, я автоматически вам поменяю тариф.\n\n⏱ Ссылка действительна 24 часа.`;
 
-      const sentMessage = await ctx.sendMessage(message, {
-        ...Markup.inlineKeyboard([
-          [Markup.button.url(paymentSystem === 'WALLET' ? '👛 Pay via Wallet' : '👉 перейти к оплате', payment.url)],
-        ]),
-        parse_mode: 'HTML',
-      });
-      this.logger.debug(`sentMessage ${JSON.stringify(sentMessage)}`);
+      // Send payment message asynchronously to avoid blocking payment creation
+      let sentMessage;
+      try {
+        sentMessage = await ctx.sendMessage(message, {
+          ...Markup.inlineKeyboard([
+            [Markup.button.url(paymentSystem === 'WALLET' ? '👛 Pay via Wallet' : '👉 перейти к оплате', payment.url)],
+          ]),
+          parse_mode: 'HTML',
+        });
+        this.logger.debug(`sentMessage ${JSON.stringify(sentMessage)}`);
+      } catch (messageError) {
+        this.logger.error(`Failed to send payment message, but payment ${payment.paymentId} is created: ${messageError.message}`);
+        // Payment is created - user can still pay via other means, so continue
+        return;
+      }
 
       // Удаление кнопки через 20 минут
       setTimeout(async () => {
@@ -186,10 +194,16 @@ export class PaymentScene extends AbstractScene {
       // Check if it's a downgrade attempt error
       if (error.message && error.message.startsWith('DOWNGRADE_NOT_ALLOWED:')) {
         const errorMessage = error.message.replace('DOWNGRADE_NOT_ALLOWED:', '');
-        await ctx.reply(`⚠️ <b>Невозможно понизить тариф</b>\n\n${errorMessage}`, { parse_mode: 'HTML' });
+        // Send error message asynchronously to avoid blocking scene navigation  
+        ctx.reply(`⚠️ <b>Невозможно понизить тариф</b>\n\n${errorMessage}`, { parse_mode: 'HTML' }).catch(err => {
+          this.logger.error(`Failed to send downgrade error message: ${err.message}`);
+        });
         await ctx.scene.enter(CommandEnum.HOME);
       } else {
-        await ctx.reply('Произошла ошибка. Пожалуйста, попробуйте снова.');
+        // Send generic error message asynchronously
+        ctx.reply('Произошла ошибка. Пожалуйста, попробуйте снова.').catch(err => {
+          this.logger.error(`Failed to send generic error message: ${err.message}`);
+        });
       }
     }
   }

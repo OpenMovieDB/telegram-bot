@@ -37,22 +37,10 @@ export class PaymentScheduler {
 
             this.logger.debug(`Payment ${payment.paymentId} is successfully paid`);
 
-            // Send success messages
-            await this.botService.sendPaymentSuccessMessage(
-              payment.chatId,
-              user.tariffId.name,
-              user.subscriptionEndDate,
-            );
-
-            await this.botService.sendPaymentSuccessMessageToAdmin(
-              user.username,
-              user.tariffId.name,
-              payment.monthCount,
-              payment.amount,
-              payment.paymentSystem,
-              payment.discount,
-              payment.originalPrice,
-            );
+            // Send success messages asynchronously (DO NOT await - payment processing must not depend on message delivery)
+            this.sendPaymentNotificationsAsync(payment, user).catch((error) => {
+              this.logger.error(`Failed to send payment notifications for ${payment.paymentId}: ${error.message}`);
+            });
           } else {
             this.logger.debug(`Payment ${payment.paymentId} is not paid yet`);
           }
@@ -85,15 +73,15 @@ export class PaymentScheduler {
             true, // Mark as final
           );
 
-          // Notify user that payment expired
-          try {
-            await this.botService.sendMessage(
+          // Notify user that payment expired asynchronously
+          this.botService
+            .sendMessage(
               payment.chatId,
               '⏰ Время оплаты истекло. Платеж был отменен. Если вы хотите оформить подписку, пожалуйста, создайте новый платеж.',
-            );
-          } catch (notifyError) {
-            this.logger.error(`Failed to notify user about expired payment: ${notifyError.message}`);
-          }
+            )
+            .catch((notifyError) => {
+              this.logger.error(`Failed to notify user about expired payment: ${notifyError.message}`);
+            });
         } catch (error) {
           this.logger.error(`Error handling expired payment ${payment.paymentId}: ${error.message}`);
         }
@@ -133,9 +121,11 @@ export class PaymentScheduler {
 
           this.logger.debug(`User ${user.userId} (chatId: ${user.chatId}) tariff has been changed to free`);
 
-          // Check if chatId exists before sending message
+          // Check if chatId exists before sending message asynchronously
           if (user.chatId) {
-            await this.botService.sendSubscriptionExpiredMessage(user.chatId);
+            this.botService.sendSubscriptionExpiredMessage(user.chatId).catch((error) => {
+              this.logger.error(`Failed to send subscription expired message to ${user.chatId}: ${error.message}`);
+            });
           } else {
             this.logger.warn(`User ${user.userId} has no chatId, skipping notification`);
           }
@@ -158,9 +148,13 @@ export class PaymentScheduler {
       for (const user of usersWithExpiringSubscription) {
         if (!user.sendWarnNotification) {
           try {
-            // Check if chatId exists before sending message
+            // Check if chatId exists before sending message asynchronously
             if (user.chatId) {
-              await this.botService.sendSubscriptionExpirationWarningMessage(user.chatId, user.subscriptionEndDate);
+              this.botService
+                .sendSubscriptionExpirationWarningMessage(user.chatId, user.subscriptionEndDate)
+                .catch((error) => {
+                  this.logger.error(`Failed to send subscription warning to ${user.chatId}: ${error.message}`);
+                });
               await this.userService.update(user.userId, { sendWarnNotification: true });
             } else {
               this.logger.warn(`User ${user.userId} has no chatId, skipping expiration warning`);
@@ -172,6 +166,27 @@ export class PaymentScheduler {
       }
 
       this.logger.debug('Finish handling expiring subscriptions');
+    }
+  }
+
+  private async sendPaymentNotificationsAsync(payment: any, user: any): Promise<void> {
+    try {
+      // Send user notification
+      await this.botService.sendPaymentSuccessMessage(payment.chatId, user.tariffId.name, user.subscriptionEndDate);
+
+      // Send admin notification
+      await this.botService.sendPaymentSuccessMessageToAdmin(
+        user.username,
+        user.tariffId.name,
+        payment.monthCount,
+        payment.amount,
+        payment.paymentSystem,
+        payment.discount,
+        payment.originalPrice,
+      );
+    } catch (error) {
+      this.logger.error(`Error sending payment notifications for ${payment.paymentId}: ${error.message}`, error.stack);
+      // Don't rethrow - notifications failure should not affect payment processing
     }
   }
 }

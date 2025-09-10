@@ -41,14 +41,16 @@ export class CacheResetService {
 
       // @ts-ignore
       const apiKey = ApiKey.toAPIKey(userToken);
-      
+
       const currentLimit = await this.redis.get(apiKey);
       const currentRemaining = parseInt(currentLimit) || 0;
-      
+
       const finalLimit = currentRemaining <= 0 ? newRequestsLimit : Math.max(currentRemaining, newRequestsLimit);
       await this.redis.set(apiKey, finalLimit);
 
-      this.logger.log(`Updated limit for user ${userId}: current=${currentRemaining}, new=${newRequestsLimit}, final=${finalLimit}`);
+      this.logger.log(
+        `Updated limit for user ${userId}: current=${currentRemaining}, new=${newRequestsLimit}, final=${finalLimit}`,
+      );
     } catch (error) {
       this.logger.error(`Failed to reset cache for user ${userId}:`, error);
       throw error;
@@ -189,7 +191,7 @@ export class CacheResetService {
       const newApiKey = ApiKey.toAPIKey(newToken);
 
       const remainingLimit = await this.redis.get(oldApiKey);
-      
+
       await this.redis.del(oldApiKey);
       if (remainingLimit) {
         await this.redis.set(newApiKey, remainingLimit);

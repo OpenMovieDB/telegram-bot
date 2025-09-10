@@ -116,17 +116,17 @@ export class TBankClient {
         this.logger.warn(
           `TBank GetState attempt ${attempt}/${maxRetries} failed for payment ${paymentId}: ${error.message}`,
         );
-        
+
         if (attempt < maxRetries) {
           // Wait before retry: 1s, 2s, 3s
-          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
         }
       }
     }
-    
+
     this.logger.error(
-      `Failed to get TBank payment info for ${paymentId} after ${maxRetries} attempts: ${lastError.message}`, 
-      lastError.stack
+      `Failed to get TBank payment info for ${paymentId} after ${maxRetries} attempts: ${lastError.message}`,
+      lastError.stack,
     );
     throw lastError;
   }

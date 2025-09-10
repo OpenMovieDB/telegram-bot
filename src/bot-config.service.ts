@@ -31,6 +31,12 @@ export class BotConfigService implements OnModuleInit {
       this.bot.telegram.options.agent = undefined;
       this.bot.telegram.options.attachmentAgent = undefined;
 
+      // Configure HTTP timeouts for better reliability
+      if (this.bot.telegram.options) {
+        this.bot.telegram.options.timeout = 30000; // 30 seconds timeout
+        this.bot.telegram.options.handlerTimeout = 60000; // 60 seconds for handlers
+      }
+
       // Try to get bot info with retry logic
       await this.getBotInfoWithRetry();
 

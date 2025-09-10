@@ -41,11 +41,15 @@ export class BotUpdate {
   async onStart(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
     if (!['private'].includes(message.chat.type)) {
-      await ctx.reply('Для работы с ботом, нужно писать ему в личные сообщения', {
-        reply_markup: {
-          remove_keyboard: true,
-        },
-      });
+      await SafeTelegramHelper.safeSend(
+        () =>
+          ctx.reply('Для работы с ботом, нужно писать ему в личные сообщения', {
+            reply_markup: {
+              remove_keyboard: true,
+            },
+          }),
+        `Group chat instruction to ${ctx.chat.id}`,
+      );
       return;
     }
 
@@ -136,7 +140,11 @@ export class BotUpdate {
       const [paymentId] = ctx.state.command.args;
       if (!paymentId) {
         await SafeTelegramHelper.safeSend(
-          () => this.bot.telegram.sendMessage(this.adminChatId, '❌ Не указан ID платежа!\nИспользование: /retry <paymentId>'),
+          () =>
+            this.bot.telegram.sendMessage(
+              this.adminChatId,
+              '❌ Не указан ID платежа!\nИспользование: /retry <paymentId>',
+            ),
           'Admin retry command error',
         );
         return;
@@ -155,60 +163,74 @@ export class BotUpdate {
 
         // Reset payment status to PENDING and clear final flag
         await this.paymentService.updatePaymentStatus(paymentId, PaymentStatusEnum.PENDING, false);
-        
+
         await SafeTelegramHelper.safeSend(
-          () => this.bot.telegram.sendMessage(
-            this.adminChatId, 
-            `🔄 Платеж ${paymentId} сброшен в статус PENDING\n` +
-            `💳 Система: ${payment.paymentSystem}\n` +
-            `💰 Сумма: ${payment.amount} ₽\n` +
-            `👤 User ID: ${payment.userId}\n\n` +
-            `⏱ Платеж будет проверен в течение 10 секунд`
-          ),
+          () =>
+            this.bot.telegram.sendMessage(
+              this.adminChatId,
+              `🔄 Платеж ${paymentId} сброшен в статус PENDING\n` +
+                `💳 Система: ${payment.paymentSystem}\n` +
+                `💰 Сумма: ${payment.amount} ₽\n` +
+                `👤 User ID: ${payment.userId}\n\n` +
+                `⏱ Платеж будет проверен в течение 10 секунд`,
+            ),
           'Admin retry command success',
         );
 
         // Try to validate immediately
         this.logger.debug(`Manually retrying payment ${paymentId}`);
         const isPaid = await this.paymentService.validatePayment(paymentId);
-        
+
         if (isPaid) {
           const user = await this.userService.findOneByUserId(payment.userId);
-          
+
           await SafeTelegramHelper.safeSend(
-            () => this.bot.telegram.sendMessage(this.adminChatId, `✅ Платеж ${paymentId} успешно оплачен после повторной проверки!`),
+            () =>
+              this.bot.telegram.sendMessage(
+                this.adminChatId,
+                `✅ Платеж ${paymentId} успешно оплачен после повторной проверки!`,
+              ),
             'Admin retry: payment success',
           );
-          
-          // Send success messages to user
-          await this.botService.sendPaymentSuccessMessage(
-            payment.chatId,
-            user.tariffId.name,
-            user.subscriptionEndDate,
-          );
-          
-          await this.botService.sendPaymentSuccessMessageToAdmin(
-            user.username,
-            user.tariffId.name,
-            payment.monthCount,
-            payment.amount,
-            payment.paymentSystem,
-            payment.discount,
-            payment.originalPrice,
-          );
+
+          // Send success messages to user asynchronously (command execution should not depend on message delivery)
+          this.botService
+            .sendPaymentSuccessMessage(payment.chatId, user.tariffId.name, user.subscriptionEndDate)
+            .catch((error) => {
+              this.logger.error(`Failed to send payment success message: ${error.message}`);
+            });
+
+          this.botService
+            .sendPaymentSuccessMessageToAdmin(
+              user.username,
+              user.tariffId.name,
+              payment.monthCount,
+              payment.amount,
+              payment.paymentSystem,
+              payment.discount,
+              payment.originalPrice,
+            )
+            .catch((error) => {
+              this.logger.error(`Failed to send admin notification: ${error.message}`);
+            });
         } else {
           await SafeTelegramHelper.safeSend(
-            () => this.bot.telegram.sendMessage(this.adminChatId, `⏳ Платеж ${paymentId} все еще не оплачен. Будет проверяться автоматически.`),
+            () =>
+              this.bot.telegram.sendMessage(
+                this.adminChatId,
+                `⏳ Платеж ${paymentId} все еще не оплачен. Будет проверяться автоматически.`,
+              ),
             'Admin retry: payment still pending',
           );
         }
       } catch (error) {
         this.logger.error(`Error in retry command: ${error.message}`, error.stack);
         await SafeTelegramHelper.safeSend(
-          () => this.bot.telegram.sendMessage(
-            this.adminChatId, 
-            `❌ Ошибка при повторной проверке платежа ${paymentId}:\n${error.message}`
-          ),
+          () =>
+            this.bot.telegram.sendMessage(
+              this.adminChatId,
+              `❌ Ошибка при повторной проверке платежа ${paymentId}:\n${error.message}`,
+            ),
           'Admin retry command error',
         );
       }
