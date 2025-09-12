@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "WebSearch",
+      "Bash(npm run start:dev:*)",
+      "Bash(rm:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node:*)",
+      "Bash(pkill:*)",
+      "Bash(killall:*)",
+      "Bash(npm run test:cov:*)",
+      "Bash(npm test:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(npm install:*)",
+      "Bash(grep:*)",
+      "Bash(npm ls:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -17,6 +17,8 @@ import { PaymentSystemEnum } from './payment/enum/payment-system.enum';
 import { DateTime } from 'luxon';
 import { PaymentStatusEnum } from './payment/enum/payment-status.enum';
 import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
+import { ModerationService } from './moderation/moderation.service';
+import { createUnbanConfirmationKeyboard } from './moderation/keyboards/moderation.keyboards';
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -33,6 +35,7 @@ export class BotUpdate {
     private readonly tariffService: TariffService,
     private readonly configService: ConfigService,
     private readonly paymentService: PaymentService,
+    private readonly moderationService: ModerationService,
   ) {
     this.adminChatId = Number(configService.get('ADMIN_CHAT_ID'));
   }
@@ -299,6 +302,172 @@ export class BotUpdate {
   async onLeftChatMember(@Ctx() ctx: Context & { update: any }) {
     this.logger.log('left_chat_member', ctx);
     this.botService.leftTheChat(ctx);
+  }
+
+  @On('text')
+  async onGroupText(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+    const targetChatId = Number(this.configService.get('CHAT_ID'));
+    
+    // Проверяем только сообщения в целевом чате
+    if (message.chat.id !== targetChatId) {
+      return;
+    }
+    
+    // Пропускаем private чаты (они обрабатываются отдельно)
+    if (message.chat.type === 'private') {
+      return;
+    }
+    
+    // Запускаем проверку пользователя через сервис модерации
+    await this.moderationService.checkAndModerateUser(ctx);
+  }
+
+  @On('message')
+  async onGroupMessage(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+    const targetChatId = Number(this.configService.get('CHAT_ID'));
+    
+    // Проверяем только сообщения в целевом чате
+    if (message.chat.id !== targetChatId) {
+      return;
+    }
+    
+    // Пропускаем private чаты и уже обработанные текстовые сообщения
+    if (message.chat.type === 'private' || message.text) {
+      return;
+    }
+    
+    // Проверяем остальные типы сообщений (стикеры, фото, документы и т.д.)
+    await this.moderationService.checkAndModerateUser(ctx);
+  }
+
+  @Action(/^unban_(\d+)$/)
+  async onUnbanUser(@Ctx() ctx: Context & { match: RegExpMatchArray }) {
+    if (!this.isAdmin(ctx)) {
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('У вас нет прав для выполнения этой операции'),
+        'Unauthorized unban attempt',
+      );
+      return;
+    }
+
+    try {
+      const userId = parseInt(ctx.match[1]);
+      const callbackQuery = ctx.update.callback_query;
+      const originalMessage = 'message' in callbackQuery && 'text' in callbackQuery.message ? callbackQuery.message.text : '';
+      
+      // Извлекаем username из оригинального сообщения
+      const usernameMatch = originalMessage.match(/Username: @([^\n]+)/);
+      const username = usernameMatch ? usernameMatch[1] : 'Unknown';
+
+      const user = await this.moderationService.unbanUser(userId, username);
+
+      if (user) {
+        await SafeTelegramHelper.safeSend(
+          () => ctx.editMessageText(
+            `✅ Пользователь ${userId} (@${username}) разбанен и добавлен в базу данных\n\n` +
+            `🆔 User ID: ${user.userId}\n` +
+            `🏷 Токен: ${user.token?.slice(0, 8)}...\n` +
+            `📅 Создан: ${new Date().toLocaleString('ru-RU')}\n\n` +
+            `Пользователь теперь может писать в чате.`,
+            createUnbanConfirmationKeyboard(userId)
+          ),
+          `Edit message after unban user ${userId}`,
+        );
+
+        await SafeTelegramHelper.safeSend(
+          () => ctx.answerCbQuery('✅ Пользователь успешно разбанен!'),
+          'Unban success callback',
+        );
+
+        this.logger.log(`Admin unbanned user ${userId} (@${username})`);
+      } else {
+        await SafeTelegramHelper.safeSend(
+          () => ctx.editMessageText(
+            `❌ Ошибка при разбане пользователя ${userId} (@${username})\n\n` +
+            `Проверьте логи приложения для дополнительной информации.`
+          ),
+          `Edit message after unban error ${userId}`,
+        );
+
+        await SafeTelegramHelper.safeSend(
+          () => ctx.answerCbQuery('❌ Ошибка при разбане пользователя'),
+          'Unban error callback',
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error in onUnbanUser:', error);
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('❌ Произошла ошибка'),
+        'Unban exception callback',
+      );
+    }
+  }
+
+  @Action(/^ignore_(\d+)$/)
+  async onIgnoreUser(@Ctx() ctx: Context & { match: RegExpMatchArray }) {
+    if (!this.isAdmin(ctx)) {
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('У вас нет прав для выполнения этой операции'),
+        'Unauthorized ignore attempt',
+      );
+      return;
+    }
+
+    try {
+      const userId = parseInt(ctx.match[1]);
+      
+      await SafeTelegramHelper.safeSend(
+        () => ctx.editMessageText(
+          `❌ Пользователь ${userId} оставлен в бане\n\n` +
+          `Сообщение обработано админом.`
+        ),
+        `Edit message after ignore user ${userId}`,
+      );
+
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('Пользователь оставлен в бане'),
+        'Ignore user callback',
+      );
+
+      this.logger.log(`Admin ignored unban request for user ${userId}`);
+    } catch (error) {
+      this.logger.error('Error in onIgnoreUser:', error);
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('❌ Произошла ошибка'),
+        'Ignore exception callback',
+      );
+    }
+  }
+
+  @Action(/^clear_cache_(\d+)$/)
+  async onClearUserCache(@Ctx() ctx: Context & { match: RegExpMatchArray }) {
+    if (!this.isAdmin(ctx)) {
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('У вас нет прав для выполнения этой операции'),
+        'Unauthorized cache clear attempt',
+      );
+      return;
+    }
+
+    try {
+      const userId = parseInt(ctx.match[1]);
+      await this.moderationService.clearUserCache(userId);
+      
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('✅ Кэш пользователя очищен'),
+        'Cache clear callback',
+      );
+
+      this.logger.log(`Admin cleared cache for user ${userId}`);
+    } catch (error) {
+      this.logger.error('Error in onClearUserCache:', error);
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('❌ Ошибка при очистке кэша'),
+        'Cache clear error callback',
+      );
+    }
   }
 
   private isAdmin(ctx: Context): boolean {

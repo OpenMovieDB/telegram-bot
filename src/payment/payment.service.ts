@@ -208,14 +208,12 @@ export class PaymentService {
         const newTariffId = payment.tariffId;
         const hasActiveSubscription = user.subscriptionEndDate && DateTime.fromJSDate(user.subscriptionEndDate) > now;
 
-        const updateData: any = {
-          requestsUsed: 0,
-        };
+        const updateData: any = {};
 
         if (hasActiveSubscription) {
           // User has an active subscription
           if (currentTariffId === newTariffId) {
-            // Same tariff - extend subscription
+            // Same tariff - extend subscription, keep current requestsUsed
             const currentEndDate = DateTime.fromJSDate(user.subscriptionEndDate);
             const newEndDate = currentEndDate.plus({ months: payment.monthCount }).endOf('day');
 
@@ -223,25 +221,29 @@ export class PaymentService {
             this.logger.debug(`Extended subscription for user ${user.userId} until ${newEndDate.toISODate()}`);
           } else {
             // Different tariff - immediately change tariff and extend subscription
+            // Reset requestsUsed when changing tariff to give user fresh start
             const now = DateTime.now().startOf('day');
             const newEndDate = now.plus({ months: payment.monthCount }).endOf('day');
 
             updateData.tariffId = new mongoose.Types.ObjectId(newTariffId);
             updateData.subscriptionStartDate = now.toJSDate();
             updateData.subscriptionEndDate = newEndDate.toJSDate();
+            updateData.requestsUsed = 0; // Reset only when changing tariff
 
             this.logger.debug(
-              `Changed tariff for user ${user.userId} to ${newTariffId} until ${newEndDate.toISODate()}`,
+              `Changed tariff for user ${user.userId} to ${newTariffId} until ${newEndDate.toISODate()}, reset requestsUsed`,
             );
           }
         } else {
           // No active subscription - activate immediately
+          // Reset requestsUsed for new subscription
           const startAt = DateTime.now().startOf('day');
           const expiredAt = startAt.plus({ months: payment.monthCount }).endOf('day');
 
           updateData.tariffId = new mongoose.Types.ObjectId(newTariffId);
           updateData.subscriptionStartDate = startAt.toJSDate();
           updateData.subscriptionEndDate = expiredAt.toJSDate();
+          updateData.requestsUsed = 0; // Reset for new subscription
 
           this.logger.debug(`Activated new subscription for user ${user.userId} until ${expiredAt.toISODate()}`);
         }

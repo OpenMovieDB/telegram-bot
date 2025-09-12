@@ -36,6 +36,7 @@ import { commandArgs } from './middlewares/command-args.middleware';
 import { SelectMonthsScene } from './scenes/select-months.scene';
 import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { CacheModule } from './cache/cache.module';
+import { ModerationModule } from './moderation/moderation.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { CacheModule } from './cache/cache.module';
     PaymentModule,
     TariffModule,
     CacheModule,
+    ModerationModule,
     RedisModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  bot:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - BOT_TOKEN=${BOT_TOKEN}
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL}
+      - CHAT_ID=${CHAT_ID}
+      - ADMIN_CHAT_ID=${ADMIN_CHAT_ID}
+      - API_URL=${API_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - YOOMONEY_SECRET=${YOOMONEY_SECRET}
+      - YOOMONEY_CLIENT_ID=${YOOMONEY_CLIENT_ID}
+      - YOOMONEY_REDIRECT_URI=${YOOMONEY_REDIRECT_URI}
+      - YOOMONEY_RECEIVER=${YOOMONEY_RECEIVER}
+      - CRYPTOMUS_API_KEY=${CRYPTOMUS_API_KEY}
+      - CRYPTOMUS_MERCHANT_ID=${CRYPTOMUS_MERCHANT_ID}
+      - TINKOFF_TERMINAL_KEY=${TINKOFF_TERMINAL_KEY}
+      - TINKOFF_PASSWORD=${TINKOFF_PASSWORD}
+      - YOOKASSA_SHOP_ID=${YOOKASSA_SHOP_ID}
+      - YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY}
+    ports:
+      - "3000:3000"
+    networks:
+      - bot-network
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  bot-network:
+    driver: bridge
