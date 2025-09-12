@@ -240,7 +240,7 @@ export class BotUpdate {
     }
   }
 
-  @Action(/.*/)
+  @Action(/^(?!unban_|ignore_|clear_cache_).*$/)
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
     this.logger.log(ctx);
     try {
