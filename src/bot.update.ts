@@ -274,15 +274,36 @@ export class BotUpdate {
     }
   }
 
-  @Hears(/.*/)
-  async onHears(@Ctx() ctx: Context & { update: any }) {
+  @Hears([
+    BUTTONS[CommandEnum.GET_ACCESS].text,
+    BUTTONS[CommandEnum.QUESTION].text,
+    BUTTONS[CommandEnum.I_HAVE_TOKEN].text,
+    BUTTONS[CommandEnum.FREE_TARIFF].text,
+    BUTTONS[CommandEnum.DEVELOPER_TARIFF].text,
+    BUTTONS[CommandEnum.UNLIMITED_TARIFF].text,
+    BUTTONS[CommandEnum.STUDENT_TARIFF].text,
+    BUTTONS[CommandEnum.GET_REQUEST_STATS].text,
+    BUTTONS[CommandEnum.UPDATE_TARIFF].text,
+    BUTTONS[CommandEnum.GET_MY_TOKEN].text,
+    BUTTONS[CommandEnum.CHANGE_TOKEN].text,
+    BUTTONS[CommandEnum.UPDATE_MOVIE].text,
+    BUTTONS[CommandEnum.SET_IMDB_RELATION].text,
+  ])
+  async onButtonHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+    
+    // Обрабатываем только в private чатах
+    if (!['private'].includes(message.chat.type)) return;
+    
     const user = await this.userService.findOneByUserId(ctx.from.id);
     if (user && !user.chatId) await this.userService.update(user.userId, { chatId: ctx.chat.id });
+    
     try {
-      const message = ctx.update.message;
-      const [command] = Object.entries(BUTTONS).find(([_, button]) => button.text === message.text);
-
-      if (!['private'].includes(message.chat.type)) return;
+      const buttonEntry = Object.entries(BUTTONS).find(([_, button]) => button.text === message.text);
+      
+      if (!buttonEntry) return;
+      
+      const [command] = buttonEntry;
 
       this.logger.log('stats', ctx.message);
       // Clear messageId when navigating via text commands
