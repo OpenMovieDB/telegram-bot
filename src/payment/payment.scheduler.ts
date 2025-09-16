@@ -8,6 +8,7 @@ import { PaymentService } from './payment.service';
 import { PaymentStatusEnum } from './enum/payment-status.enum';
 import { TariffService } from 'src/tariff/tariff.service';
 import { UserService } from 'src/user/user.service';
+import { SessionStateService } from 'src/session/session-state.service';
 import { DateTime } from 'luxon';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class PaymentScheduler {
     private readonly userService: UserService,
     private readonly tariffService: TariffService,
     private readonly botService: BotService,
+    private readonly sessionStateService: SessionStateService,
   ) {}
 
   @Cron(CronExpression.EVERY_10_SECONDS)
@@ -36,6 +38,10 @@ export class PaymentScheduler {
             const user = await this.userService.findOneByUserId(payment.userId);
 
             this.logger.debug(`Payment ${payment.paymentId} is successfully paid`);
+
+            // Clear payment flags in Redis so user can exit payment scene
+            await this.sessionStateService.setExitPaymentScene(payment.userId);
+            this.logger.debug(`Set exit payment scene flag for user ${payment.userId}`);
 
             // Send success messages asynchronously (DO NOT await - payment processing must not depend on message delivery)
             this.sendPaymentNotificationsAsync(payment, user).catch((error) => {

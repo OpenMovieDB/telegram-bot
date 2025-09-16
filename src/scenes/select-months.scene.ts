@@ -4,6 +4,7 @@ import { Action, Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { Logger } from '@nestjs/common';
 import { Context } from 'src/interfaces/context.interface';
 import { TariffService } from 'src/tariff/tariff.service';
+import { SessionStateService } from 'src/session/session-state.service';
 import { safeReplyOrEdit } from 'src/utils/safe-reply.util';
 import { Markup } from 'telegraf';
 
@@ -12,14 +13,17 @@ export class SelectMonthsScene extends AbstractScene {
   public logger = new Logger(AbstractScene.name);
   private maxMonths = 60;
 
-  constructor(private readonly tariffService: TariffService) {
+  constructor(
+    private readonly tariffService: TariffService,
+    private readonly sessionStateService: SessionStateService,
+  ) {
     super();
   }
 
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    ctx.session.paymentMonths = 1;
+    await this.sessionStateService.setPaymentMonths(ctx.from.id, 1);
 
     await this.sendMessage(ctx);
   }
@@ -27,9 +31,11 @@ export class SelectMonthsScene extends AbstractScene {
   @Action('plus')
   async plus(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    if (ctx.session.paymentMonths <= this.maxMonths) {
-      ctx.session.paymentMonths += 1;
+    const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+    const currentMonths = flags?.paymentMonths || 1;
 
+    if (currentMonths <= this.maxMonths) {
+      await this.sessionStateService.setPaymentMonths(ctx.from.id, currentMonths + 1);
       await this.sendMessage(ctx);
     }
   }
@@ -37,36 +43,32 @@ export class SelectMonthsScene extends AbstractScene {
   @Action('tree')
   async tree(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    if (ctx.session.paymentMonths <= this.maxMonths) {
-      ctx.session.paymentMonths = 3;
-      await this.sendMessage(ctx);
-    }
+    await this.sessionStateService.setPaymentMonths(ctx.from.id, 3);
+    await this.sendMessage(ctx);
   }
 
   @Action('six')
   async six(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    if (ctx.session.paymentMonths <= this.maxMonths) {
-      ctx.session.paymentMonths = 6;
-      await this.sendMessage(ctx);
-    }
+    await this.sessionStateService.setPaymentMonths(ctx.from.id, 6);
+    await this.sendMessage(ctx);
   }
 
   @Action('twelve')
   async twelve(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    if (ctx.session.paymentMonths <= this.maxMonths) {
-      ctx.session.paymentMonths = 12;
-      await this.sendMessage(ctx);
-    }
+    await this.sessionStateService.setPaymentMonths(ctx.from.id, 12);
+    await this.sendMessage(ctx);
   }
 
   @Action('minus')
   async minus(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    if (ctx.session.paymentMonths <= this.maxMonths) {
-      ctx.session.paymentMonths -= 1;
+    const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+    const currentMonths = flags?.paymentMonths || 1;
 
+    if (currentMonths > 1) {
+      await this.sessionStateService.setPaymentMonths(ctx.from.id, currentMonths - 1);
       await this.sendMessage(ctx);
     }
   }
@@ -74,16 +76,25 @@ export class SelectMonthsScene extends AbstractScene {
   @Action('ok')
   async ok(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
+    const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+    const paymentMonths = flags?.paymentMonths || 0;
 
-    if (ctx.session.paymentMonths >= 1) {
+    if (paymentMonths >= 1) {
       await ctx.scene.enter(CommandEnum.PAYMENT);
     } else {
-      this.logger.warn('ctx.session.paymentMonths >= 1', ctx.session.paymentMonths >= 1);
+      this.logger.warn('paymentMonths >= 1', paymentMonths >= 1);
     }
   }
 
   private async sendMessage(ctx) {
-    const { paymentMonths, tariffId } = ctx.session;
+    const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+    const { paymentMonths, tariffId } = flags || {};
+
+    if (!tariffId || !paymentMonths) {
+      this.logger.error('Missing tariffId or paymentMonths in Redis');
+      return;
+    }
+
     const { price } = await this.tariffService.getOneById(tariffId);
     return safeReplyOrEdit(
       ctx,

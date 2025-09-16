@@ -50,11 +50,18 @@ export class BotService {
   }
 
   async sendPaymentSuccessMessage(chatId: number, tariffName: string, subscriptionEndDate: Date): Promise<void> {
-    await this.sendMessage(
-      chatId,
-      `Тариф ${tariffName} успешно оплачен 🎉 \n\nПодписка действует до: ${DateTime.fromJSDate(
-        subscriptionEndDate,
-      ).toFormat('dd MMMM yyyy', { locale: 'ru' })}`,
+    const message = `Тариф ${tariffName} успешно оплачен 🎉 \n\nПодписка действует до: ${DateTime.fromJSDate(
+      subscriptionEndDate,
+    ).toFormat('dd MMMM yyyy', { locale: 'ru' })}\n\nВы можете продолжить использование бота.`;
+
+    // Send message with home menu button to trigger scene exit
+    await SafeTelegramHelper.safeSend(
+      () => this.bot.telegram.sendMessage(chatId, message, {
+        reply_markup: {
+          inline_keyboard: [[{ text: '🏠 В главное меню', callback_data: 'home_menu' }]]
+        }
+      }),
+      `Payment success message to chat ${chatId}`,
     );
   }
 

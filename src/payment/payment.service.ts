@@ -19,6 +19,7 @@ import * as ApiKey from 'uuid-apikey';
 import { RedisService } from '@liaoliaots/nestjs-redis';
 import Redis from 'ioredis';
 import { CacheResetService } from '../cache/cache-reset.service';
+import { SessionStateService } from '../session/session-state.service';
 
 @Injectable()
 export class PaymentService {
@@ -34,6 +35,7 @@ export class PaymentService {
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
     private readonly redisService: RedisService,
     private readonly cacheResetService: CacheResetService,
+    private readonly sessionStateService: SessionStateService,
   ) {
     this.redis = this.redisService.getOrThrow();
   }
@@ -47,6 +49,12 @@ export class PaymentService {
     email?: string,
     paymentAt?: Date,
   ): Promise<Payment> {
+    // Check for existing pending payments
+    const existingPendingPayment = await this.getUserPendingPayment(userId);
+    if (existingPendingPayment) {
+      throw new Error('PENDING_PAYMENT_EXISTS');
+    }
+
     const user = await this.userService.findOneByUserId(userId);
 
     if (!user) throw new Error('User not found');
@@ -121,6 +129,38 @@ export class PaymentService {
     payment.originalPrice = originalPrice;
 
     return this.paymentModel.create(payment);
+  }
+
+  async getUserPendingPayment(userId: number): Promise<Payment | null> {
+    // Get active pending payment for user (not older than 24 hours)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    return this.paymentModel
+      .findOne({
+        userId,
+        status: PaymentStatusEnum.PENDING,
+        paymentAt: { $gte: oneDayAgo },
+        isFinal: false,
+      })
+      .exec();
+  }
+
+  async cancelUserPendingPayment(userId: number): Promise<boolean> {
+    const pendingPayment = await this.getUserPendingPayment(userId);
+    if (!pendingPayment) {
+      return false;
+    }
+
+    await this.paymentModel.updateOne(
+      { paymentId: pendingPayment.paymentId },
+      {
+        status: PaymentStatusEnum.FAILED,
+        isFinal: true,
+        updatedAt: new Date()
+      }
+    );
+
+    this.logger.debug(`Cancelled pending payment ${pendingPayment.paymentId} for user ${userId}`);
+    return true;
   }
 
   async getPendingPayments(): Promise<Payment[]> {
@@ -267,6 +307,14 @@ export class PaymentService {
         `Change status for ${paymentId} from ${payment.status} to ${PaymentStatusEnum.PAID}. IsPaid: ${isPaid}`,
       );
       await this.updatePaymentStatus(paymentId, PaymentStatusEnum.PAID, true);
+
+      // Clear payment session flags and set user to exit payment scene
+      try {
+        await this.sessionStateService.setExitPaymentScene(payment.userId);
+        this.logger.debug(`Set exit payment scene flag for user ${payment.userId} after successful payment`);
+      } catch (sessionError) {
+        this.logger.error(`Failed to set exit payment scene flag for user ${payment.userId}:`, sessionError);
+      }
     } else {
       if (paymentStatus !== payment.status) {
         this.logger.debug(

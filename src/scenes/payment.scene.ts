@@ -11,13 +11,17 @@ import { SCENES } from 'src/constants/scenes.const';
 import { DateTime } from 'luxon';
 import { UserService } from 'src/user/user.service';
 import { TariffService } from 'src/tariff/tariff.service';
+import { SessionStateService } from 'src/session/session-state.service';
 
 @Scene(CommandEnum.PAYMENT)
 export class PaymentScene extends AbstractScene {
+  private processingPayments = new Set<number>(); // Track users currently creating payments
+
   constructor(
     private readonly paymentService: PaymentService,
     private readonly userService: UserService,
     private readonly tariffService: TariffService,
+    private readonly sessionStateService: SessionStateService,
   ) {
     super();
   }
@@ -25,11 +29,24 @@ export class PaymentScene extends AbstractScene {
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
+
+    // Check if user should exit payment scene due to successful payment
+    try {
+      const paymentFlags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+      if (paymentFlags?.shouldExitPaymentScene) {
+        this.logger.debug(`User ${ctx.from.id} should exit payment scene, redirecting to home`);
+        await this.sessionStateService.removePaymentFlags(ctx.from.id);
+        await ctx.scene.enter(CommandEnum.HOME);
+        return;
+      }
+    } catch (error) {
+      this.logger.error(`Failed to check payment flags for user ${ctx.from.id}:`, error);
+    }
+
     const scene = SCENES[ctx.scene.session.current];
 
-    // Reset payment flags when entering the scene
-    ctx.session.paymentInProgress = false;
-    ctx.session.waitingForEmail = false;
+    // Reset payment flags when entering the scene (now in Redis)
+    await this.sessionStateService.clearAllPaymentFlags(ctx.from.id);
 
     await safeReply(ctx, scene.text, Markup.inlineKeyboard(scene.buttons));
   }
@@ -37,24 +54,33 @@ export class PaymentScene extends AbstractScene {
   @SceneLeave()
   async onSceneLeave(@Ctx() ctx: Context) {
     this.logger.log(`Leaving payment scene`);
-    // Clear payment flags when leaving the scene
-    if (ctx.session) {
-      ctx.session.paymentInProgress = false;
-      ctx.session.waitingForEmail = false;
-    }
+    // Clear payment flags when leaving the scene (now in Redis)
+    await this.sessionStateService.clearAllPaymentFlags(ctx.from.id);
   }
 
   @Action(CommandEnum.PAY_WITH_CRYPTOMUS)
   async payWithCriptomus(@Ctx() ctx: Context) {
-    ctx.session.waitingForEmail = false;
-    ctx.session.paymentInProgress = true;
+    // Debounce check
+    if (this.processingPayments.has(ctx.from.id)) {
+      await ctx.reply('⏳ Платеж уже создается, пожалуйста подождите...');
+      return;
+    }
+
+    await this.sessionStateService.setWaitingForEmail(ctx.from.id, false);
+    await this.sessionStateService.setPaymentInProgress(ctx.from.id, true);
     await this.createPaymentAndReply(ctx, PaymentSystemEnum.CYPTOMUS);
   }
 
   @Action(CommandEnum.PAY_WITH_TBANK)
   async payWithTBank(@Ctx() ctx: Context) {
-    ctx.session.waitingForEmail = true;
-    ctx.session.paymentInProgress = false;
+    // Debounce check
+    if (this.processingPayments.has(ctx.from.id)) {
+      await ctx.reply('⏳ Платеж уже создается, пожалуйста подождите...');
+      return;
+    }
+
+    await this.sessionStateService.setWaitingForEmail(ctx.from.id, true);
+    await this.sessionStateService.setPaymentInProgress(ctx.from.id, false);
     await safeReply(
       ctx,
       'Отлично! Чтобы отправить вам чек, мне нужен ваш email! Пришлите его!',
@@ -62,18 +88,68 @@ export class PaymentScene extends AbstractScene {
     );
   }
 
+  @Action('home_menu')
+  async handleHomeMenuButton(@Ctx() ctx: Context) {
+    this.logger.debug('Home menu button clicked in payment scene');
+    // Clear payment flags and redirect to home
+    await this.sessionStateService.clearAllPaymentFlags(ctx.from.id);
+    await ctx.scene.enter(CommandEnum.HOME);
+  }
+
+  @Action('cancel_pending_payment')
+  async handleCancelPendingPayment(@Ctx() ctx: Context) {
+    this.logger.debug('Cancel pending payment button clicked');
+
+    const cancelled = await this.paymentService.cancelUserPendingPayment(ctx.from.id);
+
+    if (cancelled) {
+      await ctx.answerCbQuery('✅ Платеж отменен');
+      await ctx.editMessageText(
+        '✅ Активный платеж успешно отменен.\n\n' +
+        'Теперь вы можете создать новый платеж с правильными параметрами.'
+      );
+
+      // Re-enter payment scene to show options again
+      await ctx.scene.reenter();
+    } else {
+      await ctx.answerCbQuery('Активный платеж не найден');
+      await ctx.editMessageText('Активный платеж не найден. Возможно, он уже был отменен или оплачен.');
+    }
+  }
+
+  @Action('back_to_menu')
+  async handleBackToMenu(@Ctx() ctx: Context) {
+    this.logger.debug('Back to menu button clicked');
+    await ctx.answerCbQuery();
+    await ctx.scene.enter(CommandEnum.HOME);
+  }
+
   @Hears(/[\w-]+@[\w-]+\.\w+/)
   async email(@Ctx() ctx: Context) {
+    // Check if payment was successful and user should exit scene
+    try {
+      const paymentFlags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+      if (paymentFlags?.shouldExitPaymentScene) {
+        this.logger.debug(`User ${ctx.from.id} payment successful, redirecting to home`);
+        await this.sessionStateService.removePaymentFlags(ctx.from.id);
+        await ctx.scene.enter(CommandEnum.HOME);
+        return;
+      }
+    } catch (error) {
+      this.logger.error(`Failed to check payment flags: ${error.message}`);
+    }
+
     const email = ctx.message?.['text'];
     this.logger.debug(`user email ${email}`);
 
     // Check if we're waiting for email
-    if (!ctx.session.waitingForEmail) {
-      await ctx.reply('Платеж уже в процессе обработки. Пожалуйста, используйте ссылку выше для оплаты.');
+    const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+    if (!flags?.waitingForEmail) {
+      // Don't block - just ignore if not waiting for email
       return;
     }
 
-    ctx.session.waitingForEmail = false;
+    await this.sessionStateService.setWaitingForEmail(ctx.from.id, false);
     return await this.createPaymentAndReply(ctx, PaymentSystemEnum.TBANK, email);
   }
 
@@ -82,9 +158,8 @@ export class PaymentScene extends AbstractScene {
   async handleNavigationCommand(@Ctx() ctx: Context) {
     this.logger.debug('Navigation command received in payment scene, leaving scene');
 
-    // Clear payment flags before navigation
-    ctx.session.paymentInProgress = false;
-    ctx.session.waitingForEmail = false;
+    // Clear payment flags before navigation (now in Redis)
+    await this.sessionStateService.clearAllPaymentFlags(ctx.from.id);
 
     // Simply leave the scene - the main bot handler will process the command
     await ctx.scene.leave();
@@ -92,26 +167,43 @@ export class PaymentScene extends AbstractScene {
 
   @Hears(/^(?!.*[\w-]+@[\w-]+\.\w+).*$/)
   async notAnEmail(@Ctx() ctx: Context) {
-    // Check if we're waiting for email
-    if (!ctx.session.waitingForEmail) {
-      // If payment is already in progress, don't interrupt
-      if (ctx.session.paymentInProgress) {
-        await ctx.reply(
-          'Платеж уже в процессе обработки. Пожалуйста, используйте ссылку выше для оплаты или выберите другое действие из меню.',
-        );
+    // Check if payment was successful and user should exit scene
+    try {
+      const paymentFlags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+      if (paymentFlags?.shouldExitPaymentScene) {
+        this.logger.debug(`User ${ctx.from.id} payment successful, redirecting to home`);
+        await this.sessionStateService.removePaymentFlags(ctx.from.id);
+        await ctx.scene.enter(CommandEnum.HOME);
         return;
       }
-      // Otherwise, just ignore the message
+    } catch (error) {
+      this.logger.error(`Failed to check payment flags: ${error.message}`);
+    }
+
+    // Check if we're waiting for email
+    const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+    if (flags?.waitingForEmail) {
+      await ctx.reply('Пожалуйста, введите корректный email адрес для получения чека.');
       return;
     }
 
-    await ctx.reply('Пожалуйста, введите корректный email адрес для получения чека.');
+    // Don't block user after payment creation - they can navigate freely
+    // The payment scene will be exited automatically when payment succeeds
   }
 
   private async createPaymentAndReply(ctx: Context, paymentSystem: PaymentSystemEnum, email?: string) {
     this.logger.debug(`create payment with ${paymentSystem}`);
+
+    // Add user to processing set
+    this.processingPayments.add(ctx.from.id);
+
     try {
-      const { paymentMonths, tariffId } = ctx.session;
+      const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+      const { paymentMonths, tariffId } = flags || {};
+
+      if (!paymentMonths || !tariffId) {
+        throw new Error('Отсутствуют данные о выбранном тарифе или сроке подписки');
+      }
 
       this.logger.debug(`paymentMonths ${paymentMonths}, tariffId ${tariffId}, email ${email}`);
 
@@ -124,8 +216,6 @@ export class PaymentScene extends AbstractScene {
         email,
       );
       this.logger.debug(`payment ${JSON.stringify(payment)}`);
-      // Set payment in progress flag
-      ctx.session.paymentInProgress = true;
 
       let message = `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\n`;
 
@@ -167,6 +257,9 @@ export class PaymentScene extends AbstractScene {
         return;
       }
 
+      // Remove from processing set after successful payment creation
+      this.processingPayments.delete(ctx.from.id);
+
       // Удаление кнопки через 20 минут
       setTimeout(async () => {
         const chatId = ctx.chat.id;
@@ -181,17 +274,33 @@ export class PaymentScene extends AbstractScene {
             { parse_mode: 'HTML' },
           );
 
-          // Reset payment flags for this user
-          if (ctx.session) {
-            ctx.session.paymentInProgress = false;
-            ctx.session.waitingForEmail = false;
-          }
+          // Reset payment flags for this user (now in Redis)
+          await this.sessionStateService.clearAllPaymentFlags(ctx.from.id);
         } catch (error) {
           this.logger.error(`Failed to edit expired payment message: ${error.message}`);
         }
       }, 1200000);
     } catch (error) {
       console.log(error);
+
+      // Remove user from processing set on error
+      this.processingPayments.delete(ctx.from.id);
+
+      // Check if there's already a pending payment
+      if (error.message === 'PENDING_PAYMENT_EXISTS') {
+        await ctx.reply(
+          '⚠️ У вас уже есть активный платеж в обработке.\n\n' +
+          'Вы можете:\n' +
+          '• Оплатить по ранее отправленной ссылке\n' +
+          '• Дождаться завершения платежа\n' +
+          '• Отменить текущий платеж и создать новый',
+          Markup.inlineKeyboard([
+            [Markup.button.callback('❌ Отменить текущий платеж', 'cancel_pending_payment')],
+            [Markup.button.callback('⬅️ Назад', 'back_to_menu')]
+          ])
+        );
+        return;
+      }
 
       // Check if it's a downgrade attempt error
       if (error.message && error.message.startsWith('DOWNGRADE_NOT_ALLOWED:')) {
@@ -207,6 +316,9 @@ export class PaymentScene extends AbstractScene {
           this.logger.error(`Failed to send generic error message: ${err.message}`);
         });
       }
+    } finally {
+      // Always remove user from processing set after operation completes
+      this.processingPayments.delete(ctx.from.id);
     }
   }
 }

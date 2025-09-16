@@ -37,6 +37,7 @@ import { SelectMonthsScene } from './scenes/select-months.scene';
 import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { CacheModule } from './cache/cache.module';
 import { ModerationModule } from './moderation/moderation.module';
+import { SessionModule } from './session/session.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { ModerationModule } from './moderation/moderation.module';
     PaymentModule,
     TariffModule,
     CacheModule,
+    SessionModule,
     ModerationModule,
     RedisModule.forRootAsync({
       imports: [ConfigModule],
