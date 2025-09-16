@@ -111,6 +111,7 @@ export class SelectMonthsScene extends AbstractScene {
         ],
         [Markup.button.callback('✅ подтвердить', 'ok')],
       ]),
+      this.sessionStateService,
     );
   }
 }

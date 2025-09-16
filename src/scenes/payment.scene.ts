@@ -45,10 +45,11 @@ export class PaymentScene extends AbstractScene {
 
     const scene = SCENES[ctx.scene.session.current];
 
-    // Reset payment flags when entering the scene (now in Redis)
-    await this.sessionStateService.clearAllPaymentFlags(ctx.from.id);
+    // Reset only payment processing flags, keep tariffId and paymentMonths
+    await this.sessionStateService.setPaymentInProgress(ctx.from.id, false);
+    await this.sessionStateService.setWaitingForEmail(ctx.from.id, false);
 
-    await safeReply(ctx, scene.text, Markup.inlineKeyboard(scene.buttons));
+    await safeReply(ctx, scene.text, Markup.inlineKeyboard(scene.buttons), this.sessionStateService);
   }
 
   @SceneLeave()
@@ -79,12 +80,19 @@ export class PaymentScene extends AbstractScene {
       return;
     }
 
+    this.logger.debug(`Setting waitingForEmail=true for user ${ctx.from.id}`);
     await this.sessionStateService.setWaitingForEmail(ctx.from.id, true);
     await this.sessionStateService.setPaymentInProgress(ctx.from.id, false);
+
+    // Verify flags were set
+    const verifyFlags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+    this.logger.debug(`Flags after setting for user ${ctx.from.id}:`, verifyFlags);
+
     await safeReply(
       ctx,
       'Отлично! Чтобы отправить вам чек, мне нужен ваш email! Пришлите его!',
       Markup.inlineKeyboard([]),
+      this.sessionStateService,
     );
   }
 

@@ -19,6 +19,7 @@ import { PaymentStatusEnum } from './payment/enum/payment-status.enum';
 import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
 import { ModerationService } from './moderation/moderation.service';
 import { createUnbanConfirmationKeyboard } from './moderation/keyboards/moderation.keyboards';
+import { SessionStateService } from './session/session-state.service';
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -36,6 +37,7 @@ export class BotUpdate {
     private readonly configService: ConfigService,
     private readonly paymentService: PaymentService,
     private readonly moderationService: ModerationService,
+    private readonly sessionStateService: SessionStateService,
   ) {
     this.adminChatId = Number(configService.get('ADMIN_CHAT_ID'));
   }
@@ -56,7 +58,7 @@ export class BotUpdate {
       return;
     }
 
-    ctx.session.messageId = undefined;
+    await this.sessionStateService.clearMessageId(ctx.from.id);
 
     await ctx.scene.enter(CommandEnum.START);
   }
@@ -262,7 +264,7 @@ export class BotUpdate {
     try {
       this.logger.log('hears', ctx.message);
       // Clear messageId when navigating via text commands
-      ctx.session.messageId = undefined;
+      await this.sessionStateService.clearMessageId(ctx.from.id);
       const existUser = await this.userService.findOneByUserId(ctx.from.id);
       if (existUser) {
         ctx.scene.enter(CommandEnum.HOME);
@@ -307,7 +309,7 @@ export class BotUpdate {
 
       this.logger.log('stats', ctx.message);
       // Clear messageId when navigating via text commands
-      ctx.session.messageId = undefined;
+      await this.sessionStateService.clearMessageId(ctx.from.id);
       ctx.scene.enter(command);
     } catch (e) {
       this.logger.log(e);

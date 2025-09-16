@@ -186,4 +186,47 @@ export class SessionStateService {
       this.logger.error(`Failed to set exit payment scene flag for user ${userId}: ${error.message}`);
     }
   }
+
+  /**
+   * Сохраняет ID последнего сообщения для возможности его редактирования
+   */
+  async setMessageId(userId: number, messageId: number): Promise<void> {
+    const key = `message:${userId}`;
+
+    try {
+      await this.redis.set(key, messageId.toString(), 'EX', 86400); // 24 hours TTL
+      this.logger.debug(`Set message ID ${messageId} for user ${userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to set message ID for user ${userId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Получает ID последнего сообщения
+   */
+  async getMessageId(userId: number): Promise<number | undefined> {
+    const key = `message:${userId}`;
+
+    try {
+      const messageId = await this.redis.get(key);
+      return messageId ? parseInt(messageId, 10) : undefined;
+    } catch (error) {
+      this.logger.error(`Failed to get message ID for user ${userId}: ${error.message}`);
+      return undefined;
+    }
+  }
+
+  /**
+   * Очищает ID последнего сообщения
+   */
+  async clearMessageId(userId: number): Promise<void> {
+    const key = `message:${userId}`;
+
+    try {
+      await this.redis.del(key);
+      this.logger.debug(`Cleared message ID for user ${userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to clear message ID for user ${userId}: ${error.message}`);
+    }
+  }
 }

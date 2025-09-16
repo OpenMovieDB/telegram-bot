@@ -2,24 +2,38 @@ import { ExtraEditMessageText } from 'telegraf/typings/telegram-types';
 import { Context } from '../interfaces/context.interface';
 import { FmtString } from 'telegraf/src/format';
 import { Logger } from '@nestjs/common';
+import { SessionStateService } from '../session/session-state.service';
 
 const logger = new Logger('SafeReply');
 
 /**
  * Safely reply to user with fallback to simple reply if edit fails
  * This prevents crashes when trying to edit messages that can't be edited
+ * @param sessionService Optional SessionStateService for message tracking. If not provided, falls back to ctx.session
  */
-export const safeReplyOrEdit = async (ctx: Context, text: string, extra: ExtraEditMessageText): Promise<any> => {
+export const safeReplyOrEdit = async (
+  ctx: Context,
+  text: string,
+  extra: ExtraEditMessageText,
+  sessionService?: SessionStateService,
+): Promise<any> => {
   try {
     // For text messages from user, always use reply
     if (ctx.message && !ctx.callbackQuery) {
       const reply = await ctx.replyWithHTML(text, extra);
-      ctx.session.messageId = reply.message_id;
+      if (sessionService && ctx.from?.id) {
+        await sessionService.setMessageId(ctx.from.id, reply.message_id);
+      } else if (ctx.session) {
+        ctx.session.messageId = reply.message_id;
+      }
       return reply;
     }
 
     // For callback queries, try to edit the original message
-    const messageId = ctx.update.callback_query?.message?.message_id || ctx.session?.messageId;
+    const savedMessageId = sessionService && ctx.from?.id
+      ? await sessionService.getMessageId(ctx.from.id)
+      : ctx.session?.messageId;
+    const messageId = ctx.update.callback_query?.message?.message_id || savedMessageId;
     const chatId = ctx.from?.id;
 
     if (messageId && chatId) {
@@ -35,14 +49,20 @@ export const safeReplyOrEdit = async (ctx: Context, text: string, extra: ExtraEd
         // If edit fails (message too old, already edited, etc.), send new message
         logger.debug(`Failed to edit message ${messageId}, sending new message instead: ${editError.message}`);
         const reply = await ctx.replyWithHTML(text, extra);
-        ctx.session.messageId = reply.message_id;
+        if (sessionService && ctx.from?.id) {
+          await sessionService.setMessageId(ctx.from.id, reply.message_id);
+        } else if (ctx.session) {
+          ctx.session.messageId = reply.message_id;
+        }
         return reply;
       }
     }
 
     // Default to sending a new message
     const reply = await ctx.replyWithHTML(text, extra);
-    if (ctx.session) {
+    if (sessionService && ctx.from?.id) {
+      await sessionService.setMessageId(ctx.from.id, reply.message_id);
+    } else if (ctx.session) {
       ctx.session.messageId = reply.message_id;
     }
     return reply;
@@ -62,11 +82,19 @@ export const safeReplyOrEdit = async (ctx: Context, text: string, extra: ExtraEd
 /**
  * Always send a new message, never try to edit
  * Use this for important notifications that must be visible
+ * @param sessionService Optional SessionStateService for message tracking
  */
-export const safeReply = async (ctx: Context, text: string, extra?: any): Promise<any> => {
+export const safeReply = async (
+  ctx: Context,
+  text: string,
+  extra?: any,
+  sessionService?: SessionStateService,
+): Promise<any> => {
   try {
     const reply = await ctx.replyWithHTML(text, extra);
-    if (ctx.session) {
+    if (sessionService && ctx.from?.id) {
+      await sessionService.setMessageId(ctx.from.id, reply.message_id);
+    } else if (ctx.session) {
       ctx.session.messageId = reply.message_id;
     }
     return reply;

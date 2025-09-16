@@ -10,12 +10,17 @@ import { Markup } from 'telegraf';
 import { Context } from 'src/interfaces/context.interface';
 import { TariffService } from 'src/tariff/tariff.service';
 import { UserService } from 'src/user/user.service';
+import { SessionStateService } from 'src/session/session-state.service';
 
 @Scene(CommandEnum.GET_ACCESS)
 export class GetAccessScene extends AbstractScene {
   public logger = new Logger(AbstractScene.name);
 
-  constructor(private readonly tariffService: TariffService, private readonly userService: UserService) {
+  constructor(
+    private readonly tariffService: TariffService,
+    private readonly userService: UserService,
+    private readonly sessionStateService: SessionStateService,
+  ) {
     super();
   }
 
@@ -33,7 +38,7 @@ export class GetAccessScene extends AbstractScene {
           chatId: ctx.chat.id,
           username: ctx.from.username,
         });
-      ctx.session.messageId = undefined;
+      await this.sessionStateService.clearMessageId(ctx.from.id);
     } catch (e) {
       this.logger.log(e);
     }
