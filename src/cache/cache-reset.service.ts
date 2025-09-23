@@ -30,7 +30,7 @@ export class CacheResetService {
     this.redis = this.redisService.getOrThrow();
   }
 
-  async resetUserCacheAndLimits(userId: number, userToken: string, newRequestsLimit: number): Promise<void> {
+  async resetUserCacheAndLimits(userId: number, userToken: string, newRequestsLimit: number, forceReset = true): Promise<void> {
     try {
       // @ts-ignore
       const tokenUuid = ApiKey.toUUID(userToken);
@@ -45,11 +45,13 @@ export class CacheResetService {
       const currentLimit = await this.redis.get(apiKey);
       const currentRemaining = parseInt(currentLimit) || 0;
 
-      const finalLimit = currentRemaining <= 0 ? newRequestsLimit : Math.max(currentRemaining, newRequestsLimit);
+      // If forceReset is true (e.g., when changing tariffs), always set the new tariff's limit
+      // If forceReset is false (e.g., when extending same tariff), keep current remaining if it's positive
+      const finalLimit = forceReset || currentRemaining <= 0 ? newRequestsLimit : currentRemaining;
       await this.redis.set(apiKey, finalLimit);
 
       this.logger.log(
-        `Updated limit for user ${userId}: current=${currentRemaining}, new=${newRequestsLimit}, final=${finalLimit}`,
+        `Updated limit for user ${userId}: current=${currentRemaining}, new=${newRequestsLimit}, final=${finalLimit}, forceReset=${forceReset}`,
       );
     } catch (error) {
       this.logger.error(`Failed to reset cache for user ${userId}:`, error);

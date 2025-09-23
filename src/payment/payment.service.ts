@@ -290,16 +290,26 @@ export class PaymentService {
 
         await this.userService.update(user.userId, updateData);
 
-        if (updateData.tariffId) {
-          try {
-            const newTariff = await this.tariffService.getOneById(newTariffId);
-            if (newTariff && user.token) {
-              await this.cacheResetService.resetUserCacheAndLimits(user.userId, user.token, newTariff.requestsLimit);
-              this.logger.log(`Reset cache and limits for user ${user.userId}, new limit: ${newTariff.requestsLimit}`);
-            }
-          } catch (cacheError) {
-            this.logger.error(`Failed to reset cache for user ${user.userId}:`, cacheError);
+        // Reset cache based on whether tariff changed
+        try {
+          const tariffChanged = updateData.tariffId !== undefined;
+          const targetTariffId = tariffChanged ? newTariffId : (currentTariffId || newTariffId);
+          const targetTariff = await this.tariffService.getOneById(targetTariffId);
+
+          if (targetTariff && user.token) {
+            // Force reset limits when tariff changes, keep remaining when extending same tariff
+            await this.cacheResetService.resetUserCacheAndLimits(
+              user.userId,
+              user.token,
+              targetTariff.requestsLimit,
+              tariffChanged // forceReset = true when tariff changes
+            );
+            this.logger.log(
+              `Reset cache for user ${user.userId}, tariffChanged: ${tariffChanged}, limit: ${targetTariff.requestsLimit}`
+            );
           }
+        } catch (cacheError) {
+          this.logger.error(`Failed to reset cache for user ${user.userId}:`, cacheError);
         }
       }
 
