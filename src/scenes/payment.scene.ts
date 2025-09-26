@@ -191,6 +191,18 @@ export class PaymentScene extends AbstractScene {
     // Check if we're waiting for email
     const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
     if (flags?.waitingForEmail) {
+      // Check if user is trying to navigate away (commands like /start, /help, etc.)
+      const messageText = ctx.message?.['text']?.toLowerCase() || '';
+      const isCommand = messageText.startsWith('/') ||
+                       ['📊 статистика', '🆘 поддержка', '🏠 главное меню', '🔄️ тариф', '🫣 токен', '⬅ назад'].includes(messageText);
+
+      if (isCommand) {
+        this.logger.debug(`User ${ctx.from.id} trying to navigate while waiting for email, clearing flags and leaving scene`);
+        await this.sessionStateService.clearAllPaymentFlags(ctx.from.id);
+        await ctx.scene.leave();
+        return;
+      }
+
       await ctx.reply('Пожалуйста, введите корректный email адрес для получения чека.');
       return;
     }
