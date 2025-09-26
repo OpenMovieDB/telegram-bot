@@ -118,6 +118,32 @@ export class SessionStateService {
   }
 
   /**
+   * Очищает только процессинговые флаги, сохраняя выбор пользователя (tariffId и paymentMonths)
+   */
+  async clearProcessingFlags(userId: number): Promise<void> {
+    const key = `payment_flags:${userId}`;
+
+    try {
+      const existingData = await this.redis.get(key);
+      if (!existingData) return;
+
+      const flags = JSON.parse(existingData);
+
+      // Сохраняем только пользовательский выбор
+      const cleanFlags = {
+        tariffId: flags.tariffId,
+        paymentMonths: flags.paymentMonths,
+        updatedAt: Date.now()
+      };
+
+      await this.redis.set(key, JSON.stringify(cleanFlags), 'EX', 3600);
+      this.logger.debug(`Processing flags cleared for user ${userId}, keeping user selection`);
+    } catch (error) {
+      this.logger.error(`Failed to clear processing flags for user ${userId}: ${error.message}`);
+    }
+  }
+
+  /**
    * Получает флаги платежа для пользователя
    */
   async getPaymentFlags(userId: number): Promise<{

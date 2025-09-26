@@ -199,10 +199,16 @@ export class PaymentService {
     const payment = await this.paymentModel.findOne({ paymentId }).exec();
     if (!payment) throw new Error(`Payment with id ${paymentId} not found`);
 
-    // Skip if payment is already finalized
-    if (payment.isFinal) {
+    // Skip if payment is already finalized (but allow re-checking CANCELED payments)
+    if (payment.isFinal && payment.status !== PaymentStatusEnum.CANCELED) {
       this.logger.debug(`Payment ${paymentId} is already finalized with status ${payment.status}`);
       return payment.status === PaymentStatusEnum.PAID;
+    }
+
+    // For CANCELED payments with isFinal=true, reset isFinal to allow re-validation
+    if (payment.isFinal && payment.status === PaymentStatusEnum.CANCELED) {
+      this.logger.debug(`Payment ${paymentId} was CANCELED but will be re-validated in case of late payment`);
+      await this.paymentModel.updateOne({ paymentId }, { isFinal: false }).exec();
     }
 
     const paymentStrategy = this.paymentStrategyFactory.createPaymentStrategy(payment.paymentSystem);

@@ -166,8 +166,8 @@ export class PaymentScene extends AbstractScene {
   async handleNavigationCommand(@Ctx() ctx: Context) {
     this.logger.debug('Navigation command received in payment scene, leaving scene');
 
-    // Clear payment flags before navigation (now in Redis)
-    await this.sessionStateService.clearAllPaymentFlags(ctx.from.id);
+    // Clear only processing flags, keep user selection (tariffId and paymentMonths)
+    await this.sessionStateService.clearProcessingFlags(ctx.from.id);
 
     // Simply leave the scene - the main bot handler will process the command
     await ctx.scene.leave();
@@ -198,7 +198,7 @@ export class PaymentScene extends AbstractScene {
 
       if (isCommand) {
         this.logger.debug(`User ${ctx.from.id} trying to navigate while waiting for email, clearing flags and leaving scene`);
-        await this.sessionStateService.clearAllPaymentFlags(ctx.from.id);
+        await this.sessionStateService.clearProcessingFlags(ctx.from.id);
         await ctx.scene.leave();
         return;
       }
@@ -218,14 +218,29 @@ export class PaymentScene extends AbstractScene {
     this.processingPayments.add(ctx.from.id);
 
     try {
-      const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
-      const { paymentMonths, tariffId } = flags || {};
+      // First try to get data from existing pending payment
+      const existingPayment = await this.paymentService.getUserPendingPayment(ctx.from.id);
+      let paymentMonths: number;
+      let tariffId: string;
 
-      if (!paymentMonths || !tariffId) {
-        throw new Error('Отсутствуют данные о выбранном тарифе или сроке подписки');
+      if (existingPayment) {
+        // Use data from existing payment
+        paymentMonths = existingPayment.monthCount;
+        tariffId = existingPayment.tariffId;
+        this.logger.debug(`Using existing payment data: paymentMonths ${paymentMonths}, tariffId ${tariffId}`);
+      } else {
+        // Fallback to Redis flags for new payments
+        const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+        paymentMonths = flags?.paymentMonths;
+        tariffId = flags?.tariffId;
+
+        if (!paymentMonths || !tariffId) {
+          throw new Error('Отсутствуют данные о выбранном тарифе или сроке подписки');
+        }
+        this.logger.debug(`Using Redis flags: paymentMonths ${paymentMonths}, tariffId ${tariffId}`);
       }
 
-      this.logger.debug(`paymentMonths ${paymentMonths}, tariffId ${tariffId}, email ${email}`);
+      this.logger.debug(`Final values: paymentMonths ${paymentMonths}, tariffId ${tariffId}, email ${email}`);
 
       const payment = await this.paymentService.createPayment(
         ctx.from.id,
@@ -249,12 +264,17 @@ export class PaymentScene extends AbstractScene {
 
         message += `💰 <b>Применена скидка за остаток текущей подписки!</b>\n`;
         message += `├ Переход с тарифа: ${currentTariff.name} → ${newTariff.name}\n`;
+        message += `├ Период подписки: ${paymentMonths} ${paymentMonths === 1 ? 'мес' : 'мес'}\n`;
         message += `├ Осталось дней: ${daysRemaining}\n`;
         message += `├ Полная стоимость: ${payment.originalPrice} ₽\n`;
         message += `├ Скидка: -${payment.discount} ₽\n`;
-        message += `└ <b>К оплате: ${payment.amount} ₽</b>\n\n`;
+        message += `└ <b>Финальная стоимость: ${payment.amount} ₽</b>\n\n`;
       } else {
-        message += `💰 К оплате: ${payment.amount} ₽\n\n`;
+        const tariff = await this.tariffService.getOneById(tariffId);
+        message += `💰 Тариф: ${tariff.name}\n`;
+        message += `├ Подписка на: <b>${paymentMonths} мес</b>\n`;
+        message += `├ Стоимость за месяц: ${tariff.price} ₽\n`;
+        message += `└ <b>Финальная стоимость: ${payment.amount} ₽</b>\n\n`;
       }
 
       message += `После того как вы оплатите, я автоматически вам поменяю тариф.\n\n⏱ Ссылка действительна 24 часа.`;
