@@ -32,26 +32,22 @@ export class CacheResetService {
 
   async resetUserCacheAndLimits(userId: number, userToken: string, newRequestsLimit: number, forceReset = true): Promise<void> {
     try {
-      // Check if token is already in UUID format or needs conversion
-      let tokenUuid: string;
-      let apiKey: string;
-
-      try {
-        // Try to convert from API key to UUID (if it's an API key)
-        // @ts-ignore
-        tokenUuid = ApiKey.toUUID(userToken);
-        apiKey = userToken;
-      } catch (e) {
-        // If conversion fails, assume it's already a UUID
-        tokenUuid = userToken;
-        // @ts-ignore
-        apiKey = ApiKey.toAPIKey(userToken);
+      // Validate token format
+      if (!userToken || !ApiKey.isUUID(userToken)) {
+        this.logger.warn(`Invalid token format for user ${userId}: ${userToken}`);
+        return;
       }
 
+      // Token is stored as UUID in database
+      const tokenUuid = userToken;
       const userCacheKey = `user:${tokenUuid}`;
 
       await this.redis.del(userCacheKey);
       this.logger.log(`Deleted user cache: ${userCacheKey} for userId: ${userId}`);
+
+      // Convert UUID to API key for Redis limits
+      // @ts-ignore
+      const apiKey = ApiKey.toAPIKey(userToken);
 
       const currentLimit = await this.redis.get(apiKey);
       const currentRemaining = parseInt(currentLimit) || 0;
