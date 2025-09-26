@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '@liaoliaots/nestjs-redis';
 import Redis from 'ioredis';
 import * as ApiKey from 'uuid-apikey';
+import { UserService } from '../user/user.service';
+import { TariffService } from '../tariff/tariff.service';
 
 interface CachedUser {
   _id: string;
@@ -26,26 +28,20 @@ export class CacheResetService {
   private readonly logger = new Logger(CacheResetService.name);
   private readonly redis: Redis;
 
-  constructor(private readonly redisService: RedisService) {
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly userService: UserService,
+    private readonly tariffService: TariffService,
+  ) {
     this.redis = this.redisService.getOrThrow();
   }
 
   async resetUserCacheAndLimits(userId: number, userToken: string, newRequestsLimit: number, forceReset = true): Promise<void> {
     try {
-      // Validate token format
-      if (!userToken || !ApiKey.isUUID(userToken)) {
-        this.logger.warn(`Invalid token format for user ${userId}: ${userToken}`);
-        return;
-      }
+      // We don't need to cache user data - it's already in database
+      // Only manage API limits in Redis
 
-      // Token is stored as UUID in database
-      const tokenUuid = userToken;
-      const userCacheKey = `user:${tokenUuid}`;
-
-      await this.redis.del(userCacheKey);
-      this.logger.log(`Deleted user cache: ${userCacheKey} for userId: ${userId}`);
-
-      // Convert UUID to API key for Redis limits
+      // Convert UUID token to API key for Redis limits
       // @ts-ignore
       const apiKey = ApiKey.toAPIKey(userToken);
 
@@ -107,37 +103,7 @@ export class CacheResetService {
     }
   }
 
-  async getUserByUserId(userId: number): Promise<CachedUser | null> {
-    try {
-      const pattern = 'user:*';
-      const keys = await this.redis.keys(pattern);
-
-      if (keys.length === 0) return null;
-
-      const pipeline = this.redis.pipeline();
-      keys.forEach((key) => pipeline.get(key));
-      const results = await pipeline.exec();
-
-      for (let i = 0; i < results.length; i++) {
-        const [err, data] = results[i];
-        if (!err && data) {
-          try {
-            const cachedUser = JSON.parse(data as string);
-            if (cachedUser.userId === userId) {
-              return cachedUser;
-            }
-          } catch (parseError) {
-            await this.redis.del(keys[i]);
-          }
-        }
-      }
-
-      return null;
-    } catch (error) {
-      this.logger.error(`Failed to get user by userId ${userId}:`, error);
-      return null;
-    }
-  }
+  // Method removed - we get user data directly from database via UserService
 
   async setUserLimit(userToken: string, newLimit: number): Promise<void> {
     try {
@@ -156,27 +122,32 @@ export class CacheResetService {
     userId: number,
   ): Promise<{ requestsUsed: number; requestsLeft: number; totalLimit: number } | null> {
     try {
-      const cachedUser = await this.getUserByUserId(userId);
-      if (!cachedUser) {
-        this.logger.log(`User ${userId} not found in cache`);
+      // Get user from database, not cache
+      const user = await this.userService.findOneByUserId(userId);
+      if (!user) {
+        this.logger.log(`User ${userId} not found in database`);
         return null;
       }
 
+      // Get tariff to know the total limit
+      const tariff = user.tariffId as any; // Already populated
+      const totalLimit = tariff?.requestsLimit || 0;
+
+      // Convert UUID token to API key to check remaining limit in Redis
       // @ts-ignore
-      const apiKey = ApiKey.toAPIKey(cachedUser.token);
+      const apiKey = ApiKey.toAPIKey(user.token);
       const remainingLimit = await this.redis.get(apiKey);
 
       if (remainingLimit === null) {
-        this.logger.log(`No limit found for user ${userId}, token: ${apiKey}`);
+        this.logger.log(`No limit found for user ${userId}, returning full limit`);
         return {
           requestsUsed: 0,
-          requestsLeft: cachedUser.requestsLimit,
-          totalLimit: cachedUser.requestsLimit,
+          requestsLeft: totalLimit,
+          totalLimit: totalLimit,
         };
       }
 
       const requestsLeft = parseInt(remainingLimit as string, 10) || 0;
-      const totalLimit = cachedUser.requestsLimit;
       const requestsUsed = Math.max(0, totalLimit - requestsLeft);
 
       this.logger.log(`Stats for user ${userId}: used=${requestsUsed}, left=${requestsLeft}, total=${totalLimit}`);
