@@ -165,21 +165,30 @@ export class CacheResetService {
 
   async transferTokenLimits(oldToken: string, newToken: string): Promise<void> {
     try {
+      // oldToken and newToken are UUIDs from database
+      // Convert them to API keys for Redis limits
       // @ts-ignore
       const oldApiKey = ApiKey.toAPIKey(oldToken);
       // @ts-ignore
       const newApiKey = ApiKey.toAPIKey(newToken);
 
+      // Get remaining limit from old API key
       const remainingLimit = await this.redis.get(oldApiKey);
 
-      await this.redis.del(oldApiKey);
       if (remainingLimit) {
+        // Transfer remaining requests to new API key
         await this.redis.set(newApiKey, remainingLimit);
+        this.logger.log(`Transferred ${remainingLimit} requests from ${oldApiKey} to ${newApiKey}`);
+      } else {
+        this.logger.log(`No remaining requests to transfer from ${oldApiKey}`);
       }
 
-      this.logger.log(`Transferred ${remainingLimit || 0} requests from ${oldApiKey} to ${newApiKey}`);
+      // Delete old API key's limit AFTER successful transfer
+      // This ensures no data loss if transfer fails
+      await this.redis.del(oldApiKey);
     } catch (error) {
       this.logger.error(`Failed to transfer token limits from ${oldToken} to ${newToken}:`, error);
+      throw error; // Re-throw to let caller handle the error
     }
   }
 
