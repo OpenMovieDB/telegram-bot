@@ -5,6 +5,7 @@ import { SCENES } from '../constants/scenes.const';
 import { Context } from '../interfaces/context.interface';
 import { UserService } from '../user/user.service';
 import { CacheResetService } from '../cache/cache-reset.service';
+import * as ApiKey from 'uuid-apikey';
 
 @Scene(CommandEnum.CHANGE_TOKEN)
 export class ChangeTokenScene extends AbstractScene {
@@ -31,7 +32,10 @@ export class ChangeTokenScene extends AbstractScene {
       }
 
       if (newToken) {
-        await ctx.replyWithHTML(scene.success(newToken).text);
+        // Convert UUID to API key format for display to user
+        // @ts-ignore
+        const apiKey = ApiKey.toAPIKey(newToken);
+        await ctx.replyWithHTML(scene.success(apiKey).text);
       } else {
         await ctx.replyWithHTML(scene.error().text);
       }
