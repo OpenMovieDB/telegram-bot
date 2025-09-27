@@ -172,6 +172,8 @@ export class CacheResetService {
       // @ts-ignore
       const newApiKey = ApiKey.toAPIKey(newToken);
 
+      this.logger.log(`Starting token transfer: ${oldApiKey} -> ${newApiKey}`);
+
       // Get remaining limit from old API key
       const remainingLimit = await this.redis.get(oldApiKey);
 
@@ -185,7 +187,14 @@ export class CacheResetService {
 
       // Delete old API key's limit AFTER successful transfer
       // This ensures no data loss if transfer fails
-      await this.redis.del(oldApiKey);
+      const deleteResult = await this.redis.del(oldApiKey);
+      this.logger.log(`Deleted old API key ${oldApiKey} from Redis: ${deleteResult} keys removed`);
+
+      // Verify old key is really deleted
+      const checkOld = await this.redis.get(oldApiKey);
+      if (checkOld) {
+        this.logger.error(`WARNING: Old API key ${oldApiKey} still exists in Redis with value: ${checkOld}`);
+      }
     } catch (error) {
       this.logger.error(`Failed to transfer token limits from ${oldToken} to ${newToken}:`, error);
       throw error; // Re-throw to let caller handle the error
