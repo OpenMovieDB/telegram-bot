@@ -3,6 +3,7 @@ import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import * as ApiKey from 'uuid-apikey';
+import { v4 as uuidv4 } from 'uuid';
 import { Tariff } from 'src/tariff/schemas/tariff.schema';
 
 @Injectable()
@@ -14,9 +15,7 @@ export class UserService {
   ) {}
 
   async create(user: User): Promise<User> {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const token = ApiKey.create().uuid;
+    const token = uuidv4();
     return this.userModel.create({ ...user, token });
   }
 
@@ -90,15 +89,16 @@ export class UserService {
   async changeToken(userId: number): Promise<string | null> {
     const user = await this.findOneByUserId(userId);
     if (!user) return null;
+
+    // Generate new UUID token
+    const newToken = uuidv4();
+
     await this.userModel.updateOne(
       { userId },
-      {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        token: ApiKey.create().uuid,
-      },
+      { token: newToken }
     );
-    return this.getUserToken(userId);
+
+    return newToken;
   }
 
   async getUsersWithExpiredSubscription(expirationDate: Date, tariffIds: string[]): Promise<User[]> {
