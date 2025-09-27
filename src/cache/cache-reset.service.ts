@@ -185,15 +185,25 @@ export class CacheResetService {
         this.logger.log(`No remaining requests to transfer from ${oldApiKey}`);
       }
 
-      // Delete old API key's limit AFTER successful transfer
-      // This ensures no data loss if transfer fails
+      // Delete old API key's limit
       const deleteResult = await this.redis.del(oldApiKey);
       this.logger.log(`Deleted old API key ${oldApiKey} from Redis: ${deleteResult} keys removed`);
 
-      // Verify old key is really deleted
-      const checkOld = await this.redis.get(oldApiKey);
-      if (checkOld) {
-        this.logger.error(`WARNING: Old API key ${oldApiKey} still exists in Redis with value: ${checkOld}`);
+      // CRITICAL: Delete user cache by old UUID to prevent old token from working
+      // The API (kinopoiskdev) caches user data with key pattern: user:{UUID}
+      const userCacheKey = `user:${oldToken}`;
+      const userCacheDeleted = await this.redis.del(userCacheKey);
+      this.logger.log(`Deleted user cache ${userCacheKey} from Redis: ${userCacheDeleted} keys removed`);
+
+      // Verify both keys are really deleted
+      const checkOldLimit = await this.redis.get(oldApiKey);
+      const checkOldCache = await this.redis.get(userCacheKey);
+
+      if (checkOldLimit) {
+        this.logger.error(`WARNING: Old API key ${oldApiKey} still exists in Redis with value: ${checkOldLimit}`);
+      }
+      if (checkOldCache) {
+        this.logger.error(`WARNING: Old user cache ${userCacheKey} still exists in Redis`);
       }
     } catch (error) {
       this.logger.error(`Failed to transfer token limits from ${oldToken} to ${newToken}:`, error);
