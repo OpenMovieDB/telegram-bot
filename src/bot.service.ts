@@ -56,11 +56,12 @@ export class BotService {
 
     // Send message with home menu button to trigger scene exit
     await SafeTelegramHelper.safeSend(
-      () => this.bot.telegram.sendMessage(chatId, message, {
-        reply_markup: {
-          inline_keyboard: [[{ text: '🏠 В главное меню', callback_data: 'home_menu' }]]
-        }
-      }),
+      () =>
+        this.bot.telegram.sendMessage(chatId, message, {
+          reply_markup: {
+            inline_keyboard: [[{ text: '🏠 В главное меню', callback_data: 'home_menu' }]],
+          },
+        }),
       `Payment success message to chat ${chatId}`,
     );
   }

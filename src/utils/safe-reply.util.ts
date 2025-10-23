@@ -30,9 +30,8 @@ export const safeReplyOrEdit = async (
     }
 
     // For callback queries, try to edit the original message
-    const savedMessageId = sessionService && ctx.from?.id
-      ? await sessionService.getMessageId(ctx.from.id)
-      : ctx.session?.messageId;
+    const savedMessageId =
+      sessionService && ctx.from?.id ? await sessionService.getMessageId(ctx.from.id) : ctx.session?.messageId;
     const messageId = ctx.update.callback_query?.message?.message_id || savedMessageId;
     const chatId = ctx.from?.id;
 

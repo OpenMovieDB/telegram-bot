@@ -93,10 +93,7 @@ export class UserService {
     // Generate new UUID token
     const newToken = uuidv4();
 
-    await this.userModel.updateOne(
-      { userId },
-      { token: newToken }
-    );
+    await this.userModel.updateOne({ userId }, { token: newToken });
 
     return newToken;
   }

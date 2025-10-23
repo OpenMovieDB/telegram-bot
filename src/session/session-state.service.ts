@@ -24,7 +24,7 @@ export class SessionStateService {
       flags = {
         ...flags,
         paymentInProgress: value,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
 
       await this.redis.set(key, JSON.stringify(flags), 'EX', 3600);
@@ -47,7 +47,7 @@ export class SessionStateService {
       flags = {
         ...flags,
         waitingForEmail: value,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
 
       await this.redis.set(key, JSON.stringify(flags), 'EX', 3600);
@@ -70,7 +70,7 @@ export class SessionStateService {
       flags = {
         ...flags,
         tariffId,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
 
       await this.redis.set(key, JSON.stringify(flags), 'EX', 3600);
@@ -93,7 +93,7 @@ export class SessionStateService {
       flags = {
         ...flags,
         paymentMonths: months,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
 
       await this.redis.set(key, JSON.stringify(flags), 'EX', 3600);
@@ -133,7 +133,7 @@ export class SessionStateService {
       const cleanFlags = {
         tariffId: flags.tariffId,
         paymentMonths: flags.paymentMonths,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
 
       await this.redis.set(key, JSON.stringify(cleanFlags), 'EX', 3600);
@@ -202,7 +202,7 @@ export class SessionStateService {
         shouldExitPaymentScene: true,
         paymentInProgress: false,
         waitingForEmail: false,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
 
       await this.redis.set(key, JSON.stringify(flags), 'EX', 3600); // Expire in 1 hour

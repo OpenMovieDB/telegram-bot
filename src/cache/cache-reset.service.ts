@@ -36,7 +36,12 @@ export class CacheResetService {
     this.redis = this.redisService.getOrThrow();
   }
 
-  async resetUserCacheAndLimits(userId: number, userToken: string, newRequestsLimit: number, forceReset = true): Promise<void> {
+  async resetUserCacheAndLimits(
+    userId: number,
+    userToken: string,
+    newRequestsLimit: number,
+    forceReset = true,
+  ): Promise<void> {
     try {
       // We don't need to cache user data - it's already in database
       // Only manage API limits in Redis

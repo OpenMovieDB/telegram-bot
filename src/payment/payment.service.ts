@@ -155,8 +155,8 @@ export class PaymentService {
       {
         status: PaymentStatusEnum.FAILED,
         isFinal: true,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     );
 
     this.logger.debug(`Cancelled pending payment ${pendingPayment.paymentId} for user ${userId}`);
@@ -277,7 +277,9 @@ export class PaymentService {
             updateData.requestsUsed = 0; // Reset only when changing tariff
 
             this.logger.debug(
-              `Changed tariff for user ${user.userId} to ${newTariffId} until ${newEndDate.toISODate()}, reset requestsUsed`,
+              `Changed tariff for user ${
+                user.userId
+              } to ${newTariffId} until ${newEndDate.toISODate()}, reset requestsUsed`,
             );
           }
         } else {
@@ -299,7 +301,7 @@ export class PaymentService {
         // Reset cache based on whether tariff changed
         try {
           const tariffChanged = updateData.tariffId !== undefined;
-          const targetTariffId = tariffChanged ? newTariffId : (currentTariffId || newTariffId);
+          const targetTariffId = tariffChanged ? newTariffId : currentTariffId || newTariffId;
           const targetTariff = await this.tariffService.getOneById(targetTariffId);
 
           if (targetTariff && user.token) {
@@ -308,10 +310,10 @@ export class PaymentService {
               user.userId,
               user.token,
               targetTariff.requestsLimit,
-              tariffChanged // forceReset = true when tariff changes
+              tariffChanged, // forceReset = true when tariff changes
             );
             this.logger.log(
-              `Reset cache for user ${user.userId}, tariffChanged: ${tariffChanged}, limit: ${targetTariff.requestsLimit}`
+              `Reset cache for user ${user.userId}, tariffChanged: ${tariffChanged}, limit: ${targetTariff.requestsLimit}`,
             );
           }
         } catch (cacheError) {

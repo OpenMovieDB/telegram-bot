@@ -18,7 +18,7 @@ export class ModerationService {
   private readonly redis: Redis;
   private readonly chatId: number;
   private readonly adminChatId: number;
-  
+
   private readonly SPAM_USER_PREFIX = 'spam:user:';
   private readonly SPAM_CHECK_PREFIX = 'spam:checked:';
   private readonly CACHE_TTL = 3600; // 1 hour
@@ -64,21 +64,27 @@ export class ModerationService {
       }
 
       // Проверка в базе данных
-      const user = await this.checkUserInDatabase(userId);
-      
+      let user: User | null = null;
+      try {
+        user = await this.checkUserInDatabase(userId);
+      } catch (dbError) {
+        // Ошибка БД - НЕ модерируем пользователя, только логируем
+        this.logger.error(`Database error when checking user ${userId} (@${username}), skipping moderation:`, dbError);
+        return;
+      }
+
       if (user) {
         // Пользователь найден - кэшируем положительный результат
         await this.cacheUserCheck(userId, true);
         this.logger.log(`User ${userId} (@${username}) verified from database`);
       } else {
-        // Пользователь не найден - кэшируем отрицательный результат и модерируем
+        // Пользователь действительно не найден - кэшируем отрицательный результат и модерируем
         await this.cacheUserCheck(userId, false);
         await this.moderateMessage(ctx, { userId, username, messageText: message.text });
       }
 
       // Устанавливаем кулдаун для проверок
       await this.redis.setex(cooldownKey, this.CHECK_COOLDOWN, Date.now().toString());
-
     } catch (error) {
       this.logger.error(`Error in checkAndModerateUser for userId ${ctx.from?.id}:`, error);
     }
@@ -88,7 +94,7 @@ export class ModerationService {
     try {
       const cacheKey = `${this.SPAM_USER_PREFIX}${userId}`;
       const result = await this.redis.get(cacheKey);
-      
+
       if (result === null) return null; // Не в кэше
       return result === 'exists';
     } catch (error) {
@@ -98,13 +104,10 @@ export class ModerationService {
   }
 
   private async checkUserInDatabase(userId: number): Promise<User | null> {
-    try {
-      const user = await this.userService.findOneByUserId(userId);
-      return user || null;
-    } catch (error) {
-      this.logger.error(`Error checking user in database for ${userId}:`, error);
-      return null;
-    }
+    // Пробрасываем ошибки БД наружу для правильной обработки
+    // null означает "пользователь не найден", ошибка означает "проблема с БД"
+    const user = await this.userService.findOneByUserId(userId);
+    return user || null;
   }
 
   private async cacheUserCheck(userId: number, exists: boolean): Promise<void> {
@@ -112,14 +115,17 @@ export class ModerationService {
       const cacheKey = `${this.SPAM_USER_PREFIX}${userId}`;
       const value = exists ? 'exists' : 'not_exists';
       await this.redis.setex(cacheKey, this.CACHE_TTL, value);
-      
+
       this.logger.debug(`Cached user check for ${userId}: ${value}`);
     } catch (error) {
       this.logger.error(`Error caching user check for ${userId}:`, error);
     }
   }
 
-  private async moderateMessage(ctx: Context & { update: any }, userInfo: { userId: number; username: string; messageText: string }): Promise<void> {
+  private async moderateMessage(
+    ctx: Context & { update: any },
+    userInfo: { userId: number; username: string; messageText: string },
+  ): Promise<void> {
     try {
       const { userId, username, messageText } = userInfo;
       const messageId = ctx.update.message.message_id;
@@ -133,10 +139,7 @@ export class ModerationService {
       );
 
       // Баним пользователя
-      await SafeTelegramHelper.safeSend(
-        () => ctx.banChatMember(userId),
-        `Ban spam user ${userId}`,
-      );
+      await SafeTelegramHelper.safeSend(() => ctx.banChatMember(userId), `Ban spam user ${userId}`);
 
       // Отправляем уведомление админу
       await this.sendAdminNotification(userId, username, messageText);
@@ -150,7 +153,7 @@ export class ModerationService {
   private async sendAdminNotification(userId: number, username: string, messageText: string): Promise<void> {
     try {
       const truncatedText = messageText?.slice(0, 200) || 'No text';
-      const notificationText = 
+      const notificationText =
         `🚫 Заблокирован спам от неизвестного пользователя\n\n` +
         `👤 User ID: ${userId}\n` +
         `📝 Username: @${username}\n` +
@@ -158,11 +161,7 @@ export class ModerationService {
         `Если это ошибка, нажмите кнопку разбана ниже:`;
 
       await SafeTelegramHelper.safeSend(
-        () => this.bot.telegram.sendMessage(
-          this.adminChatId,
-          notificationText,
-          createUnbanKeyboard(userId, username)
-        ),
+        () => this.bot.telegram.sendMessage(this.adminChatId, notificationText, createUnbanKeyboard(userId, username)),
         `Admin notification about spam user ${userId}`,
       );
     } catch (error) {
@@ -195,7 +194,7 @@ export class ModerationService {
       await this.redis.del(cooldownKey);
 
       this.logger.log(`Successfully unbanned and registered user ${userId} (@${username})`);
-      
+
       return newUser;
     } catch (error) {
       this.logger.error(`Error unbanning user ${userId}:`, error);
@@ -207,11 +206,8 @@ export class ModerationService {
     try {
       const cacheKey = `${this.SPAM_USER_PREFIX}${userId}`;
       const cooldownKey = `${this.SPAM_CHECK_PREFIX}${userId}`;
-      
-      await Promise.all([
-        this.redis.del(cacheKey),
-        this.redis.del(cooldownKey)
-      ]);
+
+      await Promise.all([this.redis.del(cacheKey), this.redis.del(cooldownKey)]);
 
       this.logger.log(`Cleared cache for user ${userId}`);
     } catch (error) {

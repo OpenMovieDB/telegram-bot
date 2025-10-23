@@ -293,18 +293,18 @@ export class BotUpdate {
   ])
   async onButtonHears(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
-    
+
     // Обрабатываем только в private чатах
     if (!['private'].includes(message.chat.type)) return;
-    
+
     const user = await this.userService.findOneByUserId(ctx.from.id);
     if (user && !user.chatId) await this.userService.update(user.userId, { chatId: ctx.chat.id });
-    
+
     try {
       const buttonEntry = Object.entries(BUTTONS).find(([_, button]) => button.text === message.text);
-      
+
       if (!buttonEntry) return;
-      
+
       const [command] = buttonEntry;
 
       this.logger.log('stats', ctx.message);
@@ -331,17 +331,17 @@ export class BotUpdate {
   async onGroupText(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
     const targetChatId = Number(this.configService.get('CHAT_ID'));
-    
+
     // Проверяем только сообщения в целевом чате
     if (message.chat.id !== targetChatId) {
       return;
     }
-    
+
     // Пропускаем private чаты (они обрабатываются отдельно)
     if (message.chat.type === 'private') {
       return;
     }
-    
+
     // Запускаем проверку пользователя через сервис модерации
     await this.moderationService.checkAndModerateUser(ctx);
   }
@@ -350,17 +350,17 @@ export class BotUpdate {
   async onGroupMessage(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
     const targetChatId = Number(this.configService.get('CHAT_ID'));
-    
+
     // Проверяем только сообщения в целевом чате
     if (message.chat.id !== targetChatId) {
       return;
     }
-    
+
     // Пропускаем private чаты и уже обработанные текстовые сообщения
     if (message.chat.type === 'private' || message.text) {
       return;
     }
-    
+
     // Проверяем остальные типы сообщений (стикеры, фото, документы и т.д.)
     await this.moderationService.checkAndModerateUser(ctx);
   }
@@ -378,8 +378,9 @@ export class BotUpdate {
     try {
       const userId = parseInt(ctx.match[1]);
       const callbackQuery = ctx.update.callback_query;
-      const originalMessage = 'message' in callbackQuery && 'text' in callbackQuery.message ? callbackQuery.message.text : '';
-      
+      const originalMessage =
+        'message' in callbackQuery && 'text' in callbackQuery.message ? callbackQuery.message.text : '';
+
       // Извлекаем username из оригинального сообщения
       const usernameMatch = originalMessage.match(/Username: @([^\n]+)/);
       const username = usernameMatch ? usernameMatch[1] : 'Unknown';
@@ -388,14 +389,15 @@ export class BotUpdate {
 
       if (user) {
         await SafeTelegramHelper.safeSend(
-          () => ctx.editMessageText(
-            `✅ Пользователь ${userId} (@${username}) разбанен и добавлен в базу данных\n\n` +
-            `🆔 User ID: ${user.userId}\n` +
-            `🏷 Токен: ${user.token?.slice(0, 8)}...\n` +
-            `📅 Создан: ${new Date().toLocaleString('ru-RU')}\n\n` +
-            `Пользователь теперь может писать в чате.`,
-            createUnbanConfirmationKeyboard(userId)
-          ),
+          () =>
+            ctx.editMessageText(
+              `✅ Пользователь ${userId} (@${username}) разбанен и добавлен в базу данных\n\n` +
+                `🆔 User ID: ${user.userId}\n` +
+                `🏷 Токен: ${user.token?.slice(0, 8)}...\n` +
+                `📅 Создан: ${new Date().toLocaleString('ru-RU')}\n\n` +
+                `Пользователь теперь может писать в чате.`,
+              createUnbanConfirmationKeyboard(userId),
+            ),
           `Edit message after unban user ${userId}`,
         );
 
@@ -407,10 +409,11 @@ export class BotUpdate {
         this.logger.log(`Admin unbanned user ${userId} (@${username})`);
       } else {
         await SafeTelegramHelper.safeSend(
-          () => ctx.editMessageText(
-            `❌ Ошибка при разбане пользователя ${userId} (@${username})\n\n` +
-            `Проверьте логи приложения для дополнительной информации.`
-          ),
+          () =>
+            ctx.editMessageText(
+              `❌ Ошибка при разбане пользователя ${userId} (@${username})\n\n` +
+                `Проверьте логи приложения для дополнительной информации.`,
+            ),
           `Edit message after unban error ${userId}`,
         );
 
@@ -421,10 +424,7 @@ export class BotUpdate {
       }
     } catch (error) {
       this.logger.error('Error in onUnbanUser:', error);
-      await SafeTelegramHelper.safeSend(
-        () => ctx.answerCbQuery('❌ Произошла ошибка'),
-        'Unban exception callback',
-      );
+      await SafeTelegramHelper.safeSend(() => ctx.answerCbQuery('❌ Произошла ошибка'), 'Unban exception callback');
     }
   }
 
@@ -440,12 +440,9 @@ export class BotUpdate {
 
     try {
       const userId = parseInt(ctx.match[1]);
-      
+
       await SafeTelegramHelper.safeSend(
-        () => ctx.editMessageText(
-          `❌ Пользователь ${userId} оставлен в бане\n\n` +
-          `Сообщение обработано админом.`
-        ),
+        () => ctx.editMessageText(`❌ Пользователь ${userId} оставлен в бане\n\n` + `Сообщение обработано админом.`),
         `Edit message after ignore user ${userId}`,
       );
 
@@ -457,10 +454,7 @@ export class BotUpdate {
       this.logger.log(`Admin ignored unban request for user ${userId}`);
     } catch (error) {
       this.logger.error('Error in onIgnoreUser:', error);
-      await SafeTelegramHelper.safeSend(
-        () => ctx.answerCbQuery('❌ Произошла ошибка'),
-        'Ignore exception callback',
-      );
+      await SafeTelegramHelper.safeSend(() => ctx.answerCbQuery('❌ Произошла ошибка'), 'Ignore exception callback');
     }
   }
 
@@ -477,11 +471,8 @@ export class BotUpdate {
     try {
       const userId = parseInt(ctx.match[1]);
       await this.moderationService.clearUserCache(userId);
-      
-      await SafeTelegramHelper.safeSend(
-        () => ctx.answerCbQuery('✅ Кэш пользователя очищен'),
-        'Cache clear callback',
-      );
+
+      await SafeTelegramHelper.safeSend(() => ctx.answerCbQuery('✅ Кэш пользователя очищен'), 'Cache clear callback');
 
       this.logger.log(`Admin cleared cache for user ${userId}`);
     } catch (error) {

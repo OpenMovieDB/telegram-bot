@@ -113,8 +113,7 @@ export class PaymentScene extends AbstractScene {
     if (cancelled) {
       await ctx.answerCbQuery('✅ Платеж отменен');
       await ctx.editMessageText(
-        '✅ Активный платеж успешно отменен.\n\n' +
-        'Теперь вы можете создать новый платеж с правильными параметрами.'
+        '✅ Активный платеж успешно отменен.\n\n' + 'Теперь вы можете создать новый платеж с правильными параметрами.',
       );
 
       // Re-enter payment scene to show options again
@@ -193,11 +192,14 @@ export class PaymentScene extends AbstractScene {
     if (flags?.waitingForEmail) {
       // Check if user is trying to navigate away (commands like /start, /help, etc.)
       const messageText = ctx.message?.['text']?.toLowerCase() || '';
-      const isCommand = messageText.startsWith('/') ||
-                       ['📊 статистика', '🆘 поддержка', '🏠 главное меню', '🔄️ тариф', '🫣 токен', '⬅ назад'].includes(messageText);
+      const isCommand =
+        messageText.startsWith('/') ||
+        ['📊 статистика', '🆘 поддержка', '🏠 главное меню', '🔄️ тариф', '🫣 токен', '⬅ назад'].includes(messageText);
 
       if (isCommand) {
-        this.logger.debug(`User ${ctx.from.id} trying to navigate while waiting for email, clearing flags and leaving scene`);
+        this.logger.debug(
+          `User ${ctx.from.id} trying to navigate while waiting for email, clearing flags and leaving scene`,
+        );
         await this.sessionStateService.clearProcessingFlags(ctx.from.id);
         await ctx.scene.leave();
         return;
@@ -330,14 +332,14 @@ export class PaymentScene extends AbstractScene {
       if (error.message === 'PENDING_PAYMENT_EXISTS') {
         await ctx.reply(
           '⚠️ У вас уже есть активный платеж в обработке.\n\n' +
-          'Вы можете:\n' +
-          '• Оплатить по ранее отправленной ссылке\n' +
-          '• Дождаться завершения платежа\n' +
-          '• Отменить текущий платеж и создать новый',
+            'Вы можете:\n' +
+            '• Оплатить по ранее отправленной ссылке\n' +
+            '• Дождаться завершения платежа\n' +
+            '• Отменить текущий платеж и создать новый',
           Markup.inlineKeyboard([
             [Markup.button.callback('❌ Отменить текущий платеж', 'cancel_pending_payment')],
-            [Markup.button.callback('⬅️ Назад', 'back_to_menu')]
-          ])
+            [Markup.button.callback('⬅️ Назад', 'back_to_menu')],
+          ]),
         );
         return;
       }
