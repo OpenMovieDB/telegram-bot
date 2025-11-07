@@ -144,4 +144,4 @@ kubectl delete secret poiskkino-bot -n poiskkino
 - Service name: `kp-bot` → `poiskkino-bot`
 - Docker image: `mdwit/kp-bot` → `mdwit/poiskkino-bot`
 - Secret name: `kp-bot` → `poiskkino-bot`
-- Bot name: `kinopoiskdev_bot` → `poiskkinodev_bot`
+- Bot name: `poiskkinodev_bot` → `poiskkinodev_bot`
