@@ -38,8 +38,7 @@ import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { CacheModule } from './cache/cache.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { SessionModule } from './session/session.module';
-import { RebrandModule } from './rebrand/rebrand.module';
-import { getBotId } from './utils/get-bot-id';
+import { rebrandBlocker } from './middlewares/rebrand-blocker.middleware';
 
 @Module({
   imports: [
@@ -50,18 +49,12 @@ import { getBotId } from './utils/get-bot-id';
       botName: BOT_NAME,
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => {
-        const botToken = configService.get('BOT_TOKEN');
-        const botId = await getBotId(botToken);
-        const isNewBot = botId === 8252040138;
-
-        return {
-          token: botToken,
-          middlewares: [session(), commandArgs()],
-          include: isNewBot ? [BotModule] : [RebrandModule],
-          launchOptions: false,
-        };
-      },
+      useFactory: (configService: ConfigService) => ({
+        token: configService.get('BOT_TOKEN'),
+        middlewares: [rebrandBlocker(), session(), commandArgs()],
+        include: [BotModule],
+        launchOptions: false,
+      }),
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
