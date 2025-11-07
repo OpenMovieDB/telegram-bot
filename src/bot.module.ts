@@ -58,7 +58,7 @@ import { getBotId } from './utils/get-bot-id';
         return {
           token: botToken,
           middlewares: [session(), commandArgs()],
-          include: isNewBot ? [BotModule] : [BotModule, RebrandModule],
+          include: isNewBot ? [BotModule] : [RebrandModule],
           launchOptions: false,
         };
       },
