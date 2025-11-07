@@ -21,8 +21,8 @@ export class SetImdbRelationScene extends AbstractScene {
       const isValidIdList = message.length > 5 && /(\d+:tt\d+)+/gm.test(message);
       if (isValidIdList) {
         const relations = message.split(',').map((relation) => relation.split(':'));
-        for (const [kinopoiskId, imdbId] of relations) {
-          this.updateClient.setImdbRelation(parseInt(kinopoiskId), imdbId).catch((e) => {
+        for (const [poiskkinoId, imdbId] of relations) {
+          this.updateClient.setImdbRelation(parseInt(poiskkinoId), imdbId).catch((e) => {
             console.log(e);
           });
         }

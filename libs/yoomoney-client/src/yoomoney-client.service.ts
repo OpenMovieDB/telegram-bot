@@ -32,7 +32,7 @@ export class YooMoneyClient {
       paymentType: YMFormPaymentType.FromCard,
       receiver: this.receiver,
       label: paymentId,
-      formComment: 'Поддержка проекта kinopoisk.dev',
+      formComment: 'Поддержка проекта poiskkino.dev',
       targets: comment,
     });
 

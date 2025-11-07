@@ -16,7 +16,16 @@
       "Bash(npm cache clean:*)",
       "Bash(npm install:*)",
       "Bash(grep:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(chmod:*)",
+      "Bash(tree:*)",
+      "Bash(./deploy.sh:*)",
+      "Bash(kubectl create:*)",
+      "Bash(kubectl apply:*)",
+      "Bash(kubectl get:*)",
+      "Bash(docker build:*)",
+      "Bash(kubectl describe:*)",
+      "Bash(kubectl delete:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,1 +1,1 @@
-export const BOT_NAME = 'kinopoiskdev_bot';
+export const BOT_NAME = 'poiskkinodev_bot';

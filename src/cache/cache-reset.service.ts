@@ -195,7 +195,7 @@ export class CacheResetService {
       this.logger.log(`Deleted old API key ${oldApiKey} from Redis: ${deleteResult} keys removed`);
 
       // CRITICAL: Delete user cache by old UUID to prevent old token from working
-      // The API (kinopoiskdev) caches user data with key pattern: user:{UUID}
+      // The API (poiskkinodev) caches user data with key pattern: user:{UUID}
       const userCacheKey = `user:${oldToken}`;
       const userCacheDeleted = await this.redis.del(userCacheKey);
       this.logger.log(`Deleted user cache ${userCacheKey} from Redis: ${userCacheDeleted} keys removed`);

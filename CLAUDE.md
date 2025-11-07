@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Kinopoisk API registration and payment Telegram bot built with NestJS and Telegraf. The bot manages user registration, API token generation, subscription management, and payment processing through multiple gateways.
+This is a Poiskkino API registration and payment Telegram bot built with NestJS and Telegraf. The bot manages user registration, API token generation, subscription management, and payment processing through multiple gateways.
 
 **Tech Stack:**
 - NestJS (Node.js framework)
