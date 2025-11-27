@@ -44,6 +44,7 @@ import { ListUsersScene } from './scenes/list-users.scene';
 import { ExpiringSubscriptionsScene } from './scenes/expiring-subscriptions.scene';
 import { UserDetailsScene } from './scenes/user-details.scene';
 import { UpdateUserSubscriptionScene } from './scenes/update-user-subscription.scene';
+import { rebrandBlocker } from './middlewares/rebrand-blocker.middleware';
 
 @Module({
   imports: [
@@ -56,9 +57,9 @@ import { UpdateUserSubscriptionScene } from './scenes/update-user-subscription.s
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         token: configService.get('BOT_TOKEN'),
-        middlewares: [session(), commandArgs()],
+        middlewares: [rebrandBlocker(), session(), commandArgs()],
         include: [BotModule],
-        launchOptions: false, // Disable auto-launch
+        launchOptions: false,
       }),
     }),
     MongooseModule.forRootAsync({

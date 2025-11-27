@@ -16,8 +16,7 @@
       "Bash(npm cache clean:*)",
       "Bash(npm install:*)",
       "Bash(grep:*)",
-      "Bash(npm ls:*)",
-      "Read(//mnt/d/kinopoisk/kinopoiskdev/**)"
+      "Bash(npm ls:*)"
     ],
     "deny": [],
     "ask": []
