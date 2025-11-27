@@ -170,9 +170,11 @@ export class BotService {
     if (!this.isProd) return;
     const users = await this.userService.findUsersInChat();
 
-    this.logger.log(`Users in chat: ${users.length}`);
+    const telegramUsers = users.filter((user) => !user.isExternalUser);
+
+    this.logger.log(`Users in chat: ${telegramUsers.length} (excluding ${users.length - telegramUsers.length} external users)`);
     const leavedUsers = [];
-    for (const user of users) {
+    for (const user of telegramUsers) {
       try {
         const { status } = await this.bot.telegram.getChatMember(this.chatId, user.userId);
         if (status === 'left') leavedUsers.push(user);
@@ -219,5 +221,22 @@ export class BotService {
     } catch (e) {
       this.logger.error(e);
     }
+  }
+
+  async sendAdminSubscriptionExpirationWarning(username: string, expirationDate: Date, tariffName: string, daysLeft: number): Promise<void> {
+    const emoji = daysLeft <= 3 ? '🔴' : daysLeft <= 7 ? '⚠️' : '⏰';
+    const urgency = daysLeft === 0 ? 'СЕГОДНЯ' : daysLeft <= 3 ? 'СРОЧНО' : 'ВНИМАНИЕ';
+
+    const message =
+      `${emoji} ${urgency}: Подписка ${daysLeft === 0 ? 'истекает СЕГОДНЯ' : `истекает через ${daysLeft} дн.`}!\n\n` +
+      `👤 Пользователь: ${username}\n` +
+      `📅 Дата истечения: ${expirationDate.toLocaleDateString('ru-RU')}\n` +
+      `💼 Тариф: ${tariffName}\n\n` +
+      `${daysLeft === 0 ? 'Пользователь будет переведен на бесплатный тариф.' : 'Рекомендуется связаться с пользователем для продления подписки.'}`;
+
+    await SafeTelegramHelper.safeSend(
+      () => this.bot.telegram.sendMessage(this.adminChatId, message),
+      'Admin subscription expiration warning',
+    );
   }
 }

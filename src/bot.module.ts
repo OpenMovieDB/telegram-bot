@@ -38,6 +38,12 @@ import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { CacheModule } from './cache/cache.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { SessionModule } from './session/session.module';
+import { AdminMenuScene } from './scenes/admin-menu.scene';
+import { CreateUserScene } from './scenes/create-user.scene';
+import { ListUsersScene } from './scenes/list-users.scene';
+import { ExpiringSubscriptionsScene } from './scenes/expiring-subscriptions.scene';
+import { UserDetailsScene } from './scenes/user-details.scene';
+import { UpdateUserSubscriptionScene } from './scenes/update-user-subscription.scene';
 
 @Module({
   imports: [
@@ -107,6 +113,12 @@ import { SessionModule } from './session/session.module';
     DeveloperTariffScene,
     StudentTariffScene,
     SelectMonthsScene,
+    AdminMenuScene,
+    CreateUserScene,
+    ListUsersScene,
+    ExpiringSubscriptionsScene,
+    UserDetailsScene,
+    UpdateUserSubscriptionScene,
   ],
   exports: [BotService],
 })

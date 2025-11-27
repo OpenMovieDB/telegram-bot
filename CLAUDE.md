@@ -80,7 +80,6 @@ The application follows NestJS modular architecture with clear separation of con
 - Links user, tariff, and payment gateway
 - Status tracking for async payment validation
 
-**Tariff** (`src/tariff/tariff.schema.ts`):
 - Defines subscription tiers
 - `requestsLimit`: Daily API request limit
 - `price`: Monthly price in rubles
@@ -88,9 +87,10 @@ The application follows NestJS modular architecture with clear separation of con
 ### Critical Business Logic
 
 1. **Token Management**:
-   - Tokens generated using `uuid-apikey` library
-   - Redis caching for performance (`user:token:{token}` keys)
-   - Token validation happens through cache first, then database
+   - **⚠️ IMPORTANT: See `.claude/tasks/token-system-clarification.md` for detailed token system rules**
+   - Tokens stored as UUID in database, displayed as API-key to users
+   - Generate new tokens ONLY with `uuidv4()`, NOT with `ApiKey.create().uuid`
+   - Redis stores API limits by API-key format (no user data caching)
 
 2. **Chat Membership Requirement**:
    - Free tier users must be in the Telegram chat
@@ -123,10 +123,11 @@ Required environment variables (see `example.env`):
    - Add to `PaymentStrategyFactory`
    - Update `PaymentSystemEnum`
 
-3. **Token Caching**: When modifying user tokens or tariffs, always clear Redis cache:
-   ```typescript
-   await this.redis.del(`user:token:${user.token}`);
-   ```
+3. **Token System Architecture**:
+   - **⚠️ CRITICAL: Always refer to `.claude/tasks/token-system-clarification.md` for token handling rules**
+   - **REMEMBER: ALWAYS ASK "ЗАЧЕМ?" (WHY?) before adding any complexity**
+   - NO user data caching - data exists in database
+   - Only cache API limits in Redis
 
 4. **Error Handling**: Use `AllExceptionFilter` for global error handling. Bot-specific errors should navigate to error scenes with admin notifications.
 

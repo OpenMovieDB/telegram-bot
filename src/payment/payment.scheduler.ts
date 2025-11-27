@@ -175,6 +175,85 @@ export class PaymentScheduler {
     }
   }
 
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async handleAdminSubscriptionNotifications() {
+    this.logger.debug('Start checking subscriptions for admin notifications');
+
+    const now = DateTime.local();
+    const tariffs = await this.tariffService.getAllTariffs();
+    const paidTariffs = tariffs.filter((tariff) => tariff.name !== 'FREE').map((tariff) => tariff._id.toString());
+
+    const expiringToday = await this.userService.getExpiringSubscriptions(0);
+    const expiring3Days = await this.userService.getExpiringSubscriptions(3);
+    const expiring30Days = await this.userService.getExpiringSubscriptions(30);
+
+    const notifiedUsers = new Set<string>();
+
+    for (const user of expiringToday) {
+      if (paidTariffs.includes(user.tariffId?._id?.toString())) {
+        const username = user.username || `TG:${user.userId}`;
+        const key = `${username}_0`;
+        if (!notifiedUsers.has(key)) {
+          notifiedUsers.add(key);
+          this.botService
+            .sendAdminSubscriptionExpirationWarning(username, user.subscriptionEndDate, user.tariffId.name, 0)
+            .catch((error) => {
+              this.logger.error(`Failed to send admin notification for ${username}: ${error.message}`);
+            });
+        }
+      }
+    }
+
+    for (const user of expiring3Days) {
+      if (paidTariffs.includes(user.tariffId?._id?.toString())) {
+        const username = user.username || `TG:${user.userId}`;
+        const daysLeft = Math.ceil(
+          DateTime.fromJSDate(user.subscriptionEndDate).diff(now, 'days').days,
+        );
+
+        const key = `${username}_3`;
+        if (daysLeft > 0 && daysLeft <= 3 && !notifiedUsers.has(key)) {
+          notifiedUsers.add(key);
+          this.botService
+            .sendAdminSubscriptionExpirationWarning(username, user.subscriptionEndDate, user.tariffId.name, daysLeft)
+            .catch((error) => {
+              this.logger.error(`Failed to send admin notification for ${username}: ${error.message}`);
+            });
+        }
+      }
+    }
+
+    for (const user of expiring30Days) {
+      if (paidTariffs.includes(user.tariffId?._id?.toString()) && user.subscriptionStartDate) {
+        const subscriptionDuration = DateTime.fromJSDate(user.subscriptionEndDate).diff(
+          DateTime.fromJSDate(user.subscriptionStartDate),
+          'days',
+        ).days;
+
+        const isYearlySubscription = subscriptionDuration >= 330;
+
+        if (isYearlySubscription) {
+          const username = user.username || `TG:${user.userId}`;
+          const daysLeft = Math.ceil(
+            DateTime.fromJSDate(user.subscriptionEndDate).diff(now, 'days').days,
+          );
+
+          const key = `${username}_30`;
+          if (daysLeft > 3 && daysLeft <= 30 && !notifiedUsers.has(key)) {
+            notifiedUsers.add(key);
+            this.botService
+              .sendAdminSubscriptionExpirationWarning(username, user.subscriptionEndDate, user.tariffId.name, daysLeft)
+              .catch((error) => {
+                this.logger.error(`Failed to send admin notification for ${username}: ${error.message}`);
+              });
+          }
+        }
+      }
+    }
+
+    this.logger.debug(`Sent ${notifiedUsers.size} admin notifications for expiring subscriptions`);
+  }
+
   private async sendPaymentNotificationsAsync(payment: any, user: any): Promise<void> {
     try {
       // Send user notification

@@ -63,6 +63,23 @@ export class BotUpdate {
     await ctx.scene.enter(CommandEnum.START);
   }
 
+  @Command('admin')
+  async onAdminCommand(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+    if (!['private'].includes(message.chat.type)) {
+      return;
+    }
+
+    if (this.isAdmin(ctx)) {
+      await ctx.scene.enter(CommandEnum.ADMIN_MENU);
+    } else {
+      await SafeTelegramHelper.safeSend(
+        () => ctx.reply('У вас нет прав для доступа к админ панели'),
+        `Unauthorized admin access attempt from ${ctx.from.id}`,
+      );
+    }
+  }
+
   @Command('pay')
   async onPayCommand(@Ctx() ctx: Context & { update: any }) {
     if (this.isAdmin(ctx)) {

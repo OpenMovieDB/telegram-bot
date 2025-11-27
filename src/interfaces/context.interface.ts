@@ -20,5 +20,10 @@ interface SessionData extends Scenes.SceneSession<SceneSession> {
 interface SceneSession extends Scenes.SceneSessionData {
   state: {
     token?: string;
+    username?: string;
+    tariffId?: string;
+    newTariffId?: string;
+    currentTariffId?: string;
+    action?: string;
   };
 }

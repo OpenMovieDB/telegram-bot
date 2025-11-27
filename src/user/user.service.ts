@@ -119,4 +119,66 @@ export class UserService {
   private isSubscriptionExpired(expirationDate: Date, now: Date): boolean {
     return expirationDate && now >= expirationDate;
   }
+
+  async createExternalUser(
+    username: string,
+    tariffId: string,
+    subscriptionEndDate?: Date,
+  ): Promise<User & { tariffId: Tariff }> {
+    const token = uuidv4();
+    const user = await this.userModel.create({
+      username,
+      token,
+      tariffId,
+      isExternalUser: true,
+      subscriptionStartDate: new Date(),
+      subscriptionEndDate,
+      inChat: false,
+    });
+
+    return this.userModel.findById(user._id).populate('tariffId').lean();
+  }
+
+  async findAllUsers(filter?: { isExternalUser?: boolean }): Promise<(User & { tariffId: Tariff })[]> {
+    const query = filter ? filter : {};
+    return this.userModel.find(query).populate('tariffId').lean();
+  }
+
+  async findUserByUsername(username: string): Promise<User & { tariffId: Tariff }> {
+    return this.userModel.findOne({ username }).populate('tariffId').lean();
+  }
+
+  async updateSubscription(
+    identifier: string | number,
+    tariffId: string,
+    subscriptionEndDate?: Date,
+  ): Promise<User & { tariffId: Tariff }> {
+    const query = typeof identifier === 'string' ? { username: identifier } : { userId: identifier };
+    const updateData: Partial<User> = {
+      tariffId: tariffId as any,
+      subscriptionStartDate: new Date(),
+      subscriptionEndDate,
+      sendWarnNotification: false,
+    };
+
+    await this.userModel.updateOne(query, updateData);
+
+    return this.userModel.findOne(query).populate('tariffId').lean();
+  }
+
+  async getExpiringSubscriptions(daysThreshold: number): Promise<(User & { tariffId: Tariff })[]> {
+    const now = new Date();
+    const thresholdDate = new Date();
+    thresholdDate.setDate(now.getDate() + daysThreshold);
+
+    return this.userModel
+      .find({
+        subscriptionEndDate: {
+          $gte: now,
+          $lte: thresholdDate,
+        },
+      })
+      .populate('tariffId')
+      .lean();
+  }
 }

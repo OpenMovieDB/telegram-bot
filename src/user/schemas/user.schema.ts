@@ -8,13 +8,17 @@ export type UserDocument = HydratedDocument<User>;
 @Schema()
 export class User {
   @Prop({
-    required: true,
+    required: false,
+    sparse: true,
     unique: true,
   })
-  userId: number;
+  userId?: number;
 
   @Prop()
   chatId?: number;
+
+  @Prop({ default: false })
+  isExternalUser?: boolean;
 
   @Prop()
   sendWarnNotification?: boolean;
@@ -25,18 +29,20 @@ export class User {
   })
   token?: string;
 
-  @Prop()
-  username: string;
+  @Prop({
+    required: false,
+    sparse: true,
+    unique: true,
+  })
+  username?: string;
 
   @Prop()
   password?: string;
 
   @Prop({
-    required: true,
+    required: false,
+    sparse: true,
     unique: true,
-    default() {
-      return this.userId;
-    },
   })
   email?: string;
 

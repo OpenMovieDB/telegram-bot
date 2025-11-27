@@ -29,4 +29,8 @@ export const BUTTONS = {
   [CommandEnum.PAY_WITH_YOOKASSA]: Markup.button.callback('💳 картой РФ', CommandEnum.PAY_WITH_YOOKASSA),
   [CommandEnum.PAY_WITH_TBANK]: Markup.button.callback('💳 картой РФ', CommandEnum.PAY_WITH_TBANK),
   [CommandEnum.CONFIRM_PAYMENT]: Markup.button.callback('✅ Я оплатил', CommandEnum.CONFIRM_PAYMENT),
+  [CommandEnum.ADMIN_MENU]: Markup.button.callback('⚙️ Админ панель', CommandEnum.ADMIN_MENU),
+  [CommandEnum.CREATE_USER]: Markup.button.callback('➕ Создать пользователя', CommandEnum.CREATE_USER),
+  [CommandEnum.LIST_USERS]: Markup.button.callback('📋 Список пользователей', CommandEnum.LIST_USERS),
+  [CommandEnum.EXPIRING_SUBSCRIPTIONS]: Markup.button.callback('⏰ Истекающие подписки', CommandEnum.EXPIRING_SUBSCRIPTIONS),
 };
