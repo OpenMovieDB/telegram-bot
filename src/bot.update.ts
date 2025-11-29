@@ -272,6 +272,33 @@ export class BotUpdate {
     }
   }
 
+  @Hears('➕ Создать пользователя')
+  async onCreateUserHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+    if (!['private'].includes(message.chat.type)) return;
+
+    this.logger.log('CREATE_USER button pressed');
+    await ctx.scene.enter(CommandEnum.CREATE_USER);
+  }
+
+  @Hears('📋 Список пользователей')
+  async onListUsersHears(@Ctx() ctx: Context & { update: any }) {
+    const message = ctx.update.message;
+    if (!['private'].includes(message.chat.type)) return;
+
+    this.logger.log('LIST_USERS button pressed');
+    await ctx.scene.enter(CommandEnum.LIST_USERS);
+  }
+
+  @Hears('⏰ Истекающие подписки')
+  async onExpiringSubscriptionsHears(@Ctx() ctx: Context & { update: any}) {
+    const message = ctx.update.message;
+    if (!['private'].includes(message.chat.type)) return;
+
+    this.logger.log('EXPIRING_SUBSCRIPTIONS button pressed');
+    await ctx.scene.enter(CommandEnum.EXPIRING_SUBSCRIPTIONS);
+  }
+
   @Hears(BUTTONS[CommandEnum.HOME].text)
   async onMenuHears(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
@@ -307,6 +334,9 @@ export class BotUpdate {
     BUTTONS[CommandEnum.CHANGE_TOKEN].text,
     BUTTONS[CommandEnum.UPDATE_MOVIE].text,
     BUTTONS[CommandEnum.SET_IMDB_RELATION].text,
+    BUTTONS[CommandEnum.CREATE_USER].text,
+    BUTTONS[CommandEnum.LIST_USERS].text,
+    BUTTONS[CommandEnum.EXPIRING_SUBSCRIPTIONS].text,
   ])
   async onButtonHears(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;

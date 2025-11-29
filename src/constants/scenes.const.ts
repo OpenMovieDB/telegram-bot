@@ -165,8 +165,8 @@ export const SCENES = {
     },
   },
   [CommandEnum.ADMIN_MENU]: {
-    text: '⚙️ <b>Админ панель</b>\n\nВыберите действие:',
-    buttons: [
+    navigateText: '⚙️ <b>Админ панель</b>\n\nВыберите действие:',
+    navigateButtons: [
       [BUTTONS[CommandEnum.CREATE_USER]],
       [BUTTONS[CommandEnum.LIST_USERS], BUTTONS[CommandEnum.EXPIRING_SUBSCRIPTIONS]],
       [BUTTONS[CommandEnum.HOME]],
