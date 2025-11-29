@@ -190,7 +190,7 @@ export class PaymentScheduler {
     const notifiedUsers = new Set<string>();
 
     for (const user of expiringToday) {
-      if (paidTariffs.includes(user.tariffId?._id?.toString())) {
+      if (paidTariffs.includes(user.tariffId?._id?.toString()) && user.isExternalUser) {
         const username = user.username || `TG:${user.userId}`;
         const key = `${username}_0`;
         if (!notifiedUsers.has(key)) {
@@ -205,7 +205,7 @@ export class PaymentScheduler {
     }
 
     for (const user of expiring3Days) {
-      if (paidTariffs.includes(user.tariffId?._id?.toString())) {
+      if (paidTariffs.includes(user.tariffId?._id?.toString()) && user.isExternalUser) {
         const username = user.username || `TG:${user.userId}`;
         const daysLeft = Math.ceil(
           DateTime.fromJSDate(user.subscriptionEndDate).diff(now, 'days').days,
@@ -224,7 +224,7 @@ export class PaymentScheduler {
     }
 
     for (const user of expiring30Days) {
-      if (paidTariffs.includes(user.tariffId?._id?.toString()) && user.subscriptionStartDate) {
+      if (paidTariffs.includes(user.tariffId?._id?.toString()) && user.subscriptionStartDate && user.isExternalUser) {
         const subscriptionDuration = DateTime.fromJSDate(user.subscriptionEndDate).diff(
           DateTime.fromJSDate(user.subscriptionStartDate),
           'days',
