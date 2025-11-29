@@ -1,4 +1,4 @@
-import { BUTTONS } from './buttons.const';
+import { BUTTONS, ADMIN_KEYBOARD_BUTTONS } from './buttons.const';
 import { CommandEnum } from '../enum/command.enum';
 import { Tariff } from 'src/tariff/schemas/tariff.schema';
 import { splitArrayIntoPairs } from 'src/utils/split-array-into-pairs';
@@ -167,9 +167,9 @@ export const SCENES = {
   [CommandEnum.ADMIN_MENU]: {
     navigateText: '⚙️ <b>Админ панель</b>\n\nВыберите действие:',
     navigateButtons: [
-      [BUTTONS[CommandEnum.CREATE_USER]],
-      [BUTTONS[CommandEnum.LIST_USERS], BUTTONS[CommandEnum.EXPIRING_SUBSCRIPTIONS]],
-      [BUTTONS[CommandEnum.HOME]],
+      [ADMIN_KEYBOARD_BUTTONS.CREATE_USER],
+      [ADMIN_KEYBOARD_BUTTONS.LIST_USERS, ADMIN_KEYBOARD_BUTTONS.EXPIRING_SUBSCRIPTIONS],
+      [ADMIN_KEYBOARD_BUTTONS.HOME],
     ],
   },
   ERROR: (message: string) => ({
