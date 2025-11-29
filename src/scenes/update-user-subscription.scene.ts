@@ -19,7 +19,11 @@ export class UpdateUserSubscriptionScene {
   @SceneEnter()
   async onEnter(@Ctx() ctx: Context) {
     this.logger.log('Entering UPDATE_USER_SUBSCRIPTION scene');
-    const { username, action } = ctx.scene.session.state || {};
+    // Получаем данные либо из session.state, либо из scene.state
+    const sessionData = ctx.scene.session.state || {};
+    const sceneData = (ctx.scene.state as any) || {};
+    const username = sessionData.username || sceneData.username;
+    const action = sessionData.action || sceneData.action;
 
     if (!username || !action) {
       await ctx.replyWithHTML('❌ Ошибка: данные не переданы');

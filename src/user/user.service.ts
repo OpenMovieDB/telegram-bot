@@ -144,6 +144,10 @@ export class UserService {
     return this.userModel.find(query).populate('tariffId').lean();
   }
 
+  async countAllUsers(): Promise<number> {
+    return this.userModel.countDocuments();
+  }
+
   async findUserByUsername(username: string): Promise<User & { tariffId: Tariff }> {
     return this.userModel.findOne({ username }).populate('tariffId').lean();
   }

@@ -27,7 +27,8 @@ export class ListUsersScene {
 
   private async showUsersList(ctx: Context, page: number = 0, isEdit: boolean = false) {
     const externalUsers = await this.userService.findAllUsers({ isExternalUser: true });
-    const telegramUsers = await this.userService.findAllUsers({ isExternalUser: false });
+    const totalUsersCount = await this.userService.countAllUsers();
+    const telegramUsersCount = totalUsersCount - externalUsers.length;
 
     const pageSize = 5;
     const totalPages = Math.ceil(externalUsers.length / pageSize);
@@ -38,9 +39,9 @@ export class ListUsersScene {
     let message = '📋 <b>Список пользователей</b>\n\n';
 
     message += `📊 <b>Статистика:</b>\n`;
-    message += `├ Telegram пользователи: ${telegramUsers.length}\n`;
+    message += `├ Telegram пользователи: ${telegramUsersCount}\n`;
     message += `├ Внешние пользователи: ${externalUsers.length}\n`;
-    message += `└ Всего: ${telegramUsers.length + externalUsers.length}\n\n`;
+    message += `└ Всего: ${totalUsersCount}\n\n`;
 
     if (externalUsers.length > 0) {
       message += `👥 <b>Внешние пользователи (стр. ${page + 1}/${totalPages}):</b>\n\n`;
