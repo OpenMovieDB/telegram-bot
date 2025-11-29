@@ -307,9 +307,6 @@ export class BotUpdate {
     BUTTONS[CommandEnum.CHANGE_TOKEN].text,
     BUTTONS[CommandEnum.UPDATE_MOVIE].text,
     BUTTONS[CommandEnum.SET_IMDB_RELATION].text,
-    BUTTONS[CommandEnum.CREATE_USER].text,
-    BUTTONS[CommandEnum.LIST_USERS].text,
-    BUTTONS[CommandEnum.EXPIRING_SUBSCRIPTIONS].text,
   ])
   async onButtonHears(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
