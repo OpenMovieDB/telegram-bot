@@ -105,7 +105,9 @@ export class ListUsersScene {
   @Action(/^user_(.+)$/)
   async onUserSelect(@Ctx() ctx: Context) {
     const username = ctx.match[1];
-    await ctx.scene.enter(CommandEnum.USER_DETAILS, { username });
+    // Передаём username в оба места для надёжности
+    ctx.scene.session.state = { username };
+    await ctx.scene.enter(CommandEnum.USER_DETAILS, { username } as any);
     await ctx.answerCbQuery();
   }
 }

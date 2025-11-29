@@ -16,9 +16,11 @@ export class UserDetailsScene {
   @SceneEnter()
   async onEnter(@Ctx() ctx: Context) {
     this.logger.log('Entering USER_DETAILS scene');
-    const username = ctx.scene.session.state?.username;
+    // Получаем username либо из state, либо из параметров сцены
+    const username = ctx.scene.session.state?.username || (ctx.scene.state as any)?.username;
 
     if (!username) {
+      this.logger.error('Username not found!');
       await ctx.replyWithHTML('❌ Пользователь не выбран');
       await ctx.scene.enter(CommandEnum.ADMIN_MENU);
       return;
@@ -128,16 +130,18 @@ export class UserDetailsScene {
   @Action(/^change_tariff_(.+)$/)
   async onChangeTariff(@Ctx() ctx: Context) {
     const username = ctx.match[1];
-    ctx.scene.session.state = { username, action: 'change_tariff' };
-    await ctx.scene.enter(CommandEnum.UPDATE_USER_SUBSCRIPTION);
+    const stateData = { username, action: 'change_tariff' };
+    ctx.scene.session.state = stateData;
+    await ctx.scene.enter(CommandEnum.UPDATE_USER_SUBSCRIPTION, stateData as any);
     await ctx.answerCbQuery();
   }
 
   @Action(/^extend_subscription_(.+)$/)
   async onExtendSubscription(@Ctx() ctx: Context) {
     const username = ctx.match[1];
-    ctx.scene.session.state = { username, action: 'extend_subscription' };
-    await ctx.scene.enter(CommandEnum.UPDATE_USER_SUBSCRIPTION);
+    const stateData = { username, action: 'extend_subscription' };
+    ctx.scene.session.state = stateData;
+    await ctx.scene.enter(CommandEnum.UPDATE_USER_SUBSCRIPTION, stateData as any);
     await ctx.answerCbQuery();
   }
 
