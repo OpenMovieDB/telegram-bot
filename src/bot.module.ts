@@ -9,6 +9,9 @@ import { BotUpdate } from './bot.update';
 import { BotConfigService } from './bot-config.service';
 import { DeveloperTariffScene } from './scenes/developer-tariff.scene';
 import { FreeTariffScene } from './scenes/free-tariff.scene';
+import { DemoTariffScene } from './scenes/demo-tariff.scene';
+import { BasicTariffScene } from './scenes/basic-tariff.scene';
+import { NolimitTariffScene } from './scenes/nolimit-tariff.scene';
 import { GetAccessScene } from './scenes/get-access.scene';
 import { GetMyTokenScene } from './scenes/get-my-token.scene';
 import { GetRequestStatsScene } from './scenes/get-request-stats.scene';
@@ -120,6 +123,9 @@ import { rebrandBlocker } from './middlewares/rebrand-blocker.middleware';
     ExpiringSubscriptionsScene,
     UserDetailsScene,
     UpdateUserSubscriptionScene,
+    DemoTariffScene,
+    BasicTariffScene,
+    NolimitTariffScene,
   ],
   exports: [BotService],
 })

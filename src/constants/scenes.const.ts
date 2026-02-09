@@ -99,6 +99,26 @@ export const SCENES = {
       },
     },
   },
+  [CommandEnum.DEMO_TARIFF]: {
+    navigateText: 'Отлично! Но перед этим к тебе есть небольшая просьба, зайди к нам в общий чат 😇',
+    navigateButtons: [BUTTONS[CommandEnum.HOME]],
+    text: `В нем ты всегда можешь получить поддержку от сообщества и администрации, а в замен я дам тебе токен!`,
+    buttons: [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
+    actions: {
+      [CommandEnum.CONFIRM_JOIN_CHAT]: {
+        success: (token: string) => ({
+          navigateText: `Теперь, ты можешь пользоваться API: \n\n<code>${token}</code>\n\nДокументация по API: <code>https://poiskkino.dev/documentation</code>\nОна описана в формате OpenAPI и поможет тебе быстро составить запрос к API.\n\n Если тебе снова нужна будет документация, в основном меню будет кнопка "🆘 поддержка".`,
+          navigateButtons: [BUTTONS[CommandEnum.HOME]],
+        }),
+        error: () => ({
+          navigateText: `Ты не вступил в чат 😔`,
+          navigateButtons: [BUTTONS[CommandEnum.HOME]],
+          text: `Нажми на кнопку ниже и вступи в чат, а затем вернись сюда и нажми на кнопку "Подтвердить вступление"`,
+          buttons: [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
+        }),
+      },
+    },
+  },
   [CommandEnum.QUESTION]: {
     text: `Если у тебя есть вопрос, то ты можешь, посмотреть в документацию или задать его в нашем чате.`,
     buttons: [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.DOCUMENTATION]],
