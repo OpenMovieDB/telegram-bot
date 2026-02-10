@@ -21,6 +21,10 @@ export class UnlimitedTariffScene extends AbstractScene {
   async onSceneEnter(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
     const tariff = await this.tariffService.getOneByName(ctx.scene.session.current.split('_')[0]);
+    if (!tariff || tariff.isHidden) {
+      await ctx.scene.enter(CommandEnum.GET_ACCESS);
+      return;
+    }
     await this.sessionStateService.setTariffId(ctx.from.id, tariff._id.toString());
     ctx.scene.enter(CommandEnum.SELECT_MONTHS);
   }

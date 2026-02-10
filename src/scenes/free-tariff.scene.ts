@@ -1,10 +1,11 @@
 import { CommandEnum } from '../enum/command.enum';
 import { AbstractScene } from '../abstract/abstract.scene';
 import { UserService } from '../user/user.service';
-import { Action, Scene } from 'nestjs-telegraf';
+import { Action, Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { SCENES } from '../constants/scenes.const';
 import { Markup } from 'telegraf';
 import { ConfigService } from '@nestjs/config';
+import { Context } from 'src/interfaces/context.interface';
 
 @Scene(CommandEnum.FREE_TARIFF)
 export class FreeTariffScene extends AbstractScene {
@@ -12,6 +13,11 @@ export class FreeTariffScene extends AbstractScene {
   constructor(private readonly userService: UserService, private readonly configService: ConfigService) {
     super();
     this.chatId = configService.get('CHAT_ID');
+  }
+
+  @SceneEnter()
+  async onSceneEnter(@Ctx() ctx: Context) {
+    await ctx.scene.enter(CommandEnum.DEMO_TARIFF);
   }
 
   @Action(CommandEnum.CONFIRM_JOIN_CHAT)
