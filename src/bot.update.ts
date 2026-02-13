@@ -259,6 +259,48 @@ export class BotUpdate {
     }
   }
 
+  @Command('create')
+  async onCreateInvoiceCommand(@Ctx() ctx: Context & { update: any }) {
+    if (!this.isAdmin(ctx)) return;
+
+    const args = ctx.state.command.args;
+    const amount = Number(args[0]);
+
+    if (!args.length || isNaN(amount) || amount <= 0) {
+      await SafeTelegramHelper.safeSend(
+        () =>
+          this.bot.telegram.sendMessage(
+            this.adminChatId,
+            '❌ Использование: /create <сумма> <описание>\nПример: /create 1000 Оплата за консультацию',
+          ),
+        'Admin create invoice usage',
+      );
+      return;
+    }
+
+    const description = args.slice(1).join(' ') || 'Оплата';
+
+    try {
+      const { paymentUrl, orderId } = await this.paymentService.createInvoice(amount, description);
+
+      await SafeTelegramHelper.safeSend(
+        () =>
+          this.bot.telegram.sendMessage(
+            this.adminChatId,
+            `✅ Счет создан\n\n💰 Сумма: ${amount} ₽\n📝 Описание: ${description}\n🔖 Order ID: ${orderId}\n\n🔗 Ссылка на оплату:\n${paymentUrl}`,
+          ),
+        'Admin create invoice success',
+      );
+    } catch (error) {
+      this.logger.error(`Error creating invoice: ${error.message}`, error.stack);
+      await SafeTelegramHelper.safeSend(
+        () =>
+          this.bot.telegram.sendMessage(this.adminChatId, `❌ Ошибка при создании счета: ${error.message}`),
+        'Admin create invoice error',
+      );
+    }
+  }
+
   @Action(/^(?!unban_|ignore_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_).*$/)
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
     this.logger.log(ctx);

@@ -12,9 +12,10 @@ import { UserService } from 'src/user/user.service';
 import { PaymentStatusEnum } from './enum/payment-status.enum';
 import { DateTime } from 'luxon';
 import { YooMoneyNotification } from '@app/update-client/types/notification.type';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { YooMoneyClient } from '@app/yoomoney-client';
+import { TBankClient } from '@app/tbank-client';
 import * as ApiKey from 'uuid-apikey';
 import { RedisService } from '@liaoliaots/nestjs-redis';
 import Redis from 'ioredis';
@@ -32,6 +33,7 @@ export class PaymentService {
     private readonly tariffService: TariffService,
     private readonly paymentStrategyFactory: PaymentStrategyFactory,
     private readonly yooMoney: YooMoneyClient,
+    private readonly tBankClient: TBankClient,
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
     private readonly redisService: RedisService,
     private readonly cacheResetService: CacheResetService,
@@ -354,6 +356,17 @@ export class PaymentService {
 
   async findPaymentByPaymentId(paymentId: string): Promise<Payment> {
     return this.paymentModel.findOne({ paymentId }).exec();
+  }
+
+  async createInvoice(amount: number, description: string): Promise<{ paymentUrl: string; orderId: string }> {
+    const orderId = randomUUID();
+    const response = await this.tBankClient.createSimplePayment(orderId, amount, description);
+
+    if (!response.Success) {
+      throw new Error(`TBank error: ${response.Message || response.ErrorCode}`);
+    }
+
+    return { paymentUrl: response.PaymentURL, orderId };
   }
 
   async yooMoneyWebHook({

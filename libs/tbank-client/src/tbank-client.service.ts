@@ -80,6 +80,26 @@ export class TBankClient {
 
     return data;
   }
+  async createSimplePayment(orderId: string, amount: number, description: string): Promise<PaymentResponse> {
+    const payload: Record<string, any> = {
+      TerminalKey: this.terminalKey,
+      Amount: amount * 100,
+      OrderId: orderId,
+      Description: description,
+    };
+
+    payload.Token = this.generateToken({ ...payload });
+
+    const { data } = await lastValueFrom(
+      this.httpService.post<PaymentResponse>('/Init', payload, {
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        timeout: 15000,
+      }),
+    );
+
+    return data;
+  }
+
   async getPaymentInfo(paymentId: string): Promise<PaymentResponse> {
     const payload: CheckPaymentPayload = {
       TerminalKey: this.terminalKey,

@@ -75,15 +75,16 @@ export class BotService {
     discount?: number,
     originalPrice?: number,
   ): Promise<void> {
+    const totalAmount = amount * monthCount;
     let message = `Пользователь ${username} оплатил тариф ${tariffName} на срок ${monthCount} мес.\n`;
 
     if (discount && discount > 0) {
       message += `💰 Применена скидка за переход с другого тарифа:\n`;
       message += `├ Полная стоимость: ${originalPrice} ₽\n`;
       message += `├ Скидка: -${discount} ₽\n`;
-      message += `└ Оплачено: ${amount} ₽\n`;
+      message += `└ Оплачено: ${totalAmount} ₽\n`;
     } else {
-      message += `💰 Оплаченная сумма: ${amount} ₽\n`;
+      message += `💰 Оплаченная сумма: ${totalAmount} ₽\n`;
     }
 
     message += `Платежная система: ${paymentSystem} 🎉`;
