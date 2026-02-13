@@ -1,0 +1,80 @@
+import { Scene, Ctx, On, SceneEnter } from 'nestjs-telegraf';
+import { CommandEnum } from '../enum/command.enum';
+import { Context } from '../interfaces/context.interface';
+import { Injectable, Logger } from '@nestjs/common';
+import { PaymentService } from '../payment/payment.service';
+import { Markup } from 'telegraf';
+
+@Scene(CommandEnum.CREATE_INVOICE)
+@Injectable()
+export class CreateInvoiceScene {
+  private readonly logger = new Logger(CreateInvoiceScene.name);
+
+  constructor(private readonly paymentService: PaymentService) {}
+
+  @SceneEnter()
+  async onEnter(@Ctx() ctx: Context) {
+    ctx.scene.session.state = {};
+
+    await ctx.replyWithHTML(
+      '🧾 <b>Создание счета</b>\n\n' +
+        'Шаг 1/2: Введите сумму в рублях\n\n' +
+        '<i>Например: 1000</i>',
+      Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
+    );
+  }
+
+  @On('text')
+  async onText(@Ctx() ctx: Context) {
+    const text = ctx.message?.['text'];
+    if (!text) return;
+
+    const state = ctx.scene.session.state;
+
+    if (!state.amount) {
+      const amount = Number(text.trim());
+
+      if (isNaN(amount) || amount <= 0) {
+        await ctx.replyWithHTML('❌ Введите корректную сумму (число больше 0)');
+        return;
+      }
+
+      state.amount = amount;
+
+      await ctx.replyWithHTML(
+        `✅ Сумма: <b>${amount} ₽</b>\n\n` + 'Шаг 2/2: Введите описание платежа\n\n' + '<i>Например: Оплата за консультацию</i>',
+        Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
+      );
+      return;
+    }
+
+    if (!state.description) {
+      const description = text.trim();
+      state.description = description;
+
+      try {
+        const { paymentUrl, orderId } = await this.paymentService.createInvoice(state.amount, description);
+
+        await ctx.replyWithHTML(
+          `✅ <b>Счет создан</b>\n\n` +
+            `💰 Сумма: ${state.amount} ₽\n` +
+            `📝 Описание: ${description}\n` +
+            `🔖 Order ID: ${orderId}\n\n` +
+            `🔗 Ссылка на оплату:\n${paymentUrl}`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback('🧾 Создать еще', CommandEnum.CREATE_INVOICE)],
+            [Markup.button.callback('⬅️ В админ меню', CommandEnum.ADMIN_MENU)],
+          ]),
+        );
+
+        this.logger.log(`Invoice created: amount=${state.amount}, description="${description}", orderId=${orderId}`);
+      } catch (error) {
+        this.logger.error(`Error creating invoice: ${error.message}`, error.stack);
+        await ctx.replyWithHTML(
+          `❌ Ошибка при создании счета: ${error.message}`,
+          Markup.inlineKeyboard([[Markup.button.callback('⬅️ В админ меню', CommandEnum.ADMIN_MENU)]]),
+        );
+      }
+    }
+  }
+}

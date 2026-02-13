@@ -25,5 +25,7 @@ interface SceneSession extends Scenes.SceneSessionData {
     newTariffId?: string;
     currentTariffId?: string;
     action?: string;
+    amount?: number;
+    description?: string;
   };
 }

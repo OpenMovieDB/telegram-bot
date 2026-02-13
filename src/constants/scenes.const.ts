@@ -187,7 +187,7 @@ export const SCENES = {
   [CommandEnum.ADMIN_MENU]: {
     navigateText: '⚙️ <b>Админ панель</b>\n\nВыберите действие:',
     navigateButtons: [
-      [ADMIN_KEYBOARD_BUTTONS.CREATE_USER],
+      [ADMIN_KEYBOARD_BUTTONS.CREATE_USER, ADMIN_KEYBOARD_BUTTONS.CREATE_INVOICE],
       [ADMIN_KEYBOARD_BUTTONS.LIST_USERS, ADMIN_KEYBOARD_BUTTONS.EXPIRING_SUBSCRIPTIONS],
       [ADMIN_KEYBOARD_BUTTONS.HOME],
     ],

@@ -43,6 +43,7 @@ import { ModerationModule } from './moderation/moderation.module';
 import { SessionModule } from './session/session.module';
 import { AdminMenuScene } from './scenes/admin-menu.scene';
 import { CreateUserScene } from './scenes/create-user.scene';
+import { CreateInvoiceScene } from './scenes/create-invoice.scene';
 import { ListUsersScene } from './scenes/list-users.scene';
 import { ExpiringSubscriptionsScene } from './scenes/expiring-subscriptions.scene';
 import { UserDetailsScene } from './scenes/user-details.scene';
@@ -119,6 +120,7 @@ import { rebrandBlocker } from './middlewares/rebrand-blocker.middleware';
     SelectMonthsScene,
     AdminMenuScene,
     CreateUserScene,
+    CreateInvoiceScene,
     ListUsersScene,
     ExpiringSubscriptionsScene,
     UserDetailsScene,

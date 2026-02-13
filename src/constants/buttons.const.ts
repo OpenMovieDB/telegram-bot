@@ -41,6 +41,7 @@ export const BUTTONS = {
 // Keyboard buttons for admin menu (must be Markup.button.text for keyboard)
 export const ADMIN_KEYBOARD_BUTTONS = {
   CREATE_USER: Markup.button.text('➕ Создать пользователя'),
+  CREATE_INVOICE: Markup.button.text('🧾 Создать счет'),
   LIST_USERS: Markup.button.text('📋 Список пользователей'),
   EXPIRING_SUBSCRIPTIONS: Markup.button.text('⏰ Истекающие подписки'),
   HOME: Markup.button.text('📱в меню'),
