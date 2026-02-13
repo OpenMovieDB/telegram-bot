@@ -27,5 +27,6 @@ interface SceneSession extends Scenes.SceneSessionData {
     action?: string;
     amount?: number;
     description?: string;
+    email?: string;
   };
 }

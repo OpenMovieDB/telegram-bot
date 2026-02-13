@@ -80,15 +80,35 @@ export class TBankClient {
 
     return data;
   }
-  async createSimplePayment(orderId: string, amount: number, description: string): Promise<PaymentResponse> {
+  async createSimplePayment(orderId: string, amount: number, description: string, email: string): Promise<PaymentResponse> {
     const payload: Record<string, any> = {
       TerminalKey: this.terminalKey,
       Amount: amount * 100,
       OrderId: orderId,
       Description: description,
+      DATA: { Email: email },
+      Receipt: {
+        Email: email,
+        Taxation: 'usn_income',
+        Items: [
+          {
+            Name: description,
+            Price: amount * 100,
+            Quantity: 1,
+            Amount: amount * 100,
+            Tax: 'none',
+            PaymentObject: 'service',
+          },
+        ],
+      },
     };
 
-    payload.Token = this.generateToken({ ...payload });
+    payload.Token = this.generateToken({
+      TerminalKey: payload.TerminalKey,
+      Amount: payload.Amount,
+      OrderId: payload.OrderId,
+      Description: payload.Description,
+    });
 
     const { data } = await lastValueFrom(
       this.httpService.post<PaymentResponse>('/Init', payload, {

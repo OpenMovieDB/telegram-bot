@@ -18,7 +18,7 @@ export class CreateInvoiceScene {
 
     await ctx.replyWithHTML(
       '🧾 <b>Создание счета</b>\n\n' +
-        'Шаг 1/2: Введите сумму в рублях\n\n' +
+        'Шаг 1/3: Введите сумму в рублях\n\n' +
         '<i>Например: 1000</i>',
       Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
     );
@@ -42,23 +42,43 @@ export class CreateInvoiceScene {
       state.amount = amount;
 
       await ctx.replyWithHTML(
-        `✅ Сумма: <b>${amount} ₽</b>\n\n` + 'Шаг 2/2: Введите описание платежа\n\n' + '<i>Например: Оплата за консультацию</i>',
+        `✅ Сумма: <b>${amount} ₽</b>\n\n` + 'Шаг 2/3: Введите описание платежа\n\n' + '<i>Например: Оплата за консультацию</i>',
         Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
       );
       return;
     }
 
     if (!state.description) {
-      const description = text.trim();
-      state.description = description;
+      state.description = text.trim();
+
+      await ctx.replyWithHTML(
+        `✅ Сумма: <b>${state.amount} ₽</b>\n` +
+          `✅ Описание: <b>${state.description}</b>\n\n` +
+          'Шаг 3/3: Введите email для чека\n\n' +
+          '<i>Например: user@example.com</i>',
+        Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
+      );
+      return;
+    }
+
+    if (!state.email) {
+      const email = text.trim();
+
+      if (!email.includes('@')) {
+        await ctx.replyWithHTML('❌ Введите корректный email');
+        return;
+      }
+
+      state.email = email;
 
       try {
-        const { paymentUrl, orderId } = await this.paymentService.createInvoice(state.amount, description);
+        const { paymentUrl, orderId } = await this.paymentService.createInvoice(state.amount, state.description, email);
 
         await ctx.replyWithHTML(
           `✅ <b>Счет создан</b>\n\n` +
             `💰 Сумма: ${state.amount} ₽\n` +
-            `📝 Описание: ${description}\n` +
+            `📝 Описание: ${state.description}\n` +
+            `📧 Email: ${email}\n` +
             `🔖 Order ID: ${orderId}\n\n` +
             `🔗 Ссылка на оплату:\n${paymentUrl}`,
           Markup.inlineKeyboard([
@@ -67,7 +87,7 @@ export class CreateInvoiceScene {
           ]),
         );
 
-        this.logger.log(`Invoice created: amount=${state.amount}, description="${description}", orderId=${orderId}`);
+        this.logger.log(`Invoice created: amount=${state.amount}, description="${state.description}", email=${email}, orderId=${orderId}`);
       } catch (error) {
         this.logger.error(`Error creating invoice: ${error.message}`, error.stack);
         await ctx.replyWithHTML(
