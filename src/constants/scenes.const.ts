@@ -125,7 +125,7 @@ export const SCENES = {
   },
   [CommandEnum.GET_REQUEST_STATS]: {
     success: (requests: number, leftRequests: number) => ({
-      text: `Вот статистика по использованию API:\n\n<b>Использовано:</b> <i>${requests}</i>\n<b>Осталось запросов:</b> <i>${leftRequests}</i>`,
+      text: `Вот статистика по использованию API:\n\n<b>Использовано:</b> <i>${requests}</i>\n<b>Осталось запросов:</b> <i>${leftRequests > 99999999990 ? '∞' : leftRequests}</i>`,
     }),
     error: () => ({
       text: `Вы еще не зарегистрированы в системе, для этого вам нужно получить токен.`,
