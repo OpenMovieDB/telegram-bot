@@ -3,6 +3,7 @@ import { CommandEnum } from '../enum/command.enum';
 import { Context } from '../interfaces/context.interface';
 import { Injectable, Logger } from '@nestjs/common';
 import { UserService } from '../user/user.service';
+import { CacheResetService } from '../cache/cache-reset.service';
 import { Markup } from 'telegraf';
 import * as ApiKey from 'uuid-apikey';
 
@@ -11,7 +12,10 @@ import * as ApiKey from 'uuid-apikey';
 export class UserDetailsScene {
   private readonly logger = new Logger(UserDetailsScene.name);
 
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly cacheResetService: CacheResetService,
+  ) {}
 
   @SceneEnter()
   async onEnter(@Ctx() ctx: Context) {
@@ -38,10 +42,15 @@ export class UserDetailsScene {
       return;
     }
 
+    const totalLimit = user.tariffId?.requestsLimit || 0;
+    const remaining = user.token ? await this.cacheResetService.getTokenLimit(user.token) : 0;
+    const used = totalLimit > 0 ? Math.max(0, totalLimit - remaining) : 0;
+    const limitDisplay = totalLimit > 99999999990 ? '∞' : totalLimit;
+
     let message = `👤 <b>Пользователь: ${user.username}</b>\n\n`;
     message += `💼 Тариф: <b>${user.tariffId?.name || 'N/A'}</b>\n`;
-    message += `📊 Лимит запросов: ${user.tariffId?.requestsLimit > 99999999990 ? '∞' : user.tariffId?.requestsLimit} req/day\n`;
-    message += `📈 Использовано: ${user.requestsUsed || 0} запросов\n\n`;
+    message += `📊 Лимит запросов: ${limitDisplay} req/day\n`;
+    message += `📈 Использовано: ${used} / ${limitDisplay} запросов\n\n`;
 
     if (user.subscriptionEndDate) {
       const endDate = new Date(user.subscriptionEndDate);
