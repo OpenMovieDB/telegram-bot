@@ -32,7 +32,7 @@ export class UserService {
 
   async update(userId: number, user: Partial<User>): Promise<User> {
     await this.userModel.updateOne({ userId }, user);
-    return this.findOneByUserId(user.userId);
+    return this.findOneByUserId(userId);
   }
 
   async findOneByUserId(userId: number): Promise<User & { tariffId: Tariff }> {

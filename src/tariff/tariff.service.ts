@@ -18,4 +18,8 @@ export class TariffService {
   async getAllTariffs(): Promise<TariffDocument[]> {
     return this.tariffModel.find({ isHidden: false }).sort({ price: 1 }).exec();
   }
+
+  async getFreeTariff(): Promise<TariffDocument> {
+    return this.tariffModel.findOne({ price: 0 });
+  }
 }

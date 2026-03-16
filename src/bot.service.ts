@@ -180,7 +180,7 @@ export class BotService {
         const { status } = await this.bot.telegram.getChatMember(this.chatId, user.userId);
         if (status === 'left') leavedUsers.push(user);
       } catch (e) {
-        if (!user.password && user.tariffId?.name?.toLowerCase() === 'free') {
+        if (!user.password && user.tariffId?.price === 0) {
           leavedUsers.push(user);
         }
       }

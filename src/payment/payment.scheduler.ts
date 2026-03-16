@@ -103,9 +103,15 @@ export class PaymentScheduler {
 
     this.logger.debug(`Start handling expired subscription. Expiration date: ${expirationDate.toISODate()}`);
 
+    const freeTariffDoc = await this.tariffService.getFreeTariff();
+    if (!freeTariffDoc) {
+      this.logger.error('Free tariff (price=0) not found in database, skipping expired subscription handling');
+      return;
+    }
+    const freeTariff = freeTariffDoc._id;
+
     const tariffs = await this.tariffService.getAllTariffs();
-    const freeTariff = tariffs.find((tariff) => tariff.name === 'FREE')._id;
-    const paidTariffs = tariffs.filter((tariff) => tariff.name !== 'FREE').map((tariff) => tariff._id.toString());
+    const paidTariffs = tariffs.filter((tariff) => tariff.price > 0).map((tariff) => tariff._id.toString());
 
     const usersWithExpiredSubscription = await this.userService.getUsersWithExpiredSubscription(
       now.toJSDate(),
@@ -181,7 +187,7 @@ export class PaymentScheduler {
 
     const now = DateTime.local();
     const tariffs = await this.tariffService.getAllTariffs();
-    const paidTariffs = tariffs.filter((tariff) => tariff.name !== 'FREE').map((tariff) => tariff._id.toString());
+    const paidTariffs = tariffs.filter((tariff) => tariff.price > 0).map((tariff) => tariff._id.toString());
 
     const expiringToday = await this.userService.getExpiringSubscriptions(0);
     const expiring3Days = await this.userService.getExpiringSubscriptions(3);
