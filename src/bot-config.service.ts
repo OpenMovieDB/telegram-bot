@@ -26,8 +26,10 @@ export class BotConfigService implements OnModuleInit {
     try {
       this.logger.log('Initializing Telegram bot...');
 
-      // Set timeout for bot operations
-      this.bot.telegram.options.apiRoot = 'https://api.telegram.org';
+      // Set API root (use proxy if TELEGRAM_API_ROOT is configured)
+      const apiRoot = this.configService.get('TELEGRAM_API_ROOT', 'https://api.telegram.org');
+      this.bot.telegram.options.apiRoot = apiRoot;
+      this.logger.log(`Using Telegram API root: ${apiRoot}`);
       this.bot.telegram.options.agent = undefined;
       this.bot.telegram.options.attachmentAgent = undefined;
 
