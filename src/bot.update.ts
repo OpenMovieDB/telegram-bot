@@ -320,9 +320,9 @@ export class BotUpdate {
       await this.sessionStateService.clearMessageId(ctx.from.id);
       const existUser = await this.userService.findOneByUserId(ctx.from.id);
       if (existUser) {
-        ctx.scene.enter(CommandEnum.HOME);
+        await ctx.scene.enter(CommandEnum.HOME);
       } else {
-        ctx.scene.enter(CommandEnum.START);
+        await ctx.scene.enter(CommandEnum.START);
       }
     } catch (e) {
       this.logger.log(e);

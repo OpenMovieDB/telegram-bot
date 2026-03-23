@@ -29,6 +29,24 @@ export class CreateInvoiceScene {
     const text = ctx.message?.['text'];
     if (!text) return;
 
+    // Handle keyboard navigation buttons
+    if (text === '📱в меню') {
+      await ctx.scene.enter(CommandEnum.HOME);
+      return;
+    }
+    if (text === '➕ Создать пользователя') {
+      await ctx.scene.enter(CommandEnum.CREATE_USER);
+      return;
+    }
+    if (text === '📋 Список пользователей') {
+      await ctx.scene.enter(CommandEnum.LIST_USERS);
+      return;
+    }
+    if (text === '⏰ Истекающие подписки') {
+      await ctx.scene.enter(CommandEnum.EXPIRING_SUBSCRIPTIONS);
+      return;
+    }
+
     const state = ctx.scene.session.state;
 
     if (!state.amount) {
