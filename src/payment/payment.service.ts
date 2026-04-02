@@ -142,6 +142,7 @@ export class PaymentService {
         status: PaymentStatusEnum.PENDING,
         paymentAt: { $gte: oneDayAgo },
         isFinal: false,
+        source: { $in: [null, 'bot'] },
       })
       .exec();
   }
@@ -173,6 +174,7 @@ export class PaymentService {
         status: PaymentStatusEnum.PENDING,
         paymentAt: { $gte: oneDayAgo },
         isFinal: false,
+        source: { $in: [null, 'bot'] },
       })
       .exec();
   }
@@ -185,6 +187,7 @@ export class PaymentService {
         status: PaymentStatusEnum.PENDING,
         paymentAt: { $lt: oneDayAgo },
         isFinal: false,
+        source: { $in: [null, 'bot'] },
       })
       .exec();
   }
