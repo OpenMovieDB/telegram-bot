@@ -4,7 +4,13 @@ const NEW_BOT_ID = 8252040138;
 let botId: number | null = null;
 
 export function rebrandBlocker() {
+  const skipRebrand = process.env.SKIP_REBRAND_BLOCKER === 'true';
+
   return async (ctx: TelegrafContext, next: () => Promise<void>) => {
+    if (skipRebrand) {
+      return next();
+    }
+
     // Получаем bot ID один раз
     if (botId === null) {
       const botInfo = await ctx.telegram.getMe();

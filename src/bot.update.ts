@@ -20,12 +20,15 @@ import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
 import { ModerationService } from './moderation/moderation.service';
 import { createUnbanConfirmationKeyboard } from './moderation/keyboards/moderation.keyboards';
 import { SessionStateService } from './session/session-state.service';
+import { RedisService } from '@liaoliaots/nestjs-redis';
+import Redis from 'ioredis';
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
 @UseFilters(AllExceptionFilter)
 export class BotUpdate {
   private readonly adminChatId: number;
+  private readonly redis: Redis;
 
   private readonly logger = new Logger(BotUpdate.name);
   constructor(
@@ -38,8 +41,10 @@ export class BotUpdate {
     private readonly paymentService: PaymentService,
     private readonly moderationService: ModerationService,
     private readonly sessionStateService: SessionStateService,
+    private readonly redisService: RedisService,
   ) {
     this.adminChatId = Number(configService.get('ADMIN_CHAT_ID'));
+    this.redis = this.redisService.getOrThrow();
   }
 
   @Start()
@@ -56,6 +61,12 @@ export class BotUpdate {
         `Group chat instruction to ${ctx.chat.id}`,
       );
       return;
+    }
+
+    const args = ctx.state?.command?.args;
+    if (args && args.length === 1 && /^[0-9a-f]{64}$/i.test(args[0])) {
+      const handled = await this.handleDashboardAuth(ctx, args[0]);
+      if (handled) return;
     }
 
     await this.sessionStateService.clearMessageId(ctx.from.id);
@@ -541,6 +552,64 @@ export class BotUpdate {
         'Cache clear error callback',
       );
     }
+  }
+
+  private async handleDashboardAuth(ctx: Context & { update: any }, token: string): Promise<boolean> {
+    const authKey = `auth_request:${token}`;
+    const linkKey = `auth_link:${token}`;
+
+    let key: string | undefined;
+    let data = await this.redis.get(authKey);
+    if (data) {
+      key = authKey;
+    } else {
+      data = await this.redis.get(linkKey);
+      if (data) key = linkKey;
+    }
+
+    if (!key || !data) return false;
+
+    let parsed: Record<string, any>;
+    try {
+      parsed = JSON.parse(data);
+    } catch {
+      return false;
+    }
+
+    if (parsed.status !== 'pending') return false;
+
+    const telegramUser = ctx.from;
+    const updated: Record<string, any> = {
+      ...parsed,
+      status: 'confirmed',
+      telegram_id: telegramUser.id,
+      username: telegramUser.username || '',
+      first_name: telegramUser.first_name || '',
+    };
+
+    const ttl = await this.redis.ttl(key);
+    await this.redis.set(key, JSON.stringify(updated), 'EX', ttl > 0 ? ttl : 300);
+
+    const message =
+      key === linkKey
+        ? '✅ Telegram успешно привязан к вашему аккаунту!\n\nМожете вернуться в браузер.'
+        : '✅ Авторизация в личном кабинете подтверждена!\n\nМожете вернуться в браузер.';
+
+    const { Markup } = await import('telegraf');
+    await SafeTelegramHelper.safeSend(
+      () =>
+        ctx.reply(message, {
+          parse_mode: 'HTML',
+          ...Markup.inlineKeyboard([
+            [BUTTONS[CommandEnum.GET_ACCESS]],
+            [BUTTONS[CommandEnum.I_HAVE_TOKEN], BUTTONS[CommandEnum.QUESTION]],
+          ]),
+        }),
+      `Dashboard auth confirmation to ${ctx.chat.id}`,
+    );
+
+    this.logger.log(`Dashboard auth confirmed for telegram user ${telegramUser.id} (key: ${key})`);
+    return true;
   }
 
   private isAdmin(ctx: Context): boolean {
