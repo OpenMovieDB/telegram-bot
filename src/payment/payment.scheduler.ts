@@ -14,6 +14,7 @@ import { DateTime } from 'luxon';
 @Injectable()
 export class PaymentScheduler {
   private readonly logger = new Logger(PaymentScheduler.name);
+  private isHandlingPendingPayments = false;
 
   constructor(
     private readonly paymentService: PaymentService,
@@ -25,39 +26,49 @@ export class PaymentScheduler {
 
   @Cron(CronExpression.EVERY_10_SECONDS)
   async handlePendingPayments() {
-    const pendingPayments = await this.paymentService.getPendingPayments();
+    if (this.isHandlingPendingPayments) {
+      this.logger.debug('handlePendingPayments already running, skipping');
+      return;
+    }
+    this.isHandlingPendingPayments = true;
 
-    if (pendingPayments.length) {
-      this.logger.debug(`Start validating ${pendingPayments.length} pending payments`);
-      for (const payment of pendingPayments) {
-        try {
-          this.logger.debug(`Validating payment ${payment.paymentId} (${payment.paymentSystem})`);
-          const isPaid = await this.paymentService.validatePayment(payment.paymentId);
+    try {
+      const pendingPayments = await this.paymentService.getPendingPayments();
 
-          if (isPaid) {
-            const user = await this.userService.findOneByUserId(payment.userId);
+      if (pendingPayments.length) {
+        this.logger.debug(`Start validating ${pendingPayments.length} pending payments`);
+        for (const payment of pendingPayments) {
+          try {
+            this.logger.debug(`Validating payment ${payment.paymentId} (${payment.paymentSystem})`);
+            const isPaid = await this.paymentService.validatePayment(payment.paymentId);
 
-            this.logger.debug(`Payment ${payment.paymentId} is successfully paid`);
+            if (isPaid) {
+              const user = await this.userService.findOneByUserId(payment.userId);
 
-            // Clear payment flags in Redis so user can exit payment scene
-            await this.sessionStateService.setExitPaymentScene(payment.userId);
-            this.logger.debug(`Set exit payment scene flag for user ${payment.userId}`);
+              this.logger.debug(`Payment ${payment.paymentId} is successfully paid`);
 
-            // Send success messages asynchronously (DO NOT await - payment processing must not depend on message delivery)
-            this.sendPaymentNotificationsAsync(payment, user).catch((error) => {
-              this.logger.error(`Failed to send payment notifications for ${payment.paymentId}: ${error.message}`);
-            });
-          } else {
-            this.logger.debug(`Payment ${payment.paymentId} is not paid yet`);
+              // Clear payment flags in Redis so user can exit payment scene
+              await this.sessionStateService.setExitPaymentScene(payment.userId);
+              this.logger.debug(`Set exit payment scene flag for user ${payment.userId}`);
+
+              // Send success messages asynchronously (DO NOT await - payment processing must not depend on message delivery)
+              this.sendPaymentNotificationsAsync(payment, user).catch((error) => {
+                this.logger.error(`Failed to send payment notifications for ${payment.paymentId}: ${error.message}`);
+              });
+            } else {
+              this.logger.debug(`Payment ${payment.paymentId} is not paid yet`);
+            }
+          } catch (error) {
+            this.logger.error(`Error validating payment ${payment.paymentId}: ${error.message}`, error.stack);
+            // Errors are now handled in PaymentService - payments stay as PENDING on temporary errors
+            // No need to send notifications here as payment will be retried
           }
-        } catch (error) {
-          this.logger.error(`Error validating payment ${payment.paymentId}: ${error.message}`, error.stack);
-          // Errors are now handled in PaymentService - payments stay as PENDING on temporary errors
-          // No need to send notifications here as payment will be retried
         }
-      }
 
-      this.logger.debug('Finish validating pending payments');
+        this.logger.debug('Finish validating pending payments');
+      }
+    } finally {
+      this.isHandlingPendingPayments = false;
     }
   }
 
