@@ -38,7 +38,7 @@ export class TBankPaymentStrategy implements PaymentStrategy {
       paymentId: createPaymentResponse.PaymentId,
       amount: tariffPrice,
       paymentSystem: PaymentSystemEnum.TBANK,
-      paymentAmount: Number(createPaymentResponse.Amount),
+      paymentAmount: Number(createPaymentResponse.Amount) / 100,
       paymentCurrency: 'RUB',
       url: createPaymentResponse.PaymentURL,
       monthCount: paymentMonths,
