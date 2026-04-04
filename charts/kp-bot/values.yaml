@@ -1,0 +1,24 @@
+namespace: kinopoisk
+
+replicas: 1
+
+images:
+  registry: pkg.sourcecraft.tech/cr/kinoflow/cn1n61b2au3n9cc77tas
+  name: kp-bot
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: regcred-sourcecraft
+
+existingSecret: kp-bot
+
+port: 3000
+
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "500m"

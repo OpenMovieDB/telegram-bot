@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kp-bot
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "kp-bot.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.port }}
+      targetPort: http
+  selector:
+    {{- include "kp-bot.selectorLabels" . | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kp-bot
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "kp-bot.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- include "kp-bot.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kp-bot.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: kp-bot
+          image: {{ include "kp-bot.image" . }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.port }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.existingSecret }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
