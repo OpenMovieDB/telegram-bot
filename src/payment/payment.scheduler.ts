@@ -116,7 +116,7 @@ export class PaymentScheduler {
 
     const freeTariffDoc = await this.tariffService.getFreeTariff();
     if (!freeTariffDoc) {
-      this.logger.error('Free tariff (price=0) not found in database, skipping expired subscription handling');
+      this.logger.error('Default tariff (isDefault=true) not found in database, skipping expired subscription handling');
       return;
     }
     const freeTariff = freeTariffDoc._id;

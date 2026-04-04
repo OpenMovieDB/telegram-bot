@@ -20,6 +20,6 @@ export class TariffService {
   }
 
   async getFreeTariff(): Promise<TariffDocument> {
-    return this.tariffModel.findOne({ price: 0, isHidden: false });
+    return this.tariffModel.findOne({ isDefault: true });
   }
 }

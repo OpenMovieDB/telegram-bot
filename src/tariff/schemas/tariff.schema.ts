@@ -31,6 +31,12 @@ export class Tariff {
     default: false,
   })
   isHidden: boolean;
+
+  @Prop({
+    type: Boolean,
+    default: false,
+  })
+  isDefault: boolean;
 }
 
 export const TariffSchema = SchemaFactory.createForClass(Tariff);
