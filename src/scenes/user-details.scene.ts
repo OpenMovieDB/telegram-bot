@@ -12,10 +12,7 @@ import * as ApiKey from 'uuid-apikey';
 export class UserDetailsScene {
   private readonly logger = new Logger(UserDetailsScene.name);
 
-  constructor(
-    private readonly userService: UserService,
-    private readonly cacheResetService: CacheResetService,
-  ) {}
+  constructor(private readonly userService: UserService, private readonly cacheResetService: CacheResetService) {}
 
   @SceneEnter()
   async onEnter(@Ctx() ctx: Context) {
@@ -33,7 +30,7 @@ export class UserDetailsScene {
     await this.showUserDetails(ctx, username);
   }
 
-  private async showUserDetails(ctx: Context, username: string, isEdit: boolean = false) {
+  private async showUserDetails(ctx: Context, username: string, isEdit = false) {
     const user = await this.userService.findUserByUsername(username);
 
     if (!user) {

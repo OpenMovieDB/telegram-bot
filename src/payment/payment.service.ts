@@ -361,7 +361,11 @@ export class PaymentService {
     return this.paymentModel.findOne({ paymentId }).exec();
   }
 
-  async createInvoice(amount: number, description: string, email: string): Promise<{ paymentUrl: string; orderId: string }> {
+  async createInvoice(
+    amount: number,
+    description: string,
+    email: string,
+  ): Promise<{ paymentUrl: string; orderId: string }> {
     const orderId = randomUUID();
     const response = await this.tBankClient.createSimplePayment(orderId, amount, description, email);
 

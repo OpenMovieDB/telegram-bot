@@ -116,7 +116,9 @@ export class PaymentScheduler {
 
     const freeTariffDoc = await this.tariffService.getFreeTariff();
     if (!freeTariffDoc) {
-      this.logger.error('Default tariff (isDefault=true) not found in database, skipping expired subscription handling');
+      this.logger.error(
+        'Default tariff (isDefault=true) not found in database, skipping expired subscription handling',
+      );
       return;
     }
     const freeTariff = freeTariffDoc._id;
@@ -224,9 +226,7 @@ export class PaymentScheduler {
     for (const user of expiring3Days) {
       if (paidTariffs.includes(user.tariffId?._id?.toString()) && user.isExternalUser) {
         const username = user.username || `TG:${user.userId}`;
-        const daysLeft = Math.ceil(
-          DateTime.fromJSDate(user.subscriptionEndDate).diff(now, 'days').days,
-        );
+        const daysLeft = Math.ceil(DateTime.fromJSDate(user.subscriptionEndDate).diff(now, 'days').days);
 
         const key = `${username}_3`;
         if (daysLeft > 0 && daysLeft <= 3 && !notifiedUsers.has(key)) {
@@ -251,9 +251,7 @@ export class PaymentScheduler {
 
         if (isYearlySubscription) {
           const username = user.username || `TG:${user.userId}`;
-          const daysLeft = Math.ceil(
-            DateTime.fromJSDate(user.subscriptionEndDate).diff(now, 'days').days,
-          );
+          const daysLeft = Math.ceil(DateTime.fromJSDate(user.subscriptionEndDate).diff(now, 'days').days);
 
           const key = `${username}_30`;
           if (daysLeft > 3 && daysLeft <= 30 && !notifiedUsers.has(key)) {

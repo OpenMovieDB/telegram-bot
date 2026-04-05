@@ -17,9 +17,7 @@ export class CreateInvoiceScene {
     ctx.scene.session.state = {};
 
     await ctx.replyWithHTML(
-      '🧾 <b>Создание счета</b>\n\n' +
-        'Шаг 1/3: Введите сумму в рублях\n\n' +
-        '<i>Например: 1000</i>',
+      '🧾 <b>Создание счета</b>\n\n' + 'Шаг 1/3: Введите сумму в рублях\n\n' + '<i>Например: 1000</i>',
       Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
     );
   }
@@ -60,7 +58,9 @@ export class CreateInvoiceScene {
       state.amount = amount;
 
       await ctx.replyWithHTML(
-        `✅ Сумма: <b>${amount} ₽</b>\n\n` + 'Шаг 2/3: Введите описание платежа\n\n' + '<i>Например: Оплата за консультацию</i>',
+        `✅ Сумма: <b>${amount} ₽</b>\n\n` +
+          'Шаг 2/3: Введите описание платежа\n\n' +
+          '<i>Например: Оплата за консультацию</i>',
         Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
       );
       return;
@@ -105,7 +105,9 @@ export class CreateInvoiceScene {
           ]),
         );
 
-        this.logger.log(`Invoice created: amount=${state.amount}, description="${state.description}", email=${email}, orderId=${orderId}`);
+        this.logger.log(
+          `Invoice created: amount=${state.amount}, description="${state.description}", email=${email}, orderId=${orderId}`,
+        );
       } catch (error) {
         this.logger.error(`Error creating invoice: ${error.message}`, error.stack);
         await ctx.replyWithHTML(

@@ -6,12 +6,9 @@ import { DateTime } from 'luxon';
 
 export const SCENES = {
   [CommandEnum.START]: {
-    navigateText:
-      'Привет! Я бот который поможет тебе получить токен для работы с API poiskkino.dev. \n\n Для начала выбери действие:',
-    navigateButtons: [
-      [BUTTONS[CommandEnum.GET_ACCESS]],
-      [BUTTONS[CommandEnum.I_HAVE_TOKEN], BUTTONS[CommandEnum.QUESTION]],
-    ],
+    text: (token: string) =>
+      `Привет! Вот твой токен для работы с API:\n\n<code>${token}</code>\n\nДокументация: <a href="https://poiskkino.dev/documentation">poiskkino.dev/documentation</a>`,
+    buttons: [BUTTONS[CommandEnum.DOCUMENTATION], BUTTONS[CommandEnum.JOIN_CHAT]],
   },
   [CommandEnum.HOME]: {
     navigateText: 'Выбери действие:',
@@ -80,44 +77,14 @@ export const SCENES = {
     },
   },
   [CommandEnum.FREE_TARIFF]: {
-    navigateText: 'Отлично! Но перед этим к тебе есть небольшая просьба, зайди к нам в общий чат 😇',
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
-    text: `В нем ты всегда можешь получить поддержку от сообщества и администрации, а в замен я дам тебе токен!`,
-    buttons: [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
-    actions: {
-      [CommandEnum.CONFIRM_JOIN_CHAT]: {
-        success: (token: string) => ({
-          navigateText: `Теперь, ты можешь пользоваться API: \n\n<code>${token}</code>\n\nДокументация по API: <code>https://poiskkino.dev/documentation</code>\nОна описана в формате OpenAPI и поможет тебе быстро составить запрос к API.\n\n Если тебе снова нужна будет документация, в основном меню будет кнопка "🆘 поддержка".`,
-          navigateButtons: [BUTTONS[CommandEnum.HOME]],
-        }),
-        error: () => ({
-          navigateText: `Ты не вступил в чат 😔`,
-          navigateButtons: [BUTTONS[CommandEnum.HOME]],
-          text: `Нажми на кнопку ниже и вступи в чат, а затем вернись сюда и нажми на кнопку "Подтвердить вступление"`,
-          buttons: [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
-        }),
-      },
-    },
+    text: (token: string) =>
+      `Твой токен для работы с API: \n\n<code>${token}</code>\n\nДокументация по API: <code>https://poiskkino.dev/documentation</code>\nОна описана в формате OpenAPI и поможет тебе быстро составить запрос к API.\n\nЕсли тебе снова нужна будет документация, в основном меню будет кнопка "🆘 поддержка".`,
   },
   [CommandEnum.DEMO_TARIFF]: {
-    navigateText: 'Отлично! Но перед этим к тебе есть небольшая просьба, зайди к нам в общий чат 😇',
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
-    text: `В нем ты всегда можешь получить поддержку от сообщества и администрации, а в замен я дам тебе токен!`,
-    buttons: [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
-    actions: {
-      [CommandEnum.CONFIRM_JOIN_CHAT]: {
-        success: (token: string) => ({
-          navigateText: `Теперь, ты можешь пользоваться API: \n\n<code>${token}</code>\n\nДокументация по API: <code>https://poiskkino.dev/documentation</code>\nОна описана в формате OpenAPI и поможет тебе быстро составить запрос к API.\n\n Если тебе снова нужна будет документация, в основном меню будет кнопка "🆘 поддержка".`,
-          navigateButtons: [BUTTONS[CommandEnum.HOME]],
-        }),
-        error: () => ({
-          navigateText: `Ты не вступил в чат 😔`,
-          navigateButtons: [BUTTONS[CommandEnum.HOME]],
-          text: `Нажми на кнопку ниже и вступи в чат, а затем вернись сюда и нажми на кнопку "Подтвердить вступление"`,
-          buttons: [BUTTONS[CommandEnum.JOIN_CHAT], BUTTONS[CommandEnum.CONFIRM_JOIN_CHAT]],
-        }),
-      },
-    },
+    text: (token: string) =>
+      `Твой токен для работы с API: \n\n<code>${token}</code>\n\nДокументация по API: <code>https://poiskkino.dev/documentation</code>\nОна описана в формате OpenAPI и поможет тебе быстро составить запрос к API.\n\nЕсли тебе снова нужна будет документация, в основном меню будет кнопка "🆘 поддержка".`,
   },
   [CommandEnum.QUESTION]: {
     text: `Если у тебя есть вопрос, то ты можешь, посмотреть в документацию или задать его в нашем чате.`,
@@ -125,7 +92,9 @@ export const SCENES = {
   },
   [CommandEnum.GET_REQUEST_STATS]: {
     success: (requests: number, leftRequests: number) => ({
-      text: `Вот статистика по использованию API:\n\n<b>Использовано:</b> <i>${requests}</i>\n<b>Осталось запросов:</b> <i>${leftRequests > 99999999990 ? '∞' : leftRequests}</i>`,
+      text: `Вот статистика по использованию API:\n\n<b>Использовано:</b> <i>${requests}</i>\n<b>Осталось запросов:</b> <i>${
+        leftRequests > 99999999990 ? '∞' : leftRequests
+      }</i>`,
     }),
     error: () => ({
       text: `Вы еще не зарегистрированы в системе, для этого вам нужно получить токен.`,

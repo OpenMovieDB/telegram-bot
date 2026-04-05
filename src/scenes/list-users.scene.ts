@@ -25,7 +25,7 @@ export class ListUsersScene {
     await ctx.answerCbQuery();
   }
 
-  private async showUsersList(ctx: Context, page: number = 0, isEdit: boolean = false) {
+  private async showUsersList(ctx: Context, page = 0, isEdit = false) {
     const externalUsers = await this.userService.findAllUsers({ isExternalUser: true });
     const totalUsersCount = await this.userService.countAllUsers();
     const telegramUsersCount = totalUsersCount - externalUsers.length;

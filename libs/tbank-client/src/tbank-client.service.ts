@@ -80,7 +80,12 @@ export class TBankClient {
 
     return data;
   }
-  async createSimplePayment(orderId: string, amount: number, description: string, email: string): Promise<PaymentResponse> {
+  async createSimplePayment(
+    orderId: string,
+    amount: number,
+    description: string,
+    email: string,
+  ): Promise<PaymentResponse> {
     const payload: Record<string, any> = {
       TerminalKey: this.terminalKey,
       Amount: amount * 100,

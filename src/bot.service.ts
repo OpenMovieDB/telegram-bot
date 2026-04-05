@@ -1,14 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Markup, Telegraf } from 'telegraf';
+import { Telegraf } from 'telegraf';
 import { Context } from './interfaces/context.interface';
 
 import { InjectBot } from 'nestjs-telegraf';
-import { SCENES } from './constants/scenes.const';
-import { CommandEnum } from './enum/command.enum';
-import { safeReply } from './utils/safe-reply.util';
 import { BOT_NAME } from './constants/bot-name.const';
 import { User as TelegramUser } from 'typegram/manage';
 import { UserService } from './user/user.service';
+import { TariffService } from './tariff/tariff.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { User } from './user/schemas/user.schema';
@@ -27,19 +25,12 @@ export class BotService {
     @InjectBot(BOT_NAME)
     private readonly bot: Telegraf<Context>,
     private readonly userService: UserService,
+    private readonly tariffService: TariffService,
     private readonly configService: ConfigService,
   ) {
     this.chatId = configService.get('CHAT_ID');
     this.adminChatId = configService.get('ADMIN_CHAT_ID');
     this.isProd = configService.get('NODE_ENV') === 'production';
-  }
-
-  async start(ctx: Context) {
-    await safeReply(
-      ctx,
-      SCENES[CommandEnum.START].navigateText,
-      Markup.inlineKeyboard(SCENES[CommandEnum.START].navigateButtons),
-    );
   }
 
   async sendMessage(chatId: number, message: string): Promise<void> {
@@ -147,14 +138,20 @@ export class BotService {
     this.logger.log(`NewChatMembers: ${members.map((member: any) => member.username).join(', ')}`);
 
     if (members) {
+      const freeTariff = await this.tariffService.getFreeTariff();
       for (const member of members) {
-        const user = await this.userService.upsert({
-          userId: member.id,
-          username: member?.username || null,
-          inChat: true,
-        });
+        try {
+          const user = await this.userService.upsert({
+            userId: member.id,
+            username: member?.username || null,
+            inChat: true,
+            tariffId: freeTariff?._id,
+          });
 
-        this.logger.log(`User ${user.username} created`);
+          this.logger.log(`User ${user.username} created`);
+        } catch (e) {
+          this.logger.error(`Failed to create/update user ${member.username} (${member.id}):`, e);
+        }
       }
     }
   }
@@ -173,7 +170,9 @@ export class BotService {
 
     const telegramUsers = users.filter((user) => !user.isExternalUser);
 
-    this.logger.log(`Users in chat: ${telegramUsers.length} (excluding ${users.length - telegramUsers.length} external users)`);
+    this.logger.log(
+      `Users in chat: ${telegramUsers.length} (excluding ${users.length - telegramUsers.length} external users)`,
+    );
     const leavedUsers = [];
     for (const user of telegramUsers) {
       try {
@@ -224,7 +223,12 @@ export class BotService {
     }
   }
 
-  async sendAdminSubscriptionExpirationWarning(username: string, expirationDate: Date, tariffName: string, daysLeft: number): Promise<void> {
+  async sendAdminSubscriptionExpirationWarning(
+    username: string,
+    expirationDate: Date,
+    tariffName: string,
+    daysLeft: number,
+  ): Promise<void> {
     const emoji = daysLeft <= 3 ? '🔴' : daysLeft <= 7 ? '⚠️' : '⏰';
     const urgency = daysLeft === 0 ? 'СЕГОДНЯ' : daysLeft <= 3 ? 'СРОЧНО' : 'ВНИМАНИЕ';
 
@@ -233,7 +237,11 @@ export class BotService {
       `👤 Пользователь: ${username}\n` +
       `📅 Дата истечения: ${expirationDate.toLocaleDateString('ru-RU')}\n` +
       `💼 Тариф: ${tariffName}\n\n` +
-      `${daysLeft === 0 ? 'Пользователь будет переведен на бесплатный тариф.' : 'Рекомендуется связаться с пользователем для продления подписки.'}`;
+      `${
+        daysLeft === 0
+          ? 'Пользователь будет переведен на бесплатный тариф.'
+          : 'Рекомендуется связаться с пользователем для продления подписки.'
+      }`;
 
     await SafeTelegramHelper.safeSend(
       () => this.bot.telegram.sendMessage(this.adminChatId, message),

@@ -12,10 +12,7 @@ import * as ApiKey from 'uuid-apikey';
 export class CreateUserScene {
   private readonly logger = new Logger(CreateUserScene.name);
 
-  constructor(
-    private readonly userService: UserService,
-    private readonly tariffService: TariffService,
-  ) {}
+  constructor(private readonly userService: UserService, private readonly tariffService: TariffService) {}
 
   @SceneEnter()
   async onEnter(@Ctx() ctx: Context) {
@@ -80,15 +77,16 @@ export class CreateUserScene {
       const tariffs = await this.tariffService.getAllTariffs();
       const buttons = tariffs.map((tariff) => [
         Markup.button.callback(
-          `${tariff.name} (${tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit} req/day, ${tariff.price === 0 ? 'Free' : tariff.price + '₽/мес'})`,
+          `${tariff.name} (${tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit} req/day, ${
+            tariff.price === 0 ? 'Free' : tariff.price + '₽/мес'
+          })`,
           `tariff_${tariff._id}`,
         ),
       ]);
       buttons.push([Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]);
 
       await ctx.replyWithHTML(
-        `✅ Username: <code>${username}</code>\n\n` +
-          '📋 Шаг 2/3: Выберите тариф:',
+        `✅ Username: <code>${username}</code>\n\n` + '📋 Шаг 2/3: Выберите тариф:',
         Markup.inlineKeyboard(buttons),
       );
     }
@@ -137,11 +135,7 @@ export class CreateUserScene {
     }
 
     try {
-      const newUser = await this.userService.createExternalUser(
-        state.username,
-        state.tariffId,
-        subscriptionEndDate,
-      );
+      const newUser = await this.userService.createExternalUser(state.username, state.tariffId, subscriptionEndDate);
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore

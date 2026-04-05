@@ -52,7 +52,6 @@ export class User {
   requestsUsed?: number;
 
   @Prop({
-    default: () => '6016bed198ebf72bc112edae',
     type: mongoose.Schema.Types.ObjectId,
     ref: Tariff.name,
   })

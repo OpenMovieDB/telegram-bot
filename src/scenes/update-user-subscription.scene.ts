@@ -11,10 +11,7 @@ import { Markup } from 'telegraf';
 export class UpdateUserSubscriptionScene {
   private readonly logger = new Logger(UpdateUserSubscriptionScene.name);
 
-  constructor(
-    private readonly userService: UserService,
-    private readonly tariffService: TariffService,
-  ) {}
+  constructor(private readonly userService: UserService, private readonly tariffService: TariffService) {}
 
   @SceneEnter()
   async onEnter(@Ctx() ctx: Context) {
@@ -49,7 +46,9 @@ export class UpdateUserSubscriptionScene {
     const tariffs = await this.tariffService.getAllTariffs();
     const buttons = tariffs.map((tariff) => [
       Markup.button.callback(
-        `${tariff.name} (${tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit} req/day, ${tariff.price === 0 ? 'Free' : tariff.price + '₽/мес'})`,
+        `${tariff.name} (${tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit} req/day, ${
+          tariff.price === 0 ? 'Free' : tariff.price + '₽/мес'
+        })`,
         `select_tariff_${tariff._id}`,
       ),
     ]);
@@ -81,7 +80,9 @@ export class UpdateUserSubscriptionScene {
     if (user.subscriptionEndDate) {
       const endDate = new Date(user.subscriptionEndDate);
       const daysLeft = Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-      message += `Подписка до: ${endDate.toLocaleDateString('ru-RU')} (${daysLeft > 0 ? `${daysLeft} дн.` : 'истекла'})\n\n`;
+      message += `Подписка до: ${endDate.toLocaleDateString('ru-RU')} (${
+        daysLeft > 0 ? `${daysLeft} дн.` : 'истекла'
+      })\n\n`;
     } else {
       message += `Подписка: бессрочная\n\n`;
     }
@@ -109,13 +110,10 @@ export class UpdateUserSubscriptionScene {
       [Markup.button.callback('❌ Отмена', `back_user_${username}`)],
     ];
 
-    await ctx.editMessageText(
-      `✅ Новый тариф: <b>${tariff.name}</b>\n\n` + 'Выберите срок подписки:',
-      {
-        parse_mode: 'HTML',
-        ...Markup.inlineKeyboard(buttons),
-      },
-    );
+    await ctx.editMessageText(`✅ Новый тариф: <b>${tariff.name}</b>\n\n` + 'Выберите срок подписки:', {
+      parse_mode: 'HTML',
+      ...Markup.inlineKeyboard(buttons),
+    });
 
     await ctx.answerCbQuery();
   }

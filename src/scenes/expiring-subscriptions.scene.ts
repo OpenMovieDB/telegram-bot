@@ -46,11 +46,15 @@ export class ExpiringSubscriptionsScene {
     }
 
     if (expiringSoon7Days.length > expiringSoon3Days.length) {
-      message += `⚠️ <b>Истекают в течение 7 дней:</b> ${expiringSoon7Days.length - expiringSoon3Days.length} пользователей\n`;
+      message += `⚠️ <b>Истекают в течение 7 дней:</b> ${
+        expiringSoon7Days.length - expiringSoon3Days.length
+      } пользователей\n`;
     }
 
     if (expiringSoon30Days.length > expiringSoon7Days.length) {
-      message += `⏰ <b>Истекают в течение 30 дней:</b> ${expiringSoon30Days.length - expiringSoon7Days.length} пользователей\n`;
+      message += `⏰ <b>Истекают в течение 30 дней:</b> ${
+        expiringSoon30Days.length - expiringSoon7Days.length
+      } пользователей\n`;
     }
 
     await ctx.replyWithHTML(

@@ -7,6 +7,7 @@ import Redis from 'ioredis';
 
 import { User } from '../user/schemas/user.schema';
 import { UserService } from '../user/user.service';
+import { TariffService } from '../tariff/tariff.service';
 import { Context } from '../interfaces/context.interface';
 import { BOT_NAME } from '../constants/bot-name.const';
 import { SafeTelegramHelper } from '../helpers/safe-telegram.helper';
@@ -28,6 +29,7 @@ export class ModerationService {
     @InjectBot(BOT_NAME)
     private readonly bot: Telegraf<Context>,
     private readonly userService: UserService,
+    private readonly tariffService: TariffService,
     private readonly redisService: RedisService,
     private readonly configService: ConfigService,
   ) {
@@ -180,10 +182,12 @@ export class ModerationService {
       );
 
       // Создаем пользователя в базе данных
+      const freeTariff = await this.tariffService.getFreeTariff();
       const newUser = await this.userService.create({
         userId,
         username,
         inChat: true,
+        tariffId: freeTariff._id,
       } as User);
 
       // Обновляем кэш

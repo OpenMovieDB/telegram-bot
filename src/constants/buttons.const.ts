@@ -35,7 +35,10 @@ export const BUTTONS = {
   [CommandEnum.ADMIN_MENU]: Markup.button.callback('⚙️ Админ панель', CommandEnum.ADMIN_MENU),
   [CommandEnum.CREATE_USER]: Markup.button.callback('➕ Создать пользователя', CommandEnum.CREATE_USER),
   [CommandEnum.LIST_USERS]: Markup.button.callback('📋 Список пользователей', CommandEnum.LIST_USERS),
-  [CommandEnum.EXPIRING_SUBSCRIPTIONS]: Markup.button.callback('⏰ Истекающие подписки', CommandEnum.EXPIRING_SUBSCRIPTIONS),
+  [CommandEnum.EXPIRING_SUBSCRIPTIONS]: Markup.button.callback(
+    '⏰ Истекающие подписки',
+    CommandEnum.EXPIRING_SUBSCRIPTIONS,
+  ),
 };
 
 // Keyboard buttons for admin menu (must be Markup.button.text for keyboard)

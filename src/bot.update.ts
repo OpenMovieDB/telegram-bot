@@ -71,7 +71,12 @@ export class BotUpdate {
 
     await this.sessionStateService.clearMessageId(ctx.from.id);
 
-    await ctx.scene.enter(CommandEnum.START);
+    const existUser = await this.userService.findOneByUserId(ctx.from.id);
+    if (existUser) {
+      await ctx.scene.enter(CommandEnum.HOME);
+    } else {
+      await ctx.scene.enter(CommandEnum.START);
+    }
   }
 
   @Command('admin')
@@ -270,7 +275,9 @@ export class BotUpdate {
     }
   }
 
-  @Action(/^(?!unban_|ignore_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_).*$/)
+  @Action(
+    /^(?!unban_|ignore_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_).*$/,
+  )
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
     this.logger.log(ctx);
     try {
@@ -311,7 +318,7 @@ export class BotUpdate {
   }
 
   @Hears('⏰ Истекающие подписки')
-  async onExpiringSubscriptionsHears(@Ctx() ctx: Context & { update: any}) {
+  async onExpiringSubscriptionsHears(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
     if (!['private'].includes(message.chat.type)) return;
 
@@ -600,10 +607,7 @@ export class BotUpdate {
       () =>
         ctx.reply(message, {
           parse_mode: 'HTML',
-          ...Markup.inlineKeyboard([
-            [BUTTONS[CommandEnum.GET_ACCESS]],
-            [BUTTONS[CommandEnum.I_HAVE_TOKEN], BUTTONS[CommandEnum.QUESTION]],
-          ]),
+          ...Markup.inlineKeyboard([[BUTTONS[CommandEnum.HOME]]]),
         }),
       `Dashboard auth confirmation to ${ctx.chat.id}`,
     );

@@ -1,56 +1,47 @@
 import { CommandEnum } from '../enum/command.enum';
 import { AbstractScene } from '../abstract/abstract.scene';
 import { UserService } from '../user/user.service';
-import { Action, Scene } from 'nestjs-telegraf';
+import { TariffService } from '../tariff/tariff.service';
+import { Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { SCENES } from '../constants/scenes.const';
 import { Markup } from 'telegraf';
-import { ConfigService } from '@nestjs/config';
+import { Context } from '../interfaces/context.interface';
 
 @Scene(CommandEnum.DEMO_TARIFF)
 export class DemoTariffScene extends AbstractScene {
-  private readonly chatId: string;
-  constructor(private readonly userService: UserService, private readonly configService: ConfigService) {
+  constructor(private readonly userService: UserService, private readonly tariffService: TariffService) {
     super();
-    this.chatId = configService.get('CHAT_ID');
   }
 
-  @Action(CommandEnum.CONFIRM_JOIN_CHAT)
-  async confirmJoinChat(ctx) {
-    const scene = SCENES[ctx.scene.session.current];
-
-    const action = scene.actions[CommandEnum.CONFIRM_JOIN_CHAT];
+  @SceneEnter()
+  async onSceneEnter(@Ctx() ctx: Context) {
+    const scene = SCENES[CommandEnum.DEMO_TARIFF];
     try {
-      const { status } = await ctx.telegram.getChatMember(this.chatId, ctx.from.id);
-      if (status === 'member') {
-        let token = await this.userService.getUserToken(ctx.from.id);
-        if (!token) {
-          const user = await this.userService.getUserToken(ctx.from.id);
-          if (user) {
-            token = await this.userService.changeToken(ctx.from.id);
-          } else {
-            await this.userService.create({
-              userId: ctx.from.id,
-              chatId: ctx.chat.id,
-              username: ctx.from.username,
-            });
-            token = await this.userService.getUserToken(ctx.from.id);
-          }
+      const freeTariff = await this.tariffService.getFreeTariff();
+
+      let token = await this.userService.getUserToken(ctx.from.id);
+      if (!token) {
+        const existingUser = await this.userService.findOneByUserId(ctx.from.id);
+        if (existingUser) {
+          token = existingUser.token;
+        } else {
+          await this.userService.create({
+            userId: ctx.from.id,
+            chatId: ctx.chat.id,
+            username: ctx.from.username,
+            tariffId: freeTariff?._id,
+          } as any);
+          token = await this.userService.getUserToken(ctx.from.id);
         }
-
-        await this.userService.update(ctx.from.id, { inChat: true });
-
-        await ctx.replyWithHTML(
-          action.success(token).navigateText,
-          Markup.keyboard(action.success(token).navigateButtons).resize(),
-        );
-      } else {
-        await ctx.replyWithHTML(action.error().navigateText, Markup.keyboard(action.error().navigateButtons).resize());
-        await ctx.replyWithHTML(action.error().text, Markup.inlineKeyboard(action.error().buttons));
       }
+
+      await ctx.replyWithHTML(scene.text(token), Markup.keyboard(scene.navigateButtons).resize());
     } catch (e) {
-      this.logger.error('CommandEnum.CONFIRM_JOIN_CHAT', e);
-      await ctx.replyWithHTML(action.error().navigateText, Markup.keyboard(action.error().navigateButtons).resize());
-      await ctx.replyWithHTML(action.error().text, Markup.inlineKeyboard(action.error().buttons));
+      this.logger.error('DemoTariffScene.onSceneEnter', e);
+      await ctx.replyWithHTML(
+        'Произошла ошибка при получении токена. Попробуйте позже.',
+        Markup.keyboard(scene.navigateButtons).resize(),
+      );
     }
   }
 }
