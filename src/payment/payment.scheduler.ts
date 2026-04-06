@@ -1,6 +1,6 @@
 import { Context, Telegraf } from 'telegraf';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit, forwardRef } from '@nestjs/common';
 import { Payment, PaymentDocument } from './schemas/payment.schema';
 
 import { BotService } from 'src/bot.service';
@@ -12,7 +12,7 @@ import { SessionStateService } from 'src/session/session-state.service';
 import { DateTime } from 'luxon';
 
 @Injectable()
-export class PaymentScheduler {
+export class PaymentScheduler implements OnModuleInit {
   private readonly logger = new Logger(PaymentScheduler.name);
   private isHandlingPendingPayments = false;
 
@@ -23,6 +23,12 @@ export class PaymentScheduler {
     private readonly botService: BotService,
     private readonly sessionStateService: SessionStateService,
   ) {}
+
+  async onModuleInit() {
+    this.handleExpiredSubscription().catch((err) => {
+      this.logger.error(`Initial subscription check failed: ${err.message}`);
+    });
+  }
 
   @Cron(CronExpression.EVERY_10_SECONDS)
   async handlePendingPayments() {
