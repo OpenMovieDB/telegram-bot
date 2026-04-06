@@ -98,11 +98,10 @@ export class UserService {
     return newToken;
   }
 
-  async getUsersWithExpiredSubscription(expirationDate: Date, tariffIds: string[]): Promise<User[]> {
+  async getUsersWithExpiredSubscription(expirationDate: Date): Promise<User[]> {
     const expiredUsers = await this.userModel
       .find({
         subscriptionEndDate: { $lte: expirationDate },
-        tariffId: { $in: tariffIds },
       })
       .populate('tariffId')
       .exec();

@@ -123,12 +123,8 @@ export class PaymentScheduler {
     }
     const freeTariff = freeTariffDoc._id;
 
-    const tariffs = await this.tariffService.getAllTariffs();
-    const paidTariffs = tariffs.filter((tariff) => tariff.price > 0).map((tariff) => tariff._id.toString());
-
     const usersWithExpiredSubscription = await this.userService.getUsersWithExpiredSubscription(
       now.toJSDate(),
-      paidTariffs,
     );
 
     if (usersWithExpiredSubscription.length) {
@@ -164,7 +160,6 @@ export class PaymentScheduler {
 
     const usersWithExpiringSubscription = await this.userService.getUsersWithExpiredSubscription(
       expirationDate.toJSDate(),
-      paidTariffs,
     );
 
     if (usersWithExpiringSubscription.length) {
