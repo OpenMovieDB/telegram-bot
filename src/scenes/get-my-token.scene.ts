@@ -14,9 +14,8 @@ export class GetMyTokenScene extends AbstractScene {
   async enterScene(ctx) {
     const scene = SCENES[ctx.scene.session.current];
 
-    const existUser = await this.userService.findOneByUserId(ctx.from.id);
-    if (existUser) {
-      const token = await this.userService.getUserToken(ctx.from.id);
+    const token = await this.userService.ensureUserToken(ctx.from.id);
+    if (token) {
       await ctx.replyWithHTML(scene.success(token).text, Markup.inlineKeyboard(scene.success(token).buttons));
     } else {
       await ctx.replyWithHTML(scene.error().text, Markup.inlineKeyboard(scene.error().buttons));

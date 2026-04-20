@@ -92,9 +92,16 @@ export class UserDetailsScene {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const apiKey = ApiKey.toAPIKey(user.token);
+    const apiKey = user.userId
+      ? await this.userService.ensureUserToken(user.userId)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      : user.token ? ApiKey.toAPIKey(user.token) : null;
+
+    if (!apiKey) {
+      await ctx.answerCbQuery('❌ Не удалось получить токен');
+      return;
+    }
 
     await ctx.answerCbQuery('🔑 Токен отправлен в сообщении', { show_alert: false });
     await ctx.replyWithHTML(

@@ -19,21 +19,17 @@ export class DemoTariffScene extends AbstractScene {
     try {
       const freeTariff = await this.tariffService.getFreeTariff();
 
-      let token = await this.userService.getUserToken(ctx.from.id);
-      if (!token) {
-        const existingUser = await this.userService.findOneByUserId(ctx.from.id);
-        if (existingUser) {
-          token = existingUser.token;
-        } else {
-          await this.userService.create({
-            userId: ctx.from.id,
-            chatId: ctx.chat.id,
-            username: ctx.from.username,
-            tariffId: freeTariff?._id,
-          } as any);
-          token = await this.userService.getUserToken(ctx.from.id);
-        }
+      const existingUser = await this.userService.findOneByUserId(ctx.from.id);
+      if (!existingUser) {
+        await this.userService.create({
+          userId: ctx.from.id,
+          chatId: ctx.chat.id,
+          username: ctx.from.username,
+          tariffId: freeTariff?._id,
+        } as any);
       }
+
+      const token = await this.userService.ensureUserToken(ctx.from.id);
 
       await ctx.replyWithHTML(scene.text(token), Markup.keyboard(scene.navigateButtons).resize());
     } catch (e) {

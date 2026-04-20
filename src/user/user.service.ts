@@ -23,7 +23,12 @@ export class UserService {
     const { userId } = user;
     const existUser = await this.findOneByUserId(userId);
     if (existUser) {
-      await this.userModel.updateOne({ userId }, user);
+      const update: Partial<User> = { ...user };
+      if (!existUser.token) {
+        update.token = uuidv4();
+        this.logger.warn(`User ${userId} was missing a token during upsert, generated a new one`);
+      }
+      await this.userModel.updateOne({ userId }, update);
       return this.findOneByUserId(userId);
     } else {
       return this.create(user);
@@ -49,6 +54,36 @@ export class UserService {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     return ApiKey.toAPIKey(user.token);
+  }
+
+  async ensureUserToken(userId: number): Promise<string | null> {
+    const user = await this.findOneByUserId(userId);
+    if (!user) return null;
+
+    if (!user.token) {
+      const newToken = uuidv4();
+      await this.userModel.updateOne({ userId }, { token: newToken });
+      this.logger.warn(`User ${userId} (${user.username ?? 'no-username'}) had no token, generated a new one`);
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      return ApiKey.toAPIKey(newToken);
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      return ApiKey.toAPIKey(user.token);
+    } catch (e) {
+      this.logger.error(
+        `User ${userId} (${user.username ?? 'no-username'}) has invalid token "${user.token}", regenerating`,
+        e,
+      );
+      const newToken = uuidv4();
+      await this.userModel.updateOne({ userId }, { token: newToken });
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      return ApiKey.toAPIKey(newToken);
+    }
   }
 
   async existUserInChat(userId: number): Promise<boolean> {
@@ -136,6 +171,21 @@ export class UserService {
     });
 
     return this.userModel.findById(user._id).populate('tariffId').lean();
+  }
+
+  async regenerateMissingTokens(): Promise<{ userId?: number; username?: string; newToken: string }[]> {
+    const brokenUsers = await this.userModel
+      .find({ $or: [{ token: { $exists: false } }, { token: null }, { token: '' }] })
+      .lean();
+
+    const repaired: { userId?: number; username?: string; newToken: string }[] = [];
+    for (const u of brokenUsers) {
+      const newToken = uuidv4();
+      await this.userModel.updateOne({ _id: u._id }, { token: newToken });
+      repaired.push({ userId: u.userId, username: u.username, newToken });
+      this.logger.warn(`Regenerated token for user ${u.userId ?? u._id} (${u.username ?? 'no-username'})`);
+    }
+    return repaired;
   }
 
   async findAllUsers(filter?: { isExternalUser?: boolean }): Promise<(User & { tariffId: Tariff })[]> {
