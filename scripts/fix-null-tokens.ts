@@ -1,35 +1,27 @@
-import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
-import { BotModule } from '../src/bot.module';
-import { UserService } from '../src/user/user.service';
+import mongoose from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 
 async function run() {
-  const logger = new Logger('fix-null-tokens');
+  const url = process.env.MONGO_URL;
+  if (!url) throw new Error('MONGO_URL env var is required');
 
-  const app = await NestFactory.createApplicationContext(BotModule, {
-    logger: ['error', 'warn', 'log'],
-  });
+  await mongoose.connect(url);
 
-  try {
-    const userService = app.get(UserService);
-    const repaired = await userService.regenerateMissingTokens();
+  const users = mongoose.connection.collection('users');
+  const broken = await users
+    .find({ $or: [{ token: { $exists: false } }, { token: null }, { token: '' }] })
+    .toArray();
 
-    if (repaired.length === 0) {
-      logger.log('No users without token found.');
-      return;
-    }
-
-    logger.log(`Regenerated tokens for ${repaired.length} users:`);
-    for (const u of repaired) {
-      logger.log(`  - ${u.username ? '@' + u.username : 'id=' + u.userId}`);
-    }
-  } finally {
-    await app.close();
+  for (const u of broken) {
+    await users.updateOne({ _id: u._id }, { $set: { token: uuidv4() } });
+    console.log(`fixed: ${u.username ?? u.userId ?? u._id}`);
   }
+
+  console.log(`done: ${broken.length} users`);
+  await mongoose.disconnect();
 }
 
-run().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error('fix-null-tokens failed:', err);
+run().catch((e) => {
+  console.error(e);
   process.exit(1);
 });
