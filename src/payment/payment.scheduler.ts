@@ -15,6 +15,7 @@ import { DateTime } from 'luxon';
 export class PaymentScheduler implements OnModuleInit {
   private readonly logger = new Logger(PaymentScheduler.name);
   private isHandlingPendingPayments = false;
+  private readonly schedulersDisabled = process.env.DISABLE_SCHEDULERS === 'true';
 
   constructor(
     private readonly paymentService: PaymentService,
@@ -25,6 +26,10 @@ export class PaymentScheduler implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    if (this.schedulersDisabled) {
+      this.logger.log('Schedulers disabled via DISABLE_SCHEDULERS env — skipping initial subscription check');
+      return;
+    }
     this.handleExpiredSubscription().catch((err) => {
       this.logger.error(`Initial subscription check failed: ${err.message}`);
     });
@@ -32,6 +37,7 @@ export class PaymentScheduler implements OnModuleInit {
 
   @Cron(CronExpression.EVERY_10_SECONDS)
   async handlePendingPayments() {
+    if (this.schedulersDisabled) return;
     if (this.isHandlingPendingPayments) {
       this.logger.debug('handlePendingPayments already running, skipping');
       return;
@@ -80,6 +86,7 @@ export class PaymentScheduler implements OnModuleInit {
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async handleExpiredPayments() {
+    if (this.schedulersDisabled) return;
     const expiredPayments = await this.paymentService.getExpiredPendingPayments();
 
     if (expiredPayments.length) {
@@ -115,6 +122,7 @@ export class PaymentScheduler implements OnModuleInit {
 
   @Cron(CronExpression.EVERY_5_HOURS)
   async handleExpiredSubscription() {
+    if (this.schedulersDisabled) return;
     const now = DateTime.local();
     const expirationDate = now.plus({ days: 2 });
 
@@ -197,6 +205,7 @@ export class PaymentScheduler implements OnModuleInit {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleAdminSubscriptionNotifications() {
+    if (this.schedulersDisabled) return;
     this.logger.debug('Start checking subscriptions for admin notifications');
 
     const now = DateTime.local();

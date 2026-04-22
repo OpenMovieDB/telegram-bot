@@ -244,6 +244,17 @@ export class PaymentService {
     );
 
     if (isPaid) {
+      // Atomic claim: only one worker (across pods) applies the subscription update.
+      // Mongo guarantees findOneAndUpdate with the same filter runs serially.
+      const claimed = await this.paymentModel.findOneAndUpdate(
+        { paymentId, isFinal: false },
+        { $set: { status: PaymentStatusEnum.PAID, isFinal: true } },
+      );
+      if (!claimed) {
+        this.logger.debug(`Payment ${paymentId} already claimed by another worker, skipping subscription update`);
+        return true;
+      }
+
       const user = await this.userService.findOneByUserId(payment.userId);
 
       if (user) {

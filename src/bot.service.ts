@@ -164,6 +164,7 @@ export class BotService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async checkUsers() {
+    if (process.env.DISABLE_SCHEDULERS === 'true') return;
     this.logger.log('Check users');
     if (!this.isProd) return;
     const users = await this.userService.findUsersInChat();
