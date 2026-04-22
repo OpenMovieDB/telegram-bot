@@ -4,6 +4,7 @@ import Redis from 'ioredis';
 import * as ApiKey from 'uuid-apikey';
 import { UserService } from '../user/user.service';
 import { TariffService } from '../tariff/tariff.service';
+import { getNextMidnightMSKTimestamp } from '../utils/midnight-msk.util';
 
 interface CachedUser {
   _id: string;
@@ -56,7 +57,7 @@ export class CacheResetService {
       // If forceReset is true (e.g., when changing tariffs), always set the new tariff's limit
       // If forceReset is false (e.g., when extending same tariff), keep current remaining if it's positive
       const finalLimit = forceReset || currentRemaining <= 0 ? newRequestsLimit : currentRemaining;
-      await this.redis.set(apiKey, finalLimit);
+      await this.redis.set(apiKey, finalLimit, 'EXAT', getNextMidnightMSKTimestamp());
 
       this.logger.log(
         `Updated limit for user ${userId}: current=${currentRemaining}, new=${newRequestsLimit}, final=${finalLimit}, forceReset=${forceReset}`,
@@ -114,7 +115,7 @@ export class CacheResetService {
     try {
       // @ts-ignore
       const apiKey = ApiKey.toAPIKey(userToken);
-      await this.redis.set(apiKey, newLimit);
+      await this.redis.set(apiKey, newLimit, 'EXAT', getNextMidnightMSKTimestamp());
 
       this.logger.log(`Set new limit ${newLimit} for token: ${apiKey}`);
     } catch (error) {
@@ -183,8 +184,8 @@ export class CacheResetService {
       const remainingLimit = await this.redis.get(oldApiKey);
 
       if (remainingLimit) {
-        // Transfer remaining requests to new API key
-        await this.redis.set(newApiKey, remainingLimit);
+        // Transfer remaining requests to new API key, preserve daily MSK reset
+        await this.redis.set(newApiKey, remainingLimit, 'EXAT', getNextMidnightMSKTimestamp());
         this.logger.log(`Transferred ${remainingLimit} requests from ${oldApiKey} to ${newApiKey}`);
       } else {
         this.logger.log(`No remaining requests to transfer from ${oldApiKey}`);
