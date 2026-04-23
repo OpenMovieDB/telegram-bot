@@ -17,31 +17,52 @@ export class ChangeTokenScene extends AbstractScene {
   async onSceneEnter(@Ctx() ctx: Context) {
     const scene = SCENES[ctx.scene.session.current];
 
+    let user;
     try {
-      const user = await this.userService.findOneByUserId(ctx.from.id);
-      if (!user) {
-        await ctx.replyWithHTML(scene.error().text);
-        return;
-      }
+      user = await this.userService.findOneByUserId(ctx.from.id);
+    } catch (error) {
+      this.logger.error(`Failed to load user ${ctx.from.id} for token change:`, error);
+      await ctx.replyWithHTML(scene.error().text);
+      return;
+    }
 
-      const oldToken = user.token;
-      const newToken = await this.userService.changeToken(ctx.from.id);
+    if (!user) {
+      await ctx.replyWithHTML(scene.error().text);
+      return;
+    }
 
-      if (oldToken && newToken) {
-        await this.cacheResetService.transferTokenLimits(oldToken, newToken);
-      }
+    const oldToken = user.token;
 
+    let newToken: string | null = null;
+    let apiKey: string | null = null;
+    try {
+      newToken = await this.userService.changeToken(ctx.from.id);
       if (newToken) {
-        // Convert UUID to API key format for display to user
         // @ts-ignore
-        const apiKey = ApiKey.toAPIKey(newToken);
-        await ctx.replyWithHTML(scene.success(apiKey).text);
-      } else {
-        await ctx.replyWithHTML(scene.error().text);
+        apiKey = ApiKey.toAPIKey(newToken);
       }
     } catch (error) {
       this.logger.error(`Failed to change token for user ${ctx.from.id}:`, error);
+    }
+
+    if (!newToken || !apiKey) {
       await ctx.replyWithHTML(scene.error().text);
+      return;
+    }
+
+    // Show the new token to the user BEFORE any cache side effects, so even
+    // if cache invalidation fails the user never ends up with a token they
+    // cannot see.
+    try {
+      await ctx.replyWithHTML(scene.success(apiKey).text);
+    } catch (error) {
+      this.logger.error(`Failed to send new token to user ${ctx.from.id}:`, error);
+    }
+
+    try {
+      await this.cacheResetService.transferTokenLimits(oldToken, newToken);
+    } catch (error) {
+      this.logger.error(`Failed to invalidate caches after token change for user ${ctx.from.id}:`, error);
     }
   }
 }

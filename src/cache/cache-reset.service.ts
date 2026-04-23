@@ -169,52 +169,28 @@ export class CacheResetService {
     }
   }
 
-  async transferTokenLimits(oldToken: string, newToken: string): Promise<void> {
+  async transferTokenLimits(oldToken: string | null | undefined, newToken: string): Promise<void> {
+    if (!oldToken) return;
+
+    let oldApiKey: string;
+    let newApiKey: string;
     try {
-      // oldToken and newToken are UUIDs from database
-      // Convert them to API keys for Redis limits
       // @ts-ignore
-      const oldApiKey = ApiKey.toAPIKey(oldToken);
+      oldApiKey = ApiKey.toAPIKey(oldToken);
       // @ts-ignore
-      const newApiKey = ApiKey.toAPIKey(newToken);
-
-      this.logger.log(`Starting token transfer: ${oldApiKey} -> ${newApiKey}`);
-
-      // Get remaining limit from old API key
-      const remainingLimit = await this.redis.get(oldApiKey);
-
-      if (remainingLimit) {
-        // Transfer remaining requests to new API key, preserve daily MSK reset
-        await this.redis.set(newApiKey, remainingLimit, 'EXAT', getNextMidnightMSKTimestamp());
-        this.logger.log(`Transferred ${remainingLimit} requests from ${oldApiKey} to ${newApiKey}`);
-      } else {
-        this.logger.log(`No remaining requests to transfer from ${oldApiKey}`);
-      }
-
-      // Delete old API key's limit
-      const deleteResult = await this.redis.del(oldApiKey);
-      this.logger.log(`Deleted old API key ${oldApiKey} from Redis: ${deleteResult} keys removed`);
-
-      // CRITICAL: Delete user cache by old UUID to prevent old token from working
-      // The API (poiskkinodev) caches user data with key pattern: user:{UUID}
-      const userCacheKey = `user:${oldToken}`;
-      const userCacheDeleted = await this.redis.del(userCacheKey);
-      this.logger.log(`Deleted user cache ${userCacheKey} from Redis: ${userCacheDeleted} keys removed`);
-
-      // Verify both keys are really deleted
-      const checkOldLimit = await this.redis.get(oldApiKey);
-      const checkOldCache = await this.redis.get(userCacheKey);
-
-      if (checkOldLimit) {
-        this.logger.error(`WARNING: Old API key ${oldApiKey} still exists in Redis with value: ${checkOldLimit}`);
-      }
-      if (checkOldCache) {
-        this.logger.error(`WARNING: Old user cache ${userCacheKey} still exists in Redis`);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to transfer token limits from ${oldToken} to ${newToken}:`, error);
-      throw error; // Re-throw to let caller handle the error
+      newApiKey = ApiKey.toAPIKey(newToken);
+    } catch (e) {
+      this.logger.warn(`Skipping token transfer, invalid UUID (old="${oldToken}"): ${e?.message}`);
+      await this.redis.del(`user:${oldToken}`);
+      return;
     }
+
+    const remainingLimit = await this.redis.get(oldApiKey);
+    if (remainingLimit) {
+      await this.redis.set(newApiKey, remainingLimit, 'EXAT', getNextMidnightMSKTimestamp());
+    }
+    await this.redis.del(oldApiKey);
+    await this.redis.del(`user:${oldToken}`);
   }
 
   async getTokenLimit(userToken: string): Promise<number> {

@@ -120,11 +120,29 @@ export class UserDetailsScene {
       return;
     }
 
-    const newToken = await this.userService.changeToken(user.userId);
+    if (!user.userId) {
+      await ctx.answerCbQuery('❌ У пользователя нет userId — смена токена невозможна');
+      return;
+    }
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const apiKey = ApiKey.toAPIKey(newToken);
+    const oldToken = user.token;
+    let newToken: string | null = null;
+    let apiKey: string | null = null;
+    try {
+      newToken = await this.userService.changeToken(user.userId);
+      if (newToken) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        apiKey = ApiKey.toAPIKey(newToken);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to change token for ${username} (${user.userId}):`, error);
+    }
+
+    if (!newToken || !apiKey) {
+      await ctx.answerCbQuery('❌ Не удалось сменить токен', { show_alert: true });
+      return;
+    }
 
     await ctx.answerCbQuery('✅ Токен изменен!', { show_alert: true });
     await ctx.editMessageText(
@@ -136,6 +154,12 @@ export class UserDetailsScene {
         ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Назад', `back_to_user_${username}`)]]),
       },
     );
+
+    try {
+      await this.cacheResetService.transferTokenLimits(oldToken, newToken);
+    } catch (error) {
+      this.logger.error(`Failed to invalidate caches after token change for ${username}:`, error);
+    }
 
     this.logger.log(`Changed token for user: ${username}`);
   }
