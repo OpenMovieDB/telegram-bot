@@ -23,6 +23,8 @@ metadata:
     {{- include "kp-bot.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicas }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "kp-bot.selectorLabels" . | nindent 6 }}
