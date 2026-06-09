@@ -50,10 +50,14 @@ export class UserService {
 
   async getUserToken(userId: number): Promise<string | null> {
     const user = await this.findOneByUserId(userId);
-    if (!user?.token) return null;
+    return this.tokenToApiKey(user?.token);
+  }
+
+  tokenToApiKey(token: string | null | undefined): string | null {
+    if (!token) return null;
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    return ApiKey.toAPIKey(user.token);
+    return ApiKey.toAPIKey(token);
   }
 
   async ensureUserToken(userId: number): Promise<string | null> {

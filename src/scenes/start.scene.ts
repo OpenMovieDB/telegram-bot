@@ -19,13 +19,15 @@ export class StartScene extends AbstractScene {
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
     const freeTariff = await this.tariffService.getFreeTariff();
-    await this.userService.create({
+    // Read the token from the insert result: a follow-up findOne goes to a
+    // secondary (readPreference=secondaryPreferred) and can miss the fresh doc.
+    const user = await this.userService.create({
       userId: ctx.from.id,
       chatId: ctx.chat.id,
       username: ctx.from.username,
       tariffId: freeTariff?._id,
     } as any);
-    const token = await this.userService.getUserToken(ctx.from.id);
+    const token = this.userService.tokenToApiKey(user.token);
 
     const scene = SCENES[CommandEnum.START];
     await ctx.replyWithHTML(scene.text(token), Markup.inlineKeyboard(scene.buttons));
