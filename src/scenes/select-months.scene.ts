@@ -3,15 +3,18 @@ import { AbstractScene } from '../abstract/abstract.scene';
 import { Action, Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { Logger } from '@nestjs/common';
 import { Context } from 'src/interfaces/context.interface';
-import { TariffService } from 'src/tariff/tariff.service';
+import { TariffService, offeredPeriods } from 'src/tariff/tariff.service';
 import { SessionStateService } from 'src/session/session-state.service';
-import { safeReplyOrEdit } from 'src/utils/safe-reply.util';
 import { Markup } from 'telegraf';
+import { splitArrayIntoPairs } from 'src/utils/split-array-into-pairs';
 
+// billing sells only the exact (tariff, months) rows from the catalog — the
+// period buttons are built from tariff.prices, not from a hardcoded list.
+// Offering a period without a price row would show a price billing refuses to
+// charge (price_not_available).
 @Scene(CommandEnum.SELECT_MONTHS)
 export class SelectMonthsScene extends AbstractScene {
-  public logger = new Logger(AbstractScene.name);
-  private maxMonths = 60;
+  public logger = new Logger(SelectMonthsScene.name);
 
   constructor(
     private readonly tariffService: TariffService,
@@ -22,96 +25,50 @@ export class SelectMonthsScene extends AbstractScene {
 
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
-    await this.sessionStateService.setPaymentMonths(ctx.from.id, 1);
-
-    await this.sendMessage(ctx);
-  }
-
-  @Action('plus')
-  async plus(@Ctx() ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
     const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
-    const currentMonths = flags?.paymentMonths || 1;
-
-    if (currentMonths <= this.maxMonths) {
-      await this.sessionStateService.setPaymentMonths(ctx.from.id, currentMonths + 1);
-      await this.sendMessage(ctx);
-    }
-  }
-
-  @Action('tree')
-  async tree(@Ctx() ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
-    await this.sessionStateService.setPaymentMonths(ctx.from.id, 3);
-    await this.sendMessage(ctx);
-  }
-
-  @Action('six')
-  async six(@Ctx() ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
-    await this.sessionStateService.setPaymentMonths(ctx.from.id, 6);
-    await this.sendMessage(ctx);
-  }
-
-  @Action('twelve')
-  async twelve(@Ctx() ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
-    await this.sessionStateService.setPaymentMonths(ctx.from.id, 12);
-    await this.sendMessage(ctx);
-  }
-
-  @Action('minus')
-  async minus(@Ctx() ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
-    const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
-    const currentMonths = flags?.paymentMonths || 1;
-
-    if (currentMonths > 1) {
-      await this.sessionStateService.setPaymentMonths(ctx.from.id, currentMonths - 1);
-      await this.sendMessage(ctx);
-    }
-  }
-
-  @Action('ok')
-  async ok(@Ctx() ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
-    const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
-    const paymentMonths = flags?.paymentMonths || 0;
-
-    if (paymentMonths >= 1) {
-      await ctx.scene.enter(CommandEnum.PAYMENT);
-    } else {
-      this.logger.warn('paymentMonths >= 1', paymentMonths >= 1);
-    }
-  }
-
-  private async sendMessage(ctx) {
-    const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
-    const { paymentMonths, tariffId } = flags || {};
-
-    if (!tariffId || !paymentMonths) {
-      this.logger.error('Missing tariffId or paymentMonths in Redis');
+    const tariff = flags?.tariffId ? await this.tariffService.getOneById(flags.tariffId) : null;
+    if (!tariff) {
+      this.logger.error(`Missing or unknown tariffId in Redis for ${ctx.from.id}`);
+      await ctx.replyWithHTML('Не удалось определить выбранный тариф. Пожалуйста, выберите его ещё раз.');
+      await ctx.scene.enter(CommandEnum.GET_ACCESS);
       return;
     }
 
-    const { price } = await this.tariffService.getOneById(tariffId);
-    return safeReplyOrEdit(
-      ctx,
-      `Установите время действия подписки 🔢\n\nПодписка на: <b>${paymentMonths} мес</b>. \n\nФинальная стоимость: <b>${
-        price * paymentMonths
-      } руб.</b>`,
-      Markup.inlineKeyboard([
-        [
-          Markup.button.callback('-', 'minus'),
-          Markup.button.callback('3', 'tree'),
-          Markup.button.callback('6', 'six'),
-          Markup.button.callback('12', 'twelve'),
-          Markup.button.callback('+', 'plus'),
-        ],
-        [Markup.button.callback('✅ подтвердить', 'ok')],
-      ]),
-      this.sessionStateService,
+    const periods = offeredPeriods(tariff);
+    if (!periods.length) {
+      this.logger.error(`Tariff ${tariff.id} (${tariff.code}) has no price rows — cannot be sold`);
+      await ctx.replyWithHTML('Этот тариф сейчас недоступен для покупки. Пожалуйста, выберите другой.');
+      await ctx.scene.enter(CommandEnum.GET_ACCESS);
+      return;
+    }
+
+    const buttons = splitArrayIntoPairs(
+      periods.map((period) =>
+        Markup.button.callback(`${period.months} мес — ${period.priceRub} ₽`, `months_${period.months}`),
+      ),
     );
+
+    await ctx.replyWithHTML(
+      `Тариф: <b>${tariff.display_name}</b>\n\nВыберите срок подписки 🔢`,
+      Markup.inlineKeyboard(buttons),
+    );
+  }
+
+  @Action(/^months_(\d+)$/)
+  async onPeriodPick(@Ctx() ctx: Context) {
+    const months = parseInt(ctx.match[1], 10);
+    const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+    const tariff = flags?.tariffId ? await this.tariffService.getOneById(flags.tariffId) : null;
+    const period = tariff ? offeredPeriods(tariff).find((p) => p.months === months) : null;
+
+    if (!period) {
+      await ctx.answerCbQuery('Этот период больше недоступен');
+      await ctx.scene.reenter();
+      return;
+    }
+
+    await ctx.answerCbQuery();
+    await this.sessionStateService.setPaymentMonths(ctx.from.id, months);
+    await ctx.scene.enter(CommandEnum.PAYMENT);
   }
 }

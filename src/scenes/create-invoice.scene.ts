@@ -17,7 +17,9 @@ export class CreateInvoiceScene {
     ctx.scene.session.state = {};
 
     await ctx.replyWithHTML(
-      '🧾 <b>Создание счета</b>\n\n' + 'Шаг 1/3: Введите сумму в рублях\n\n' + '<i>Например: 1000</i>',
+      '🧾 <b>Создание счета</b>\n\n' +
+        'Шаг 1/4: Введите API-токен пользователя, на которого выставляется счёт\n\n' +
+        '<i>Например: 1G77T25-7MM4S33-PT2EJBV-CQ7V36A</i>',
       Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
     );
   }
@@ -47,6 +49,22 @@ export class CreateInvoiceScene {
 
     const state = ctx.scene.session.state;
 
+    if (!state.token) {
+      const token = text.trim();
+      if (!token) {
+        await ctx.replyWithHTML('❌ Введите корректный API-токен');
+        return;
+      }
+
+      state.token = token;
+
+      await ctx.replyWithHTML(
+        `✅ Токен: <b>${token}</b>\n\n` + 'Шаг 2/4: Введите сумму в рублях\n\n' + '<i>Например: 1000</i>',
+        Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
+      );
+      return;
+    }
+
     if (!state.amount) {
       const amount = Number(text.trim());
 
@@ -59,7 +77,7 @@ export class CreateInvoiceScene {
 
       await ctx.replyWithHTML(
         `✅ Сумма: <b>${amount} ₽</b>\n\n` +
-          'Шаг 2/3: Введите описание платежа\n\n' +
+          'Шаг 3/4: Введите описание платежа\n\n' +
           '<i>Например: Оплата за консультацию</i>',
         Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
       );
@@ -72,7 +90,7 @@ export class CreateInvoiceScene {
       await ctx.replyWithHTML(
         `✅ Сумма: <b>${state.amount} ₽</b>\n` +
           `✅ Описание: <b>${state.description}</b>\n\n` +
-          'Шаг 3/3: Введите email для чека\n\n' +
+          'Шаг 4/4: Введите email для чека\n\n' +
           '<i>Например: user@example.com</i>',
         Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
       );
@@ -90,7 +108,12 @@ export class CreateInvoiceScene {
       state.email = email;
 
       try {
-        const { paymentUrl, orderId } = await this.paymentService.createInvoice(state.amount, state.description, email);
+        const { paymentUrl, orderId } = await this.paymentService.createInvoice(
+          state.token,
+          state.amount,
+          state.description,
+          email,
+        );
 
         await ctx.replyWithHTML(
           `✅ <b>Счет создан</b>\n\n` +
@@ -106,12 +129,13 @@ export class CreateInvoiceScene {
         );
 
         this.logger.log(
-          `Invoice created: amount=${state.amount}, description="${state.description}", email=${email}, orderId=${orderId}`,
+          `Invoice created: token=${state.token}, amount=${state.amount}, description="${state.description}", email=${email}, orderId=${orderId}`,
         );
       } catch (error) {
+        const message = error?.message === 'USER_NOT_FOUND' ? 'Пользователь с таким токеном не найден' : error.message;
         this.logger.error(`Error creating invoice: ${error.message}`, error.stack);
         await ctx.replyWithHTML(
-          `❌ Ошибка при создании счета: ${error.message}`,
+          `❌ Ошибка при создании счета: ${message}`,
           Markup.inlineKeyboard([[Markup.button.callback('⬅️ В админ меню', CommandEnum.ADMIN_MENU)]]),
         );
       }

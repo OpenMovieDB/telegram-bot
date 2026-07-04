@@ -1,6 +1,6 @@
 import { Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { CommandEnum } from '../enum/command.enum';
-import { AbstractScene } from '../abstract/abstract.scene';
+import { TariffPickScene } from '../abstract/tariff-pick.scene';
 import { Logger } from '@nestjs/common';
 import { SCENES } from 'src/constants/scenes.const';
 import { Markup } from 'telegraf';
@@ -9,14 +9,11 @@ import { TariffService } from 'src/tariff/tariff.service';
 import { SessionStateService } from 'src/session/session-state.service';
 
 @Scene(CommandEnum.GET_ACCESS)
-export class GetAccessScene extends AbstractScene {
-  public logger = new Logger(AbstractScene.name);
+export class GetAccessScene extends TariffPickScene {
+  public logger = new Logger(GetAccessScene.name);
 
-  constructor(
-    private readonly tariffService: TariffService,
-    private readonly sessionStateService: SessionStateService,
-  ) {
-    super();
+  constructor(tariffService: TariffService, sessionStateService: SessionStateService) {
+    super(tariffService, sessionStateService);
   }
 
   @SceneEnter()

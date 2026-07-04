@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '@liaoliaots/nestjs-redis';
 import Redis from 'ioredis';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class SessionStateService {
@@ -58,7 +59,8 @@ export class SessionStateService {
   }
 
   /**
-   * Устанавливает выбранный тариф
+   * Устанавливает выбранный тариф. Смена выбора = новый attemptId
+   * (Idempotency-Key для billing), иначе create вернёт платёж от старого выбора.
    */
   async setTariffId(userId: number, tariffId: string): Promise<void> {
     const key = `payment_flags:${userId}`;
@@ -70,6 +72,7 @@ export class SessionStateService {
       flags = {
         ...flags,
         tariffId,
+        attemptId: randomUUID(),
         updatedAt: Date.now(),
       };
 
@@ -81,7 +84,7 @@ export class SessionStateService {
   }
 
   /**
-   * Устанавливает количество месяцев для оплаты
+   * Устанавливает количество месяцев для оплаты (и новый attemptId — см. setTariffId)
    */
   async setPaymentMonths(userId: number, months: number): Promise<void> {
     const key = `payment_flags:${userId}`;
@@ -93,6 +96,7 @@ export class SessionStateService {
       flags = {
         ...flags,
         paymentMonths: months,
+        attemptId: randomUUID(),
         updatedAt: Date.now(),
       };
 
@@ -100,6 +104,28 @@ export class SessionStateService {
       this.logger.debug(`Set paymentMonths=${months} for user ${userId}`);
     } catch (error) {
       this.logger.error(`Failed to set paymentMonths for user ${userId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Новый attemptId после отмены платежа: billing по старому ключу вернул бы
+   * отменённый платёж вместо создания нового.
+   */
+  async rotatePaymentAttemptId(userId: number): Promise<void> {
+    const key = `payment_flags:${userId}`;
+
+    try {
+      const existingData = await this.redis.get(key);
+      if (!existingData) return;
+
+      const flags = JSON.parse(existingData);
+      flags.attemptId = randomUUID();
+      flags.updatedAt = Date.now();
+
+      await this.redis.set(key, JSON.stringify(flags), 'EX', 3600);
+      this.logger.debug(`Rotated payment attemptId for user ${userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to rotate attemptId for user ${userId}: ${error.message}`);
     }
   }
 
@@ -152,6 +178,7 @@ export class SessionStateService {
     shouldExitPaymentScene?: boolean;
     tariffId?: string;
     paymentMonths?: number;
+    attemptId?: string;
   } | null> {
     const key = `payment_flags:${userId}`;
 

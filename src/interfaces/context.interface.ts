@@ -9,12 +9,11 @@ export interface Context extends BaseContext {
   match: any;
 }
 
+// Payment flow state (tariff/months/flags) lives in Redis via
+// SessionStateService — only navigation helpers remain in the Telegraf session.
 interface SessionData extends Scenes.SceneSession<SceneSession> {
-  messageId: number;
-  tariffId: string;
-  paymentMonths: number;
-  paymentInProgress?: boolean;
-  waitingForEmail?: boolean;
+  messageId?: number;
+  accountId?: string;
 }
 
 interface SceneSession extends Scenes.SceneSessionData {

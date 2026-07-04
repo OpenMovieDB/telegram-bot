@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ModerationService } from './moderation.service';
-import { UserModule } from '../user/user.module';
-import { TariffModule } from '../tariff/tariff.module';
+import { AccountModule } from '../account/account.module';
 
 @Module({
-  imports: [UserModule, TariffModule],
+  imports: [AccountModule],
   providers: [ModerationService],
   exports: [ModerationService],
 })

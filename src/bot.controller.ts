@@ -1,17 +1,12 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { BotService } from './bot.service';
+import { Controller, Get } from '@nestjs/common';
 
+// Health endpoint only (Docker HEALTHCHECK / probes). The HTTP server is
+// enabled with ENABLE_HTTP_SERVER=true; no admin endpoints live here — the
+// unauthenticated broadcast route was removed deliberately.
 @Controller('')
 export class BotController {
-  constructor(private readonly botService: BotService) {}
-
   @Get()
   ping() {
     return { data: 'pong' };
-  }
-
-  @Post('/send_message')
-  sendMessageToUsers(@Body() request: { message: string }) {
-    return this.botService.sendTextMessageToAllUsers(request.message);
   }
 }

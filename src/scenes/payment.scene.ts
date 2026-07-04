@@ -8,8 +8,6 @@ import { Context } from 'src/interfaces/context.interface';
 import { Markup } from 'telegraf';
 import { safeReply } from 'src/utils/safe-reply.util';
 import { SCENES } from 'src/constants/scenes.const';
-import { DateTime } from 'luxon';
-import { UserService } from 'src/user/user.service';
 import { TariffService } from 'src/tariff/tariff.service';
 import { SessionStateService } from 'src/session/session-state.service';
 
@@ -19,7 +17,6 @@ export class PaymentScene extends AbstractScene {
 
   constructor(
     private readonly paymentService: PaymentService,
-    private readonly userService: UserService,
     private readonly tariffService: TariffService,
     private readonly sessionStateService: SessionStateService,
   ) {
@@ -111,6 +108,9 @@ export class PaymentScene extends AbstractScene {
     const cancelled = await this.paymentService.cancelUserPendingPayment(ctx.from.id);
 
     if (cancelled) {
+      // The old Idempotency-Key now points at a cancelled payment — rotate it
+      // so the next create starts fresh.
+      await this.sessionStateService.rotatePaymentAttemptId(ctx.from.id);
       await ctx.answerCbQuery('✅ Платеж отменен');
       await ctx.editMessageText(
         '✅ Активный платеж успешно отменен.\n\n' + 'Теперь вы можете создать новый платеж с правильными параметрами.',
@@ -146,7 +146,9 @@ export class PaymentScene extends AbstractScene {
       this.logger.error(`Failed to check payment flags: ${error.message}`);
     }
 
-    const email = ctx.message?.['text'];
+    // Take the matched address, not the whole message — the user may have
+    // typed words around it ("мой email x@y.z").
+    const email = ctx.match?.[0] ?? ctx.message?.['text'];
     this.logger.debug(`user email ${email}`);
 
     // Check if we're waiting for email
@@ -220,6 +222,8 @@ export class PaymentScene extends AbstractScene {
     this.processingPayments.add(ctx.from.id);
 
     try {
+      const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
+
       // First try to get data from existing pending payment
       const existingPayment = await this.paymentService.getUserPendingPayment(ctx.from.id);
       let paymentMonths: number;
@@ -227,12 +231,11 @@ export class PaymentScene extends AbstractScene {
 
       if (existingPayment) {
         // Use data from existing payment
-        paymentMonths = existingPayment.monthCount;
-        tariffId = existingPayment.tariffId;
+        paymentMonths = existingPayment.payment_months;
+        tariffId = existingPayment.tariff_id;
         this.logger.debug(`Using existing payment data: paymentMonths ${paymentMonths}, tariffId ${tariffId}`);
       } else {
         // Fallback to Redis flags for new payments
-        const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
         paymentMonths = flags?.paymentMonths;
         tariffId = flags?.tariffId;
 
@@ -246,36 +249,39 @@ export class PaymentScene extends AbstractScene {
 
       const payment = await this.paymentService.createPayment(
         ctx.from.id,
-        ctx.chat.id,
+        ctx.from.username,
         tariffId,
         paymentSystem,
         paymentMonths,
         email,
+        flags?.attemptId,
       );
       this.logger.debug(`payment ${JSON.stringify(payment)}`);
 
+      if (!payment.payment_url) {
+        // Telegram rejects url-buttons with an empty URL; without a link the
+        // message is useless anyway.
+        this.logger.error(`Payment ${payment.payment_id} has no payment_url (provider ${payment.provider})`);
+        await ctx.reply('Произошла ошибка при создании ссылки на оплату. Пожалуйста, попробуйте снова.');
+        return;
+      }
+
       let message = `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\n`;
 
-      if (payment.discount && payment.discount > 0) {
-        const user = await this.userService.findOneByUserId(ctx.from.id);
-        const currentTariff = user.tariffId; // Already populated as Tariff object
-        const newTariff = await this.tariffService.getOneById(tariffId);
-        const daysRemaining = Math.floor(
-          DateTime.fromJSDate(user.subscriptionEndDate).diff(DateTime.now(), 'days').days,
-        );
+      // billing computes price + upgrade credit; amounts in the response are rubles.
+      const tariff = await this.tariffService.getOneById(tariffId);
+      const tariffName = tariff?.display_name ?? '—';
 
+      if (payment.discount && payment.discount > 0) {
         message += `💰 <b>Применена скидка за остаток текущей подписки!</b>\n`;
-        message += `├ Переход с тарифа: ${currentTariff.name} → ${newTariff.name}\n`;
-        message += `├ Период подписки: ${paymentMonths} ${paymentMonths === 1 ? 'мес' : 'мес'}\n`;
-        message += `├ Осталось дней: ${daysRemaining}\n`;
-        message += `├ Полная стоимость: ${payment.originalPrice} ₽\n`;
+        message += `├ Тариф: ${tariffName}\n`;
+        message += `├ Период подписки: <b>${paymentMonths} мес</b>\n`;
+        message += `├ Полная стоимость: ${payment.original_amount} ₽\n`;
         message += `├ Скидка: -${payment.discount} ₽\n`;
         message += `└ <b>Финальная стоимость: ${payment.amount} ₽</b>\n\n`;
       } else {
-        const tariff = await this.tariffService.getOneById(tariffId);
-        message += `💰 Тариф: ${tariff.name}\n`;
+        message += `💰 Тариф: ${tariffName}\n`;
         message += `├ Подписка на: <b>${paymentMonths} мес</b>\n`;
-        message += `├ Стоимость за месяц: ${tariff.price} ₽\n`;
         message += `└ <b>Финальная стоимость: ${payment.amount} ₽</b>\n\n`;
       }
 
@@ -285,15 +291,13 @@ export class PaymentScene extends AbstractScene {
       let sentMessage;
       try {
         sentMessage = await ctx.sendMessage(message, {
-          ...Markup.inlineKeyboard([
-            [Markup.button.url(paymentSystem === 'WALLET' ? '👛 Pay via Wallet' : '👉 перейти к оплате', payment.url)],
-          ]),
+          ...Markup.inlineKeyboard([[Markup.button.url('👉 перейти к оплате', payment.payment_url)]]),
           parse_mode: 'HTML',
         });
         this.logger.debug(`sentMessage ${JSON.stringify(sentMessage)}`);
       } catch (messageError) {
         this.logger.error(
-          `Failed to send payment message, but payment ${payment.paymentId} is created: ${messageError.message}`,
+          `Failed to send payment message, but payment ${payment.payment_id} is created: ${messageError.message}`,
         );
         // Payment is created - user can still pay via other means, so continue
         return;
@@ -323,7 +327,7 @@ export class PaymentScene extends AbstractScene {
         }
       }, 1200000);
     } catch (error) {
-      console.log(error);
+      this.logger.error(`Failed to create payment for user ${ctx.from.id}: ${error.message}`, error.stack);
 
       // Remove user from processing set on error
       this.processingPayments.delete(ctx.from.id);

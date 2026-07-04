@@ -1,18 +1,17 @@
 import { Scene, Ctx, SceneEnter, Action } from 'nestjs-telegraf';
 import { CommandEnum } from '../enum/command.enum';
+import { accountTariffName } from '../utils/tariff-display.util';
 import { Context } from '../interfaces/context.interface';
 import { Injectable, Logger } from '@nestjs/common';
-import { UserService } from '../user/user.service';
-import { CacheResetService } from '../cache/cache-reset.service';
+import { AccountClient } from '../account/account.client';
 import { Markup } from 'telegraf';
-import * as ApiKey from 'uuid-apikey';
 
 @Scene(CommandEnum.USER_DETAILS)
 @Injectable()
 export class UserDetailsScene {
   private readonly logger = new Logger(UserDetailsScene.name);
 
-  constructor(private readonly userService: UserService, private readonly cacheResetService: CacheResetService) {}
+  constructor(private readonly accountClient: AccountClient) {}
 
   @SceneEnter()
   async onEnter(@Ctx() ctx: Context) {
@@ -31,36 +30,32 @@ export class UserDetailsScene {
   }
 
   private async showUserDetails(ctx: Context, username: string, isEdit = false) {
-    const user = await this.userService.findUserByUsername(username);
+    const account = await this.accountClient.getByUsername(username);
 
-    if (!user) {
+    if (!account) {
       await ctx.replyWithHTML('❌ Пользователь не найден');
       await ctx.scene.enter(CommandEnum.LIST_USERS);
       return;
     }
 
-    const totalLimit = user.tariffId?.requestsLimit || 0;
-    const remaining = user.token ? await this.cacheResetService.getTokenLimit(user.token) : 0;
-    const used = totalLimit > 0 ? Math.max(0, totalLimit - remaining) : 0;
+    const usage = await this.accountClient.getUsage(account.id);
+    const totalLimit = usage.limit;
+    const used = usage.used;
     const limitDisplay = totalLimit > 99999999990 ? '∞' : totalLimit;
 
-    let message = `👤 <b>Пользователь: ${user.username}</b>\n\n`;
-    message += `💼 Тариф: <b>${user.tariffId?.name || 'N/A'}</b>\n`;
+    let message = `👤 <b>Пользователь: ${account.username}</b>\n\n`;
+    message += `💼 Тариф: <b>${accountTariffName(account.tariff)}</b>\n`;
     message += `📊 Лимит запросов: ${limitDisplay} req/day\n`;
     message += `📈 Использовано: ${used} / ${limitDisplay} запросов\n\n`;
 
-    if (user.subscriptionEndDate) {
-      const endDate = new Date(user.subscriptionEndDate);
+    if (account.subscription_end) {
+      const endDate = new Date(account.subscription_end);
       const daysLeft = Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
 
       message += `📅 Подписка до: ${endDate.toLocaleDateString('ru-RU')}\n`;
       message += `⏰ Осталось: ${daysLeft > 0 ? `${daysLeft} дн.` : 'истекла ❌'}\n`;
     } else {
       message += `📅 Подписка: бессрочная ∞\n`;
-    }
-
-    if (user.subscriptionStartDate) {
-      message += `📅 Начало подписки: ${new Date(user.subscriptionStartDate).toLocaleDateString('ru-RU')}\n`;
     }
 
     const buttons = [
@@ -85,27 +80,21 @@ export class UserDetailsScene {
   @Action(/^show_token_(.+)$/)
   async onShowToken(@Ctx() ctx: Context) {
     const username = ctx.match[1];
-    const user = await this.userService.findUserByUsername(username);
+    const account = await this.accountClient.getByUsername(username);
 
-    if (!user) {
+    if (!account) {
       await ctx.answerCbQuery('❌ Пользователь не найден');
       return;
     }
 
-    const apiKey = user.userId
-      ? await this.userService.ensureUserToken(user.userId)
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      : user.token ? ApiKey.toAPIKey(user.token) : null;
-
-    if (!apiKey) {
+    if (!account.api_key) {
       await ctx.answerCbQuery('❌ Не удалось получить токен');
       return;
     }
 
     await ctx.answerCbQuery('🔑 Токен отправлен в сообщении', { show_alert: false });
     await ctx.replyWithHTML(
-      `🔑 <b>API Token для ${username}:</b>\n\n<code>${apiKey}</code>\n\n<i>Скопируйте токен и передайте пользователю</i>`,
+      `🔑 <b>API Token для ${username}:</b>\n\n<code>${account.api_key}</code>\n\n<i>Скопируйте токен и передайте пользователю</i>`,
       Markup.inlineKeyboard([[Markup.button.callback('⬅️ Назад', `back_to_user_${username}`)]]),
     );
   }
@@ -113,33 +102,22 @@ export class UserDetailsScene {
   @Action(/^change_token_(.+)$/)
   async onChangeToken(@Ctx() ctx: Context) {
     const username = ctx.match[1];
-    const user = await this.userService.findUserByUsername(username);
+    const account = await this.accountClient.getByUsername(username);
 
-    if (!user) {
+    if (!account) {
       await ctx.answerCbQuery('❌ Пользователь не найден');
       return;
     }
 
-    if (!user.userId) {
-      await ctx.answerCbQuery('❌ У пользователя нет userId — смена токена невозможна');
-      return;
-    }
-
-    const oldToken = user.token;
-    let newToken: string | null = null;
-    let apiKey: string | null = null;
+    let newApiKey: string | null = null;
     try {
-      newToken = await this.userService.changeToken(user.userId);
-      if (newToken) {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        apiKey = ApiKey.toAPIKey(newToken);
-      }
+      const rotated = await this.accountClient.rotateToken(account.id);
+      newApiKey = rotated.api_key;
     } catch (error) {
-      this.logger.error(`Failed to change token for ${username} (${user.userId}):`, error);
+      this.logger.error(`Failed to rotate token for ${username} (${account.id}):`, error);
     }
 
-    if (!newToken || !apiKey) {
+    if (!newApiKey) {
       await ctx.answerCbQuery('❌ Не удалось сменить токен', { show_alert: true });
       return;
     }
@@ -147,19 +125,13 @@ export class UserDetailsScene {
     await ctx.answerCbQuery('✅ Токен изменен!', { show_alert: true });
     await ctx.editMessageText(
       `✅ <b>Токен успешно изменен для ${username}!</b>\n\n` +
-        `🔑 Новый токен:\n<code>${apiKey}</code>\n\n` +
+        `🔑 Новый токен:\n<code>${newApiKey}</code>\n\n` +
         `<i>⚠️ Старый токен больше не действителен</i>`,
       {
         parse_mode: 'HTML',
         ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Назад', `back_to_user_${username}`)]]),
       },
     );
-
-    try {
-      await this.cacheResetService.transferTokenLimits(oldToken, newToken);
-    } catch (error) {
-      this.logger.error(`Failed to invalidate caches after token change for ${username}:`, error);
-    }
 
     this.logger.log(`Changed token for user: ${username}`);
   }

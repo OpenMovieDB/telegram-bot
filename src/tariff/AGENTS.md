@@ -1,36 +1,32 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-04-02 | Updated: 2026-04-02 -->
+<!-- Generated: 2026-05-09 | Updated: 2026-06-12 -->
 
 # tariff
 
 ## Purpose
-Read-only access layer for the Tariff MongoDB collection. Provides lookups by ID, name, and price tier. Tariffs are created and managed outside the bot (directly in MongoDB). The bot only reads tariff data.
+Read-only, cached (5 min TTL) view of the **billing-service tariff catalog**.
+Billing is the single source of truth for tariffs and prices; the bot only
+formats them. There is no local tariff storage and no legacy shape — scenes
+consume `BillingTariff` (`src/billing/billing.client.ts`) directly.
 
 ## Key Files
 | File | Description |
 |------|-------------|
-| `tariff.service.ts` | Tariff queries: `getOneById`, `getOneByName`, `getAllTariffs` (excludes hidden, sorted by price), `getFreeTariff` (price=0 and not hidden) |
-| `tariff.module.ts` | NestJS module — exports `TariffService` |
-| `schemas/tariff.schema.ts` | Mongoose schema: `name` (unique), `requestsLimit`, `price`, `isHidden` |
-
-## Subdirectories
-| Directory | Purpose |
-|-----------|---------|
-| `schemas/` | Mongoose Tariff schema and TariffDocument type |
+| `tariff.service.ts` | Catalog queries over `BillingClient.listTariffs()`: `getOneById`, `getOneByCode` (case-insensitive), `getAllTariffs` (excludes hidden, sorted by monthly price), `getFreeTariff` (`is_default`). Price helpers: `monthlyPriceRub`, `priceForMonthsRub` (exact per-period price from `prices[]`, fallback monthly × months) |
+| `tariff.module.ts` | NestJS module — imports `BillingModule`, exports `TariffService` |
 
 ## For AI Agents
 
 ### Working In This Directory
-- Always use `SafeTelegramHelper.safeSend()` for any Telegram API calls in services that depend on `TariffService`.
-- `TariffService` is purely read-only — there are no create/update/delete methods. Do not add write operations to this service; tariffs are managed via external MongoDB tooling.
-- `getAllTariffs()` returns only non-hidden tariffs sorted by price ascending — this is the list shown to users in the bot.
-- `getOneByName` matches exact uppercase name — callers pass `tariffName.toUpperCase()` before calling.
-- `tariffId` on the User schema is a MongoDB ObjectId ref to the Tariff collection. Populated via `.populate('tariffId')`.
+- `TariffService` is purely read-only. Tariffs are managed in billing-service (`/v1/admin/tariffs`), never from the bot.
+- Never recompute prices/discounts beyond the helpers here — billing computes the authoritative amount at payment time.
+- `getAllTariffs()` returns only non-hidden tariffs sorted by monthly price ascending — this is the list shown to users.
+- `getOneByCode` is case-insensitive; tariff `code` is the display name used in scene texts (`BUTTONS[code + '_TARIFF']`).
 
 ### Testing Requirements
 ```bash
-npm test                                         # all tests
-npm run test -- --testPathPattern=tariff         # tariff-specific tests
+npm test
+npm run test -- --testPathPattern=tariff
 ```
 
 ### Common Patterns
@@ -38,21 +34,20 @@ npm run test -- --testPathPattern=tariff         # tariff-specific tests
 // Get all visible tariffs for display
 const tariffs = await this.tariffService.getAllTariffs();
 
-// Get by name (admin commands pass uppercase)
-const tariff = await this.tariffService.getOneByName(tariffName.toUpperCase());
+// Get by code (admin /pay passes the tariff name)
+const tariff = await this.tariffService.getOneByCode(tariffName);
 
-// Get free tariff for default assignment
+// Get free tariff (is_default)
 const freeTariff = await this.tariffService.getFreeTariff();
+
+// Price for a period
+const totalRub = priceForMonthsRub(tariff, months);
 ```
 
 ## Dependencies
 
 ### Internal
-- Referenced by `UserModule` (tariffId populate), `PaymentModule` (price calculation)
-
-### External
-| Package | Purpose |
-|---------|---------|
-| `mongoose` / `@nestjs/mongoose` | MongoDB ODM |
+- `BillingModule` (`BillingClient.listTariffs`)
+- Referenced by scenes, `PaymentModule`, `BotService`
 
 <!-- MANUAL: -->

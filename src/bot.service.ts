@@ -5,14 +5,13 @@ import { Context } from './interfaces/context.interface';
 import { InjectBot } from 'nestjs-telegraf';
 import { BOT_NAME } from './constants/bot-name.const';
 import { User as TelegramUser } from 'typegram/manage';
-import { UserService } from './user/user.service';
-import { TariffService } from './tariff/tariff.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
-import { User } from './user/schemas/user.schema';
 import { DateTime } from 'luxon';
-import { PaymentSystemEnum } from './payment/enum/payment-system.enum';
 import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
+import { AccountClient } from './account/account.client';
+import { AccountResponseDto } from './account/dto/account-response.dto';
+import { TariffService, isFreeTariff } from './tariff/tariff.service';
 
 @Injectable()
 export class BotService {
@@ -24,7 +23,7 @@ export class BotService {
   constructor(
     @InjectBot(BOT_NAME)
     private readonly bot: Telegraf<Context>,
-    private readonly userService: UserService,
+    private readonly accountClient: AccountClient,
     private readonly tariffService: TariffService,
     private readonly configService: ConfigService,
   ) {
@@ -40,10 +39,11 @@ export class BotService {
     );
   }
 
-  async sendPaymentSuccessMessage(chatId: number, tariffName: string, subscriptionEndDate: Date): Promise<void> {
-    const message = `Тариф ${tariffName} успешно оплачен 🎉 \n\nПодписка действует до: ${DateTime.fromJSDate(
-      subscriptionEndDate,
-    ).toFormat('dd MMMM yyyy', { locale: 'ru' })}\n\nВы можете продолжить использование бота.`;
+  async sendPaymentSuccessMessage(chatId: number, tariffName: string, subscriptionEndDate?: Date): Promise<void> {
+    const until = subscriptionEndDate
+      ? DateTime.fromJSDate(subscriptionEndDate).toFormat('dd MMMM yyyy', { locale: 'ru' })
+      : '∞';
+    const message = `Тариф ${tariffName} успешно оплачен 🎉 \n\nПодписка действует до: ${until}\n\nВы можете продолжить использование бота.`;
 
     // Send message with home menu button to trigger scene exit
     await SafeTelegramHelper.safeSend(
@@ -57,28 +57,28 @@ export class BotService {
     );
   }
 
+  // Amounts arrive from billing already totalled (rubles) — no bot-side math.
   async sendPaymentSuccessMessageToAdmin(
     username: string,
     tariffName: string,
     monthCount: number,
-    amount: number,
-    paymentSystem: PaymentSystemEnum,
-    discount?: number,
-    originalPrice?: number,
+    amountRub: number,
+    provider: string,
+    discountRub?: number,
+    originalRub?: number,
   ): Promise<void> {
-    const totalAmount = amount * monthCount;
     let message = `Пользователь ${username} оплатил тариф ${tariffName} на срок ${monthCount} мес.\n`;
 
-    if (discount && discount > 0) {
+    if (discountRub && discountRub > 0) {
       message += `💰 Применена скидка за переход с другого тарифа:\n`;
-      message += `├ Полная стоимость: ${originalPrice} ₽\n`;
-      message += `├ Скидка: -${discount} ₽\n`;
-      message += `└ Оплачено: ${totalAmount} ₽\n`;
+      message += `├ Полная стоимость: ${originalRub} ₽\n`;
+      message += `├ Скидка: -${discountRub} ₽\n`;
+      message += `└ Оплачено: ${amountRub} ₽\n`;
     } else {
-      message += `💰 Оплаченная сумма: ${totalAmount} ₽\n`;
+      message += `💰 Оплаченная сумма: ${amountRub} ₽\n`;
     }
 
-    message += `Платежная система: ${paymentSystem} 🎉`;
+    message += `Платежная система: ${provider} 🎉`;
 
     await SafeTelegramHelper.safeSend(
       () => this.bot.telegram.sendMessage(this.adminChatId, message),
@@ -86,27 +86,13 @@ export class BotService {
     );
   }
 
-  async sendPaymentErrorToAdmin(
-    username: string,
-    userId: number,
-    paymentId: string,
-    paymentSystem: string,
-    amount: number,
-    errorMessage: string,
-    errorStack?: string,
-  ): Promise<void> {
-    const message =
-      `🚨 ОШИБКА ПЛАТЕЖА\n\n` +
-      `👤 Пользователь: @${username} (ID: ${userId})\n` +
-      `🔖 ID платежа: ${paymentId}\n` +
-      `💳 Платежная система: ${paymentSystem}\n` +
-      `💰 Сумма: ${amount} ₽\n\n` +
-      `❌ Ошибка: ${errorMessage}\n\n` +
-      `📋 Детали:\n\`\`\`\n${errorStack ? errorStack.substring(0, 1000) : 'Нет дополнительной информации'}\n\`\`\``;
-
+  async sendInvoicePaidMessageToAdmin(description: string, amountRub: number, provider: string): Promise<void> {
+    const message = `🧾 Счет оплачен: ${
+      description || 'без описания'
+    }\n💰 Сумма: ${amountRub} ₽\nПлатежная система: ${provider}`;
     await SafeTelegramHelper.safeSend(
-      () => this.bot.telegram.sendMessage(this.adminChatId, message, { parse_mode: 'Markdown' }),
-      'Admin payment error notification',
+      () => this.bot.telegram.sendMessage(this.adminChatId, message),
+      'Admin invoice paid notification',
     );
   }
 
@@ -119,18 +105,25 @@ export class BotService {
   }
 
   async sendSubscriptionExpirationWarningMessage(chatId: number, expirationDate: Date) {
-    const message = `Срок действия вашей подписки истекает ${expirationDate.toLocaleDateString()} ⚠️ Пожалуйста, не забудьте продлить свою подписку.`;
+    const message = `Срок действия вашей подписки истекает ${DateTime.fromJSDate(expirationDate).toFormat(
+      'dd.MM.yyyy',
+    )} ⚠️ Пожалуйста, не забудьте продлить свою подписку.`;
     await SafeTelegramHelper.safeSend(
       () => this.bot.telegram.sendMessage(chatId, message),
       `Subscription warning to ${chatId}`,
     );
   }
 
-  async sendTextMessageToAllUsers(message: string) {
-    const usersTgID = await this.userService.getAllUserTgIDs();
-    for (const chatId of usersTgID) {
-      await SafeTelegramHelper.safeSend(() => this.bot.telegram.sendMessage(chatId, message), `Broadcast to ${chatId}`);
+  // All accounts with a linked Telegram, fetched page by page from account-service.
+  private async collectTelegramAccounts(filter: { inChat?: boolean } = {}): Promise<AccountResponseDto[]> {
+    const accounts: AccountResponseDto[] = [];
+    const limit = 200;
+    for (let page = 1; ; page++) {
+      const { items, total } = await this.accountClient.listAccounts({ hasTelegram: true, ...filter, page, limit });
+      accounts.push(...items);
+      if (accounts.length >= total || items.length === 0) break;
     }
+    return accounts;
   }
 
   async createInvitedUser(ctx: Context) {
@@ -138,28 +131,24 @@ export class BotService {
     this.logger.log(`NewChatMembers: ${members.map((member: any) => member.username).join(', ')}`);
 
     if (members) {
-      const freeTariff = await this.tariffService.getFreeTariff();
       for (const member of members) {
         try {
-          const user = await this.userService.upsert({
-            userId: member.id,
-            username: member?.username || null,
-            inChat: true,
-            tariffId: freeTariff?._id,
-          });
-
-          this.logger.log(`User ${user.username} created`);
+          const account = await this.accountClient.upsertByTelegramId(member.id, member?.username || undefined);
+          await this.accountClient.updateTelegramProfile(account.id, { inChat: true });
+          this.logger.log(`Account ${account.id} marked in_chat for telegram ${member.id}`);
         } catch (e) {
-          this.logger.error(`Failed to create/update user ${member.username} (${member.id}):`, e);
+          this.logger.error(`Failed to register invited user ${member.username} (${member.id}):`, e);
         }
       }
     }
   }
 
   async leftTheChat(ctx: Context) {
-    await this.userService.blockUser(ctx.from.id, false);
+    const account = await this.accountClient.getByTelegramId(ctx.from.id);
+    if (!account) return;
 
-    this.logger.log(`User ${ctx.from.username} blocked`);
+    await this.accountClient.updateTelegramProfile(account.id, { inChat: false });
+    this.logger.log(`User ${ctx.from.username} marked out of chat`);
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
@@ -167,22 +156,26 @@ export class BotService {
     if (process.env.DISABLE_SCHEDULERS === 'true') return;
     this.logger.log('Check users');
     if (!this.isProd) return;
-    const users = await this.userService.findUsersInChat();
 
-    const telegramUsers = users.filter((user) => !user.isExternalUser);
+    const accounts = await this.collectTelegramAccounts({ inChat: true });
+    this.logger.log(`Users in chat: ${accounts.length}`);
 
-    this.logger.log(
-      `Users in chat: ${telegramUsers.length} (excluding ${users.length - telegramUsers.length} external users)`,
-    );
-    const leavedUsers = [];
-    for (const user of telegramUsers) {
+    const leavedUsers: AccountResponseDto[] = [];
+    for (const account of accounts) {
       try {
-        const { status } = await this.bot.telegram.getChatMember(this.chatId, user.userId);
-        if (status === 'left') leavedUsers.push(user);
+        const { status } = await this.bot.telegram.getChatMember(this.chatId, account.telegram_id);
+        if (status === 'left') leavedUsers.push(account);
       } catch (e) {
-        if (!user.password && user.tariffId?.price === 0) {
-          leavedUsers.push(user);
-        }
+        // A network blip is NOT a verdict about the user — skip them this run
+        // instead of mass-marking people as gone while Telegram is unreachable.
+        if (SafeTelegramHelper.isRecoverableError(e)) continue;
+        // Telegram definitively refuses to resolve the member (deleted account
+        // etc.) — treat free-tariff users as gone, keep paying ones. The sweep
+        // lists identity-only rows, so fetch this user's entitlement lazily on
+        // this rare delete-resolution path instead of N+1-ing the whole roster.
+        const full = await this.accountClient.getById(account.id);
+        const tariff = full.tariff?.id ? await this.tariffService.getOneById(full.tariff.id) : null;
+        if (tariff && isFreeTariff(tariff)) leavedUsers.push(account);
       }
     }
 
@@ -192,12 +185,12 @@ export class BotService {
           this.bot.telegram.sendMessage(
             this.adminChatId,
             `😵‍💫Пользователи, которые вчера покинули чат: ${leavedUsers
-              .map((user) => user.username || user.userId)
+              .map((account) => account.telegram_username || account.telegram_id)
               .join(', ')}`,
           ),
         'Admin notification: users left chat',
       );
-      await this.blockUsers(leavedUsers);
+      await this.markLeftChat(leavedUsers);
     } else {
       await SafeTelegramHelper.safeSend(
         () => this.bot.telegram.sendMessage(this.adminChatId, '😎 Никто не покинул чат'),
@@ -206,47 +199,16 @@ export class BotService {
     }
   }
 
-  private async blockUsers(users: User[]) {
+  private async markLeftChat(accounts: AccountResponseDto[]) {
     try {
       await Promise.all(
-        users.map((user) => {
-          this.logger.log(`User ${user.username} blocked`);
-          return this.userService.blockUser(user.userId, false);
+        accounts.map((account) => {
+          this.logger.log(`Account ${account.id} (${account.telegram_username}) marked out of chat`);
+          return this.accountClient.updateTelegramProfile(account.id, { inChat: false });
         }),
       );
-
-      // await this.bot.telegram.sendMessage(
-      //   user.userId,
-      //   'Ваш токен был заблокирован, так как вы покинули наш чат 😢',
-      // );
     } catch (e) {
       this.logger.error(e);
     }
-  }
-
-  async sendAdminSubscriptionExpirationWarning(
-    username: string,
-    expirationDate: Date,
-    tariffName: string,
-    daysLeft: number,
-  ): Promise<void> {
-    const emoji = daysLeft <= 3 ? '🔴' : daysLeft <= 7 ? '⚠️' : '⏰';
-    const urgency = daysLeft === 0 ? 'СЕГОДНЯ' : daysLeft <= 3 ? 'СРОЧНО' : 'ВНИМАНИЕ';
-
-    const message =
-      `${emoji} ${urgency}: Подписка ${daysLeft === 0 ? 'истекает СЕГОДНЯ' : `истекает через ${daysLeft} дн.`}!\n\n` +
-      `👤 Пользователь: ${username}\n` +
-      `📅 Дата истечения: ${expirationDate.toLocaleDateString('ru-RU')}\n` +
-      `💼 Тариф: ${tariffName}\n\n` +
-      `${
-        daysLeft === 0
-          ? 'Пользователь будет переведен на бесплатный тариф.'
-          : 'Рекомендуется связаться с пользователем для продления подписки.'
-      }`;
-
-    await SafeTelegramHelper.safeSend(
-      () => this.bot.telegram.sendMessage(this.adminChatId, message),
-      'Admin subscription expiration warning',
-    );
   }
 }

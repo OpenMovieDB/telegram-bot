@@ -11,51 +11,6 @@
       "compilerOptions": {
         "tsConfigPath": "libs/update-client/tsconfig.lib.json"
       }
-    },
-    "cryptomus-client": {
-      "type": "library",
-      "root": "libs/cryptomus-client",
-      "entryFile": "index",
-      "sourceRoot": "libs/cryptomus-client/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/cryptomus-client/tsconfig.lib.json"
-      }
-    },
-    "yoomoney-client": {
-      "type": "library",
-      "root": "libs/yoomoney-client",
-      "entryFile": "index",
-      "sourceRoot": "libs/yoomoney-client/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/yoomoney-client/tsconfig.lib.json"
-      }
-    },
-    "yookassa-client": {
-      "type": "library",
-      "root": "libs/yookassa-client",
-      "entryFile": "index",
-      "sourceRoot": "libs/yookassa-client/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/yookassa-client/tsconfig.lib.json"
-      }
-    },
-    "wallet-client": {
-      "type": "library",
-      "root": "libs/wallet-client",
-      "entryFile": "index",
-      "sourceRoot": "libs/wallet-client/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/wallet-client/tsconfig.lib.json"
-      }
-    },
-    "tbank-client": {
-      "type": "library",
-      "root": "libs/tbank-client",
-      "entryFile": "index",
-      "sourceRoot": "libs/tbank-client/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/tbank-client/tsconfig.lib.json"
-      }
     }
   },
   "compilerOptions": {

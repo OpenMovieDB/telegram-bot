@@ -11,6 +11,11 @@ images:
 imagePullSecrets:
   - name: regcred-sourcecraft
 
+# Pod env is sourced entirely from this pre-existing k8s Secret (envFrom).
+# Required keys: BOT_TOKEN, REDIS_URL, CHAT_ID, ADMIN_CHAT_ID,
+#   AUTH_SERVICE_URL, AUTH_SERVICE_TOKEN (identity, service-token label "bot"),
+#   ACCOUNT_SERVICE_URL, ACCOUNT_SERVICE_TOKEN (entitlement, label "bot"),
+#   BILLING_SERVICE_URL, BILLING_SERVICE_TOKEN, NATS_URL, UPDATE_API_BASE_URL.
 existingSecret: kp-bot
 
 port: 3000

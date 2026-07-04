@@ -5,9 +5,8 @@ import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import Redis from 'ioredis';
 
-import { User } from '../user/schemas/user.schema';
-import { UserService } from '../user/user.service';
-import { TariffService } from '../tariff/tariff.service';
+import { AccountClient } from '../account/account.client';
+import { AccountResponseDto } from '../account/dto/account-response.dto';
 import { Context } from '../interfaces/context.interface';
 import { BOT_NAME } from '../constants/bot-name.const';
 import { SafeTelegramHelper } from '../helpers/safe-telegram.helper';
@@ -28,8 +27,7 @@ export class ModerationService {
   constructor(
     @InjectBot(BOT_NAME)
     private readonly bot: Telegraf<Context>,
-    private readonly userService: UserService,
-    private readonly tariffService: TariffService,
+    private readonly accountClient: AccountClient,
     private readonly redisService: RedisService,
     private readonly configService: ConfigService,
   ) {
@@ -65,13 +63,16 @@ export class ModerationService {
         return;
       }
 
-      // Проверка в базе данных
-      let user: User | null = null;
+      // Проверка в account-service
+      let user: AccountResponseDto | null = null;
       try {
-        user = await this.checkUserInDatabase(userId);
-      } catch (dbError) {
-        // Ошибка БД - НЕ модерируем пользователя, только логируем
-        this.logger.error(`Database error when checking user ${userId} (@${username}), skipping moderation:`, dbError);
+        user = await this.checkUserInAccount(userId);
+      } catch (accountError) {
+        // account недоступен — НЕ модерируем пользователя, только логируем
+        this.logger.error(
+          `account-service error when checking user ${userId} (@${username}), skipping moderation:`,
+          accountError,
+        );
         return;
       }
 
@@ -105,11 +106,10 @@ export class ModerationService {
     }
   }
 
-  private async checkUserInDatabase(userId: number): Promise<User | null> {
-    // Пробрасываем ошибки БД наружу для правильной обработки
-    // null означает "пользователь не найден", ошибка означает "проблема с БД"
-    const user = await this.userService.findOneByUserId(userId);
-    return user || null;
+  private async checkUserInAccount(userId: number): Promise<AccountResponseDto | null> {
+    // Read-only резолв: модерация не должна создавать аккаунты.
+    // null означает "пользователь не найден", ошибка означает "account недоступен".
+    return this.accountClient.getByTelegramId(userId);
   }
 
   private async cacheUserCheck(userId: number, exists: boolean): Promise<void> {
@@ -171,7 +171,7 @@ export class ModerationService {
     }
   }
 
-  async unbanUser(userId: number, username: string): Promise<User | null> {
+  async unbanUser(userId: number, username: string): Promise<AccountResponseDto | null> {
     try {
       this.logger.log(`Unbanning user ${userId} (@${username}) by admin request`);
 
@@ -181,14 +181,9 @@ export class ModerationService {
         `Unban user ${userId}`,
       );
 
-      // Создаем пользователя в базе данных
-      const freeTariff = await this.tariffService.getFreeTariff();
-      const newUser = await this.userService.create({
-        userId,
-        username,
-        inChat: true,
-        tariffId: freeTariff._id,
-      } as User);
+      // Регистрируем в account-service (дефолтный бесплатный тариф + токен)
+      const newUser = await this.accountClient.upsertByTelegramId(userId, username);
+      await this.accountClient.updateTelegramProfile(newUser.id, { inChat: true });
 
       // Обновляем кэш
       await this.cacheUserCheck(userId, true);

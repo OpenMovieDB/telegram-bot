@@ -2,8 +2,11 @@ import { Scene, Ctx, SceneEnter, Action } from 'nestjs-telegraf';
 import { CommandEnum } from '../enum/command.enum';
 import { Context } from '../interfaces/context.interface';
 import { Injectable, Logger } from '@nestjs/common';
-import { UserService } from '../user/user.service';
+import { AccountClient } from '../account/account.client';
+import { AccountResponseDto } from '../account/dto/account-response.dto';
+import { BillingClient } from '../billing/billing.client';
 import { TariffService } from '../tariff/tariff.service';
+import { accountTariffName, adminTariffButtonLabel } from '../utils/tariff-display.util';
 import { Markup } from 'telegraf';
 
 @Scene(CommandEnum.UPDATE_USER_SUBSCRIPTION)
@@ -11,7 +14,11 @@ import { Markup } from 'telegraf';
 export class UpdateUserSubscriptionScene {
   private readonly logger = new Logger(UpdateUserSubscriptionScene.name);
 
-  constructor(private readonly userService: UserService, private readonly tariffService: TariffService) {}
+  constructor(
+    private readonly accountClient: AccountClient,
+    private readonly billingClient: BillingClient,
+    private readonly tariffService: TariffService,
+  ) {}
 
   @SceneEnter()
   async onEnter(@Ctx() ctx: Context) {
@@ -28,42 +35,38 @@ export class UpdateUserSubscriptionScene {
       return;
     }
 
-    const user = await this.userService.findUserByUsername(username);
-    if (!user) {
+    const account = await this.accountClient.getByUsername(username);
+    if (!account) {
       await ctx.replyWithHTML('❌ Пользователь не найден');
       await ctx.scene.enter(CommandEnum.LIST_USERS);
       return;
     }
 
     if (action === 'change_tariff') {
-      await this.showTariffSelection(ctx, username, user);
+      await this.showTariffSelection(ctx, username, account);
     } else if (action === 'extend_subscription') {
-      await this.showExtensionOptions(ctx, username, user);
+      await this.showExtensionOptions(ctx, username, account);
     }
   }
 
-  private async showTariffSelection(ctx: Context, username: string, user: any) {
-    const tariffs = await this.tariffService.getAllTariffs();
+  private async showTariffSelection(ctx: Context, username: string, account: AccountResponseDto) {
+    // Admin picks from the full catalog, hidden (partner/staff) tariffs included.
+    const tariffs = await this.tariffService.getAdminTariffs();
     const buttons = tariffs.map((tariff) => [
-      Markup.button.callback(
-        `${tariff.name} (${tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit} req/day, ${
-          tariff.price === 0 ? 'Free' : tariff.price + '₽/мес'
-        })`,
-        `select_tariff_${tariff._id}`,
-      ),
+      Markup.button.callback(adminTariffButtonLabel(tariff), `select_tariff_${tariff.id}`),
     ]);
     buttons.push([Markup.button.callback('❌ Отмена', `back_user_${username}`)]);
 
     await ctx.replyWithHTML(
       `💼 <b>Изменение тарифа для ${username}</b>\n\n` +
-        `Текущий тариф: <b>${user.tariffId?.name || 'N/A'}</b>\n\n` +
+        `Текущий тариф: <b>${accountTariffName(account.tariff)}</b>\n\n` +
         'Выберите новый тариф:',
       Markup.inlineKeyboard(buttons),
     );
   }
 
-  private async showExtensionOptions(ctx: Context, username: string, user: any) {
-    ctx.scene.session.state.currentTariffId = user.tariffId?._id?.toString();
+  private async showExtensionOptions(ctx: Context, username: string, account: AccountResponseDto) {
+    ctx.scene.session.state.currentTariffId = account.tariff?.id;
 
     const buttons = [
       [Markup.button.callback('+ 1 месяц', 'extend_1')],
@@ -75,10 +78,10 @@ export class UpdateUserSubscriptionScene {
     ];
 
     let message = `📅 <b>Продление подписки для ${username}</b>\n\n`;
-    message += `Текущий тариф: <b>${user.tariffId?.name || 'N/A'}</b>\n`;
+    message += `Текущий тариф: <b>${accountTariffName(account.tariff)}</b>\n`;
 
-    if (user.subscriptionEndDate) {
-      const endDate = new Date(user.subscriptionEndDate);
+    if (account.subscription_end) {
+      const endDate = new Date(account.subscription_end);
       const daysLeft = Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       message += `Подписка до: ${endDate.toLocaleDateString('ru-RU')} (${
         daysLeft > 0 ? `${daysLeft} дн.` : 'истекла'
@@ -99,7 +102,7 @@ export class UpdateUserSubscriptionScene {
 
     ctx.scene.session.state.newTariffId = tariffId;
 
-    const tariff = await this.tariffService.getOneById(tariffId);
+    const tariff = await this.tariffService.resolveForAdmin(tariffId);
 
     const buttons = [
       [Markup.button.callback('1 месяц', 'new_tariff_months_1')],
@@ -110,7 +113,7 @@ export class UpdateUserSubscriptionScene {
       [Markup.button.callback('❌ Отмена', `back_user_${username}`)],
     ];
 
-    await ctx.editMessageText(`✅ Новый тариф: <b>${tariff.name}</b>\n\n` + 'Выберите срок подписки:', {
+    await ctx.editMessageText(`✅ Новый тариф: <b>${tariff?.display_name ?? '—'}</b>\n\n` + 'Выберите срок подписки:', {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard(buttons),
     });
@@ -118,40 +121,48 @@ export class UpdateUserSubscriptionScene {
     await ctx.answerCbQuery();
   }
 
+  // Единый путь записи: billing владеет подпиской и сам проставляет тариф в
+  // account. Никаких локальных записей у бота нет.
+  private async grant(ctx: Context, username: string, tariffId: string, months: number, successTitle: string) {
+    const account = await this.accountClient.getByUsername(username);
+    if (!account) {
+      await ctx.replyWithHTML('❌ Пользователь не найден');
+      return;
+    }
+
+    const grant = await this.billingClient.adminGrantSubscription({
+      user_id: account.id,
+      tariff_id: tariffId,
+      ...(months > 0 ? { months } : { perpetual: true }),
+    });
+
+    const tariff = await this.tariffService.resolveForAdmin(tariffId);
+
+    let message = `✅ <b>${successTitle}</b>\n\n`;
+    message += `👤 Пользователь: ${username}\n`;
+    message += `💼 Тариф: <b>${tariff?.display_name ?? '—'}</b>\n`;
+
+    if (grant.expires_at) {
+      message += `📅 Подписка до: ${new Date(grant.expires_at).toLocaleDateString('ru-RU')} (${months} мес.)`;
+    } else {
+      message += `📅 Подписка: бессрочная`;
+    }
+
+    await ctx.editMessageText(message, {
+      parse_mode: 'HTML',
+      ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ К пользователю', `back_user_${username}`)]]),
+    });
+  }
+
   @Action(/^new_tariff_months_(\d+)$/)
   async onNewTariffMonths(@Ctx() ctx: Context) {
     const months = parseInt(ctx.match[1], 10);
     const { username, newTariffId } = ctx.scene.session.state;
 
-    let subscriptionEndDate: Date | undefined;
-    if (months > 0) {
-      subscriptionEndDate = new Date();
-      subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + months);
-    }
-
     try {
-      await this.userService.updateSubscription(username, newTariffId, subscriptionEndDate);
-
-      const tariff = await this.tariffService.getOneById(newTariffId);
-
-      let message = `✅ <b>Тариф успешно изменен!</b>\n\n`;
-      message += `👤 Пользователь: ${username}\n`;
-      message += `💼 Новый тариф: <b>${tariff.name}</b>\n`;
-
-      if (subscriptionEndDate) {
-        message += `📅 Подписка до: ${subscriptionEndDate.toLocaleDateString('ru-RU')} (${months} мес.)`;
-      } else {
-        message += `📅 Подписка: бессрочная`;
-      }
-
-      await ctx.editMessageText(message, {
-        parse_mode: 'HTML',
-        ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ К пользователю', `back_user_${username}`)]]),
-      });
-
+      await this.grant(ctx, username, newTariffId, months, 'Тариф успешно изменен!');
       await ctx.answerCbQuery('✅ Тариф изменен!');
-
-      this.logger.log(`Changed tariff for user ${username} to ${tariff.name}, months: ${months}`);
+      this.logger.log(`Changed tariff for user ${username} to ${newTariffId}, months: ${months}`);
     } catch (error) {
       this.logger.error(`Failed to change tariff: ${error.message}`, error.stack);
       await ctx.editMessageText(`❌ Ошибка при изменении тарифа: ${error.message}`, {
@@ -166,43 +177,9 @@ export class UpdateUserSubscriptionScene {
     const months = parseInt(ctx.match[1], 10);
     const { username, currentTariffId } = ctx.scene.session.state;
 
-    const user = await this.userService.findUserByUsername(username);
-
-    let subscriptionEndDate: Date;
-
-    if (months === 0) {
-      // Бессрочная подписка
-      subscriptionEndDate = undefined;
-    } else {
-      // Продление от текущей даты окончания или от сегодня
-      if (user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date()) {
-        subscriptionEndDate = new Date(user.subscriptionEndDate);
-      } else {
-        subscriptionEndDate = new Date();
-      }
-      subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + months);
-    }
-
     try {
-      await this.userService.updateSubscription(username, currentTariffId, subscriptionEndDate);
-
-      let message = `✅ <b>Подписка успешно продлена!</b>\n\n`;
-      message += `👤 Пользователь: ${username}\n`;
-      message += `💼 Тариф: <b>${user.tariffId?.name}</b>\n`;
-
-      if (subscriptionEndDate) {
-        message += `📅 Подписка до: ${subscriptionEndDate.toLocaleDateString('ru-RU')} (+${months} мес.)`;
-      } else {
-        message += `📅 Подписка: бессрочная`;
-      }
-
-      await ctx.editMessageText(message, {
-        parse_mode: 'HTML',
-        ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ К пользователю', `back_user_${username}`)]]),
-      });
-
+      await this.grant(ctx, username, currentTariffId, months, 'Подписка успешно продлена!');
       await ctx.answerCbQuery('✅ Подписка продлена!');
-
       this.logger.log(`Extended subscription for user ${username} by ${months} months`);
     } catch (error) {
       this.logger.error(`Failed to extend subscription: ${error.message}`, error.stack);

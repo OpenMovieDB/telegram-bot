@@ -1,33 +1,40 @@
 import { Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { CommandEnum } from '../enum/command.enum';
-import { AbstractScene } from '../abstract/abstract.scene';
-import { Model } from 'mongoose';
-import { Tariff } from 'src/tariff/schemas/tariff.schema';
-import { InjectModel } from '@nestjs/mongoose';
+import { TariffPickScene } from '../abstract/tariff-pick.scene';
 import { Logger } from '@nestjs/common';
 import { SCENES } from 'src/constants/scenes.const';
 import { Markup } from 'telegraf';
 import { Context } from 'src/interfaces/context.interface';
-import { TariffService } from 'src/tariff/tariff.service';
-import { UserService } from 'src/user/user.service';
+import { TariffService, isFreeTariff } from 'src/tariff/tariff.service';
+import { SessionStateService } from 'src/session/session-state.service';
+import { AccountClient } from 'src/account/account.client';
+import { accountTariffName } from 'src/utils/tariff-display.util';
 
 @Scene(CommandEnum.UPDATE_TARIFF)
-export class UpdateTariffScene extends AbstractScene {
-  public logger = new Logger(AbstractScene.name);
+export class UpdateTariffScene extends TariffPickScene {
+  public logger = new Logger(UpdateTariffScene.name);
 
-  constructor(private readonly tariffService: TariffService, private readonly userService: UserService) {
-    super();
+  constructor(
+    tariffService: TariffService,
+    sessionStateService: SessionStateService,
+    private readonly accountClient: AccountClient,
+  ) {
+    super(tariffService, sessionStateService);
   }
 
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
     this.logger.log(ctx.scene.session.current);
-    const user = await this.userService.findOneByUserId(ctx.from.id);
-    const tariffs = (await this.tariffService.getAllTariffs()).filter((tariff) => tariff.price !== 0).reverse();
+    const account = await this.accountClient.upsertByTelegramId(ctx.from.id, ctx.from.username);
+    ctx.session.accountId = account.id;
+
+    // Paid tariffs only, in the admin's catalog order (sort_order).
+    const tariffs = (await this.tariffService.getAllTariffs()).filter((tariff) => !isFreeTariff(tariff));
     const scene = SCENES[ctx.scene.session.current];
 
+    const subscriptionEnd = account.subscription_end ? new Date(account.subscription_end) : undefined;
     await ctx.replyWithHTML(
-      scene.text(tariffs, user.tariffId.name, user.subscriptionEndDate),
+      scene.text(tariffs, accountTariffName(account.tariff), subscriptionEnd),
       Markup.inlineKeyboard(scene.buttons(tariffs)),
     );
   }

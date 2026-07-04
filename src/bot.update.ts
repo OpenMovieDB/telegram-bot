@@ -8,43 +8,36 @@ import { AllExceptionFilter } from './filters/all-exception.filter';
 import { Context } from './interfaces/context.interface';
 import { SceneContext } from 'telegraf/typings/scenes';
 import { CommandEnum } from './enum/command.enum';
-import { UserService } from './user/user.service';
 import { BUTTONS } from './constants/buttons.const';
 import { ConfigService } from '@nestjs/config';
 import { PaymentService } from './payment/payment.service';
 import { TariffService } from './tariff/tariff.service';
-import { PaymentSystemEnum } from './payment/enum/payment-system.enum';
 import { DateTime } from 'luxon';
-import { PaymentStatusEnum } from './payment/enum/payment-status.enum';
 import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
 import { ModerationService } from './moderation/moderation.service';
 import { createUnbanConfirmationKeyboard } from './moderation/keyboards/moderation.keyboards';
 import { SessionStateService } from './session/session-state.service';
-import { RedisService } from '@liaoliaots/nestjs-redis';
-import Redis from 'ioredis';
+import { AccountClient, TelegramAuthTokenExpiredError } from './account/account.client';
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
 @UseFilters(AllExceptionFilter)
 export class BotUpdate {
   private readonly adminChatId: number;
-  private readonly redis: Redis;
 
   private readonly logger = new Logger(BotUpdate.name);
   constructor(
     @InjectBot(BOT_NAME)
     private readonly bot: Telegraf<Context>,
     private readonly botService: BotService,
-    private readonly userService: UserService,
     private readonly tariffService: TariffService,
     private readonly configService: ConfigService,
     private readonly paymentService: PaymentService,
     private readonly moderationService: ModerationService,
     private readonly sessionStateService: SessionStateService,
-    private readonly redisService: RedisService,
+    private readonly accountClient: AccountClient,
   ) {
     this.adminChatId = Number(configService.get('ADMIN_CHAT_ID'));
-    this.redis = this.redisService.getOrThrow();
   }
 
   @Start()
@@ -71,8 +64,9 @@ export class BotUpdate {
 
     await this.sessionStateService.clearMessageId(ctx.from.id);
 
-    const existUser = await this.userService.findOneByUserId(ctx.from.id);
-    if (existUser) {
+    const existing = await this.accountClient.getByTelegramId(ctx.from.id);
+    if (existing) {
+      ctx.session.accountId = existing.id;
       await ctx.scene.enter(CommandEnum.HOME);
     } else {
       await ctx.scene.enter(CommandEnum.START);
@@ -99,25 +93,25 @@ export class BotUpdate {
   @Command('pay')
   async onPayCommand(@Ctx() ctx: Context & { update: any }) {
     if (this.isAdmin(ctx)) {
-      const [token, tariffName, monthCount, startAt] = ctx.state.command.args;
+      // /pay <token> <tariff> [months] [endDate dd.MM.yyyy]
+      const [token, tariffName, monthCount, endAt] = ctx.state.command.args;
       if (!(token && tariffName)) throw new Error('Не указан один из обязательных параметров!');
-      const paymentMonths = monthCount || 1;
-      const paymentAt = startAt ? DateTime.fromFormat(startAt, 'dd.MM.yyyy').toJSDate() : undefined;
+      const paymentMonths = Number(monthCount) || 1;
+      const endDate = endAt ? DateTime.fromFormat(endAt, 'dd.MM.yyyy').toJSDate() : undefined;
 
-      const user = await this.userService.findUserByToken(token.toUpperCase());
-      const tariff = await this.tariffService.getOneByName(tariffName.toUpperCase());
-      const payment = await this.paymentService.createPayment(
-        user.userId,
-        user.chatId,
-        tariff._id.toString(),
-        PaymentSystemEnum.CASH,
+      const tariff = await this.tariffService.resolveForAdmin(tariffName);
+      if (!tariff) throw new Error(`Тариф "${tariffName}" не найден в каталоге billing`);
+
+      const payment = await this.paymentService.adminCashPaymentByToken(
+        token.toUpperCase(),
+        tariff.id,
         paymentMonths,
         '',
-        paymentAt,
+        endDate,
       );
 
       await SafeTelegramHelper.safeSend(
-        () => this.bot.telegram.sendMessage(this.adminChatId, `Создан заказ с id: ${payment.paymentId}`),
+        () => this.bot.telegram.sendMessage(this.adminChatId, `Создан заказ с id: ${payment.payment_id}`),
         'Admin notification: payment created',
       );
     }
@@ -129,37 +123,22 @@ export class BotUpdate {
       const [paymentId] = ctx.state.command.args;
       if (!paymentId) throw new Error('Не указан один из обязательных параметров!');
 
-      // First mark payment as PAID without final flag to allow validation
-      await this.paymentService.updatePaymentStatus(paymentId, PaymentStatusEnum.PAID, false);
-
-      // Trigger validation to process the payment and update user
-      const isPaid = await this.paymentService.validatePayment(paymentId);
-
-      if (isPaid) {
+      // Force the payment to paid in billing (atomic claim + grant). The user
+      // notification arrives via the billing.payment.paid event.
+      try {
+        await this.paymentService.adminConfirmPayment(paymentId);
         await SafeTelegramHelper.safeSend(
           () => this.bot.telegram.sendMessage(this.adminChatId, `✅ Оплата ${paymentId} подтверждена и обработана`),
           'Admin notification: payment confirmed',
         );
-
-        // Send notification to user
-        const payment = await this.paymentService.findPaymentByPaymentId(paymentId);
-        if (payment) {
-          const tariff = await this.tariffService.getOneById(payment.tariffId);
-          await SafeTelegramHelper.safeSend(
-            () =>
-              this.bot.telegram.sendMessage(
-                payment.chatId,
-                `✅ Ваша оплата подтверждена!\n\n` +
-                  `Тариф: ${tariff.name}\n` +
-                  `Период: ${payment.monthCount} мес.\n\n` +
-                  `Подписка активирована. Спасибо за оплату!`,
-              ),
-            `User payment confirmation to ${payment.chatId}`,
-          );
-        }
-      } else {
+      } catch (error) {
+        this.logger.error(`Failed to confirm payment ${paymentId}: ${error.message}`);
         await SafeTelegramHelper.safeSend(
-          () => this.bot.telegram.sendMessage(this.adminChatId, `⚠️ Оплата ${paymentId} не может быть подтверждена`),
+          () =>
+            this.bot.telegram.sendMessage(
+              this.adminChatId,
+              `⚠️ Оплата ${paymentId} не может быть подтверждена: ${error.message}`,
+            ),
           'Admin notification: payment error',
         );
       }
@@ -170,109 +149,6 @@ export class BotUpdate {
   async onComfirmCommand(@Ctx() ctx: Context & { update: any }) {
     // Redirect to correct command
     return this.onConfirmCommand(ctx);
-  }
-
-  @Command('retry')
-  async onRetryCommand(@Ctx() ctx: Context & { update: any }) {
-    if (this.isAdmin(ctx)) {
-      const [paymentId] = ctx.state.command.args;
-      if (!paymentId) {
-        await SafeTelegramHelper.safeSend(
-          () =>
-            this.bot.telegram.sendMessage(
-              this.adminChatId,
-              '❌ Не указан ID платежа!\nИспользование: /retry <paymentId>',
-            ),
-          'Admin retry command error',
-        );
-        return;
-      }
-
-      try {
-        // Find the payment
-        const payment = await this.paymentService.findPaymentByPaymentId(paymentId);
-        if (!payment) {
-          await SafeTelegramHelper.safeSend(
-            () => this.bot.telegram.sendMessage(this.adminChatId, `❌ Платеж с ID ${paymentId} не найден`),
-            'Admin retry: payment not found',
-          );
-          return;
-        }
-
-        // Reset payment status to PENDING and clear final flag
-        await this.paymentService.updatePaymentStatus(paymentId, PaymentStatusEnum.PENDING, false);
-
-        await SafeTelegramHelper.safeSend(
-          () =>
-            this.bot.telegram.sendMessage(
-              this.adminChatId,
-              `🔄 Платеж ${paymentId} сброшен в статус PENDING\n` +
-                `💳 Система: ${payment.paymentSystem}\n` +
-                `💰 Сумма: ${payment.amount} ₽\n` +
-                `👤 User ID: ${payment.userId}\n\n` +
-                `⏱ Платеж будет проверен в течение 10 секунд`,
-            ),
-          'Admin retry command success',
-        );
-
-        // Try to validate immediately
-        this.logger.debug(`Manually retrying payment ${paymentId}`);
-        const isPaid = await this.paymentService.validatePayment(paymentId);
-
-        if (isPaid) {
-          const user = await this.userService.findOneByUserId(payment.userId);
-
-          await SafeTelegramHelper.safeSend(
-            () =>
-              this.bot.telegram.sendMessage(
-                this.adminChatId,
-                `✅ Платеж ${paymentId} успешно оплачен после повторной проверки!`,
-              ),
-            'Admin retry: payment success',
-          );
-
-          // Send success messages to user asynchronously (command execution should not depend on message delivery)
-          this.botService
-            .sendPaymentSuccessMessage(payment.chatId, user.tariffId.name, user.subscriptionEndDate)
-            .catch((error) => {
-              this.logger.error(`Failed to send payment success message: ${error.message}`);
-            });
-
-          this.botService
-            .sendPaymentSuccessMessageToAdmin(
-              user.username,
-              user.tariffId.name,
-              payment.monthCount,
-              payment.amount,
-              payment.paymentSystem,
-              payment.discount,
-              payment.originalPrice,
-            )
-            .catch((error) => {
-              this.logger.error(`Failed to send admin notification: ${error.message}`);
-            });
-        } else {
-          await SafeTelegramHelper.safeSend(
-            () =>
-              this.bot.telegram.sendMessage(
-                this.adminChatId,
-                `⏳ Платеж ${paymentId} все еще не оплачен. Будет проверяться автоматически.`,
-              ),
-            'Admin retry: payment still pending',
-          );
-        }
-      } catch (error) {
-        this.logger.error(`Error in retry command: ${error.message}`, error.stack);
-        await SafeTelegramHelper.safeSend(
-          () =>
-            this.bot.telegram.sendMessage(
-              this.adminChatId,
-              `❌ Ошибка при повторной проверке платежа ${paymentId}:\n${error.message}`,
-            ),
-          'Admin retry command error',
-        );
-      }
-    }
   }
 
   @Action(
@@ -336,8 +212,9 @@ export class BotUpdate {
       this.logger.log('hears', ctx.message);
       // Clear messageId when navigating via text commands
       await this.sessionStateService.clearMessageId(ctx.from.id);
-      const existUser = await this.userService.findOneByUserId(ctx.from.id);
-      if (existUser) {
+      const existing = await this.accountClient.getByTelegramId(ctx.from.id);
+      if (existing) {
+        ctx.session.accountId = existing.id;
         await ctx.scene.enter(CommandEnum.HOME);
       } else {
         await ctx.scene.enter(CommandEnum.START);
@@ -351,10 +228,6 @@ export class BotUpdate {
     BUTTONS[CommandEnum.GET_ACCESS].text,
     BUTTONS[CommandEnum.QUESTION].text,
     BUTTONS[CommandEnum.I_HAVE_TOKEN].text,
-    BUTTONS[CommandEnum.FREE_TARIFF].text,
-    BUTTONS[CommandEnum.DEVELOPER_TARIFF].text,
-    BUTTONS[CommandEnum.UNLIMITED_TARIFF].text,
-    BUTTONS[CommandEnum.STUDENT_TARIFF].text,
     BUTTONS[CommandEnum.GET_REQUEST_STATS].text,
     BUTTONS[CommandEnum.UPDATE_TARIFF].text,
     BUTTONS[CommandEnum.GET_MY_TOKEN].text,
@@ -364,18 +237,12 @@ export class BotUpdate {
     BUTTONS[CommandEnum.CREATE_USER].text,
     BUTTONS[CommandEnum.LIST_USERS].text,
     BUTTONS[CommandEnum.EXPIRING_SUBSCRIPTIONS].text,
-    BUTTONS[CommandEnum.DEMO_TARIFF].text,
-    BUTTONS[CommandEnum.BASIC_TARIFF].text,
-    BUTTONS[CommandEnum.NOLIMIT_TARIFF].text,
   ])
   async onButtonHears(@Ctx() ctx: Context & { update: any }) {
     const message = ctx.update.message;
 
     // Обрабатываем только в private чатах
     if (!['private'].includes(message.chat.type)) return;
-
-    const user = await this.userService.findOneByUserId(ctx.from.id);
-    if (user && !user.chatId) await this.userService.update(user.userId, { chatId: ctx.chat.id });
 
     try {
       const buttonEntry = Object.entries(BUTTONS).find(([_, button]) => button.text === message.text);
@@ -468,11 +335,11 @@ export class BotUpdate {
         await SafeTelegramHelper.safeSend(
           () =>
             ctx.editMessageText(
-              `✅ Пользователь ${userId} (@${username}) разбанен и добавлен в базу данных\n\n` +
-                `🆔 User ID: ${user.userId}\n` +
-                `🏷 Токен: ${user.token?.slice(0, 8)}...\n` +
+              `✅ Пользователь ${userId} (@${username}) разбанен и зарегистрирован в account-service\n\n` +
+                `🆔 Telegram ID: ${user.telegram_id ?? userId}\n` +
+                `🏷 Токен: ${user.api_key}\n` +
                 `📅 Создан: ${new Date().toLocaleString('ru-RU')}\n\n` +
-                `Пользователь теперь может писать в чате.`,
+                `Пользователь теперь может писать в чате (токен он получит сам по /start).`,
               createUnbanConfirmationKeyboard(userId),
             ),
           `Edit message after unban user ${userId}`,
@@ -561,44 +428,45 @@ export class BotUpdate {
     }
   }
 
+  // Confirms a dashboard login or Telegram-link via account-service RPC.
+  // The bot never touches account's cache directly anymore — the JSON
+  // contract for the pending state lives entirely inside account; the bot
+  // only sends the Telegram identity it just observed.
   private async handleDashboardAuth(ctx: Context & { update: any }, token: string): Promise<boolean> {
-    const authKey = `auth_request:${token}`;
-    const linkKey = `auth_link:${token}`;
-
-    let key: string | undefined;
-    let data = await this.redis.get(authKey);
-    if (data) {
-      key = authKey;
-    } else {
-      data = await this.redis.get(linkKey);
-      if (data) key = linkKey;
-    }
-
-    if (!key || !data) return false;
-
-    let parsed: Record<string, any>;
-    try {
-      parsed = JSON.parse(data);
-    } catch {
-      return false;
-    }
-
-    if (parsed.status !== 'pending') return false;
-
     const telegramUser = ctx.from;
-    const updated: Record<string, any> = {
-      ...parsed,
-      status: 'confirmed',
-      telegram_id: telegramUser.id,
-      username: telegramUser.username || '',
-      first_name: telegramUser.first_name || '',
-    };
-
-    const ttl = await this.redis.ttl(key);
-    await this.redis.set(key, JSON.stringify(updated), 'EX', ttl > 0 ? ttl : 300);
+    let result;
+    try {
+      result = await this.accountClient.confirmTelegramAuth(
+        token,
+        telegramUser.id,
+        telegramUser.username ?? '',
+        telegramUser.first_name ?? '',
+      );
+    } catch (err) {
+      if (err instanceof TelegramAuthTokenExpiredError) {
+        await SafeTelegramHelper.safeSend(
+          () =>
+            ctx.reply(
+              '⚠️ Ссылка для авторизации в личном кабинете истекла или уже использована.\n\nОткройте кабинет в браузере и попробуйте снова.',
+              { parse_mode: 'HTML' },
+            ),
+          `Dashboard auth expired to ${ctx.chat.id}`,
+        );
+        return true;
+      }
+      this.logger.error(`confirmTelegramAuth failed for telegram user ${telegramUser.id}: ${(err as Error).message}`);
+      await SafeTelegramHelper.safeSend(
+        () =>
+          ctx.reply('⚠️ Не удалось подтвердить авторизацию. Попробуйте через минуту или начните заново с дашборда.', {
+            parse_mode: 'HTML',
+          }),
+        `Dashboard auth transient to ${ctx.chat.id}`,
+      );
+      return true;
+    }
 
     const message =
-      key === linkKey
+      result.flow === 'link'
         ? '✅ Telegram успешно привязан к вашему аккаунту!\n\nМожете вернуться в браузер.'
         : '✅ Авторизация в личном кабинете подтверждена!\n\nМожете вернуться в браузер.';
 
@@ -612,7 +480,7 @@ export class BotUpdate {
       `Dashboard auth confirmation to ${ctx.chat.id}`,
     );
 
-    this.logger.log(`Dashboard auth confirmed for telegram user ${telegramUser.id} (key: ${key})`);
+    this.logger.log(`Dashboard auth confirmed for telegram user ${telegramUser.id} (flow: ${result.flow})`);
     return true;
   }
 

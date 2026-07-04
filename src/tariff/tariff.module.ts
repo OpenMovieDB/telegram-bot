@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { Tariff, TariffSchema } from './schemas/tariff.schema';
+import { BillingModule } from 'src/billing/billing.module';
 import { TariffService } from './tariff.service';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Tariff.name, schema: TariffSchema }])],
+  imports: [BillingModule],
   providers: [TariffService],
   exports: [TariffService],
 })

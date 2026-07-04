@@ -1,6 +1,5 @@
 import { CommandEnum } from '../enum/command.enum';
 import { AbstractScene } from '../abstract/abstract.scene';
-import { UserService } from '../user/user.service';
 import { Action, Ctx, On, Scene } from 'nestjs-telegraf';
 import { Context } from '../interfaces/context.interface';
 import { SCENES } from '../constants/scenes.const';
@@ -8,7 +7,7 @@ import { UpdateClientService } from '@app/update-client';
 
 @Scene(CommandEnum.SET_IMDB_RELATION)
 export class SetImdbRelationScene extends AbstractScene {
-  constructor(private readonly userService: UserService, private readonly updateClient: UpdateClientService) {
+  constructor(private readonly updateClient: UpdateClientService) {
     super();
   }
 
@@ -23,7 +22,7 @@ export class SetImdbRelationScene extends AbstractScene {
         const relations = message.split(',').map((relation) => relation.split(':'));
         for (const [poiskkinoId, imdbId] of relations) {
           this.updateClient.setImdbRelation(parseInt(poiskkinoId), imdbId).catch((e) => {
-            console.log(e);
+            this.logger.error(`setImdbRelation(${poiskkinoId}, ${imdbId}) failed: ${e.message}`);
           });
         }
         await ctx.replyWithHTML(scene.success.text);

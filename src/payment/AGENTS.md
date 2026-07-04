@@ -1,83 +1,77 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-04-02 | Updated: 2026-04-02 -->
+<!-- Generated: 2026-05-09 | Updated: 2026-06-21 -->
 
 # payment
 
 ## Purpose
-Handles the full payment lifecycle: creating payments through any supported gateway, polling pending payments on a schedule, validating and finalizing transactions, updating user subscriptions on success, and receiving webhook callbacks (YooMoney, TBank). Implements the Strategy pattern so all gateways share a common interface.
+Thin, **stateless** bot-side façade over **billing-service**, which owns all money.
+The bot talks to no payment gateway and persists nothing: it creates/cancels
+payments in billing (`src/billing/billing.client.ts`), resolves the payer's
+account-service UUID (`src/account/account.client.ts`), relays the call, and
+translates billing's machine-readable error codes into the scene contract.
+billing runs the atomic claim and grants the subscription through account-service
+— **the bot never writes a payment or subscription**. Success/failure reach the
+user as `billing.payment.*` / `billing.subscription.*` events handled by
+`src/nats/billing-events.consumer.ts`; there is **no bot-side poller**.
+
+> The legacy Strategy-pattern stack (6 gateway strategies, `PaymentStrategyFactory`,
+> the YooMoney/TBank webhook controller, the `USE_BILLING_PAYMENTS` flag, the
+> local Mongo `Payment` pointer + `payment.scheduler.ts` poller, and the
+> `libs/{cryptomus,tbank,yookassa,yoomoney,wallet}-client` libs) was **removed**.
+> Do not reintroduce any of it. The bot has no Mongo and no payment cron.
 
 ## Key Files
 | File | Description |
 |------|-------------|
-| `payment.module.ts` | NestJS module — imports all gateway client modules, UserModule, TariffModule, CacheModule, SessionModule |
-| `payment.service.ts` | Core service — `createPayment`, `validatePayment`, `cancelUserPendingPayment`, `yooMoneyWebHook`, discount calculation for tariff upgrades |
-| `payment.scheduler.ts` | `@Cron` job — polls pending bot payments every N seconds, expires payments older than 24h |
-| `payment.controller.ts` | HTTP endpoints — YooMoney webhook (`POST /payment/yoomoney`), TBank webhook |
-| `schemas/payment.schema.ts` | Mongoose schema: `paymentId`, `orderId`, `status`, `paymentSystem`, `userId`, `chatId`, `tariffId`, `amount`, `monthCount`, `isFinal`, `discount`, `originalPrice`, gateway-specific fields |
-| `strategies/payment-strategy.interface.ts` | `IPaymentStrategy` interface: `createPayment(params)` and `validateTransaction(paymentId)` |
-| `strategies/factory/payment-strategy.factory.ts` | Factory that resolves the correct strategy by `PaymentSystemEnum` |
-| `strategies/criptomus-payment.strategy.ts` | Cryptomus strategy |
-| `strategies/tinkoff-payment.strategy.ts` | TBank/Tinkoff strategy |
-| `strategies/yookassa-payment.strategy.ts` | YooKassa strategy |
-| `strategies/yoomoney-payment.strategy.ts` | YooMoney strategy (form-based, webhook-confirmed) |
-| `strategies/wallet-payment.strategy.ts` | Telegram Wallet Pay strategy |
-| `strategies/cash-payment.strategy.ts` | Manual cash payment (admin `/pay` command) |
-| `enum/payment-status.enum.ts` | `PaymentStatusEnum`: PENDING, PAID, FAILED, CANCELED |
-| `enum/payment-system.enum.ts` | `PaymentSystemEnum`: CRYPTOMUS, TBANK, YOOKASSA, YOOMONEY, WALLET, CASH |
+| `payment.module.ts` | NestJS module — imports `TariffModule`, `BillingModule`, `AccountModule` |
+| `payment.service.ts` | Façade — `createPayment` / `cancelUserPendingPayment` / `getUserPendingPayment` → billing (payer UUID via account); `adminCashPaymentByToken` / `adminConfirmPayment` / `createInvoice` → billing admin endpoints; rebuilds billing's `downgrade_not_allowed` into the RU message |
+| `payment-provider.map.ts` | Maps `PaymentSystemEnum` → billing provider (`TBANK→tbank`, `CYPTOMUS→heleket`); throws `UNSUPPORTED_PAYMENT_SYSTEM` for anything else |
+| `enum/payment-system.enum.ts` | `PaymentSystemEnum`: `TBANK`, `CYPTOMUS`, `CASH` (YooKassa/YooMoney/Wallet retired) |
 
 ## Subdirectories
 | Directory | Purpose |
 |-----------|---------|
-| `schemas/` | Mongoose schema and document type for Payment |
-| `strategies/` | One strategy file per payment gateway plus the factory |
-| `enum/` | Payment status and payment system enumerations |
+| `enum/` | Payment-system enumeration |
 
 ## For AI Agents
 
 ### Working In This Directory
 - Always use `SafeTelegramHelper.safeSend()` for any Telegram notifications inside this module.
-- Adding a new gateway: (1) create library in `libs/`, (2) add path alias in `tsconfig.json` and `nest-cli.json`, (3) implement `IPaymentStrategy`, (4) register in `PaymentStrategyFactory`, (5) add to `PaymentSystemEnum`, (6) import the client module in `payment.module.ts`.
-- `isFinal: true` means a payment will not be re-polled. Only set it when status is PAID, FAILED, or CANCELED.
-- After `validatePayment` confirms PAID: clears Redis token cache, updates subscription dates, resets `requestsUsed` (on tariff change), calls `CacheResetService`, sets `shouldExitPaymentScene` flag via `SessionStateService`.
-- Downgrade prevention: `createPayment` blocks tariff downgrades while a subscription is active (except on the expiration day). Upgrades apply a pro-rated discount based on days remaining.
-- Pending payments older than 24 hours are auto-expired by the scheduler.
+- **No gateways here.** A new provider is added in billing-service, then exposed via `payment-provider.map.ts` + `PaymentSystemEnum` + a scene button. Never add a `libs/*-client` gateway or a strategy class.
+- **No local state.** The bot stores no payment/subscription record. Do not add a Mongo pointer, a `@Cron` poller, or any "sync billing status" loop — outcomes arrive via `src/nats/billing-events.consumer.ts` (billing emits the event inside its atomic-claim transaction, so it is exactly-once).
+- billing is the authority on price, discount, and the **downgrade rule** (returns 409 `downgrade_not_allowed`); `payment.service.ts` rebuilds the friendly RU message from account + catalog data. Never recompute pricing/discounts in the bot.
+- `BillingApiError` (`src/billing/billing.client.ts`) exposes billing's `{error:code}` envelope — branch on `.code`, not HTTP status.
+- Subscription state is **never** read bot-side — it lives in billing/account; for display, read `account.subscription_end` via `AccountClient`.
+- `createPayment` passes the scene's `attemptId` as billing's `Idempotency-Key`; a stale key returns the old payment, so it must rotate on tariff/months change and after a cancel.
 
 ### Testing Requirements
 ```bash
-npm test                                              # all tests
-npm run test -- --testPathPattern=payment             # payment-specific tests
+npm run build
+npm test
 ```
 
 ### Common Patterns
 ```typescript
-// Check for existing pending payment before creating a new one
-const existing = await this.getUserPendingPayment(userId);
-if (existing) throw new Error('PENDING_PAYMENT_EXISTS');
-
-// Validate via strategy
-const strategy = this.paymentStrategyFactory.createPaymentStrategy(payment.paymentSystem);
-const status = await strategy.validateTransaction(payment.paymentId);
-
-// Clear token cache after subscription update
-await this.redis.del(ApiKey.toAPIKey(user.token));
+// Resolve the payer (idempotent upsert by Telegram id), then relay to billing.
+const account = await this.accountClient.upsertByTelegramId(telegramId, username);
+const billingPayment = await this.billingClient.createPayment(
+  account.id,
+  { tariff_id, payment_provider, payment_months, email, source: 'bot' },
+  idempotencyKey, // == payment_flags.attemptId
+);
+// No local write. The user is notified later by billing-events.consumer.ts.
 ```
 
 ## Dependencies
 
 ### Internal
-- `UserModule` — fetch and update user subscription data
-- `TariffModule` — fetch tariff price and requestsLimit
-- `CacheModule` (`CacheResetService`) — reset API rate-limit counters
-- `SessionModule` (`SessionStateService`) — signal payment scene to exit on success
+- `BillingModule` (`BillingClient`) — create/cancel/recent + admin cash/invoice/confirm
+- `AccountModule` (`AccountClient`) — resolve the payer's account UUID; read tariff + `subscription_end` for the downgrade message
+- `TariffModule` — billing-backed tariff catalog (names/prices for display)
 
 ### External
-| Package | Path Alias |
-|---------|------------|
-| `@app/cryptomus-client` | Cryptomus API |
-| `@app/tbank-client` | TBank (Tinkoff) API |
-| `@app/yookassa-client` | YooKassa API |
-| `@app/yoomoney-client` | YooMoney SDK |
-| `@app/wallet-client` | Telegram Wallet Pay |
-| `luxon` | Subscription date arithmetic |
+| Package | Purpose |
+|---------|---------|
+| `luxon` | Date arithmetic (downgrade message) |
 
 <!-- MANUAL: -->

@@ -5,31 +5,22 @@ import { CommandEnum } from '../enum/command.enum';
 import { AbstractScene } from '../abstract/abstract.scene';
 import { SCENES } from '../constants/scenes.const';
 import { Context } from '../interfaces/context.interface';
-import { TariffService } from '../tariff/tariff.service';
-import { UserService } from '../user/user.service';
+import { AccountClient } from '../account/account.client';
 
 @Scene(CommandEnum.START)
 export class StartScene extends AbstractScene {
   public logger = new Logger(StartScene.name);
 
-  constructor(private readonly tariffService: TariffService, private readonly userService: UserService) {
+  constructor(private readonly accountClient: AccountClient) {
     super();
   }
 
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
-    const freeTariff = await this.tariffService.getFreeTariff();
-    // Read the token from the insert result: a follow-up findOne goes to a
-    // secondary (readPreference=secondaryPreferred) and can miss the fresh doc.
-    const user = await this.userService.create({
-      userId: ctx.from.id,
-      chatId: ctx.chat.id,
-      username: ctx.from.username,
-      tariffId: freeTariff?._id,
-    } as any);
-    const token = this.userService.tokenToApiKey(user.token);
+    const account = await this.accountClient.upsertByTelegramId(ctx.from.id, ctx.from.username);
+    ctx.session.accountId = account.id;
 
     const scene = SCENES[CommandEnum.START];
-    await ctx.replyWithHTML(scene.text(token), Markup.inlineKeyboard(scene.buttons));
+    await ctx.replyWithHTML(scene.text(account.api_key), Markup.inlineKeyboard(scene.buttons));
   }
 }

@@ -1,5 +1,5 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-04-02 | Updated: 2026-04-02 -->
+<!-- Generated: 2026-05-09 | Updated: 2026-05-09 -->
 
 # moderation
 
@@ -10,7 +10,7 @@ Group chat spam detection and automated moderation. When a message arrives in th
 | File | Description |
 |------|-------------|
 | `moderation.service.ts` | Core moderation logic: `checkAndModerateUser`, `unbanUser`, `clearUserCache`. Cache keys: `spam:user:{userId}` (1h TTL), `spam:checked:{userId}` (10min cooldown) |
-| `moderation.module.ts` | NestJS module — imports UserModule, exports ModerationService |
+| `moderation.module.ts` | NestJS module — imports AccountModule, exports ModerationService |
 | `keyboards/moderation.keyboards.ts` | Inline keyboard builders: `createUnbanKeyboard(userId, username)` (unban + ignore buttons), `createUnbanConfirmationKeyboard(userId)` (after unban is processed) |
 
 ## Subdirectories
@@ -23,9 +23,9 @@ Group chat spam detection and automated moderation. When a message arrives in th
 ### Working In This Directory
 - Always use `SafeTelegramHelper.safeSend()` for every Telegram API call — message deletion, banning, admin notifications, and message edits all go through it.
 - `checkAndModerateUser` is called from `BotUpdate` for both `@On('text')` and `@On('message')` events targeting `CHAT_ID`. The text handler covers text messages; the message handler covers all other types (stickers, photos, documents, etc.) — avoid duplicating logic.
-- Cache check order: (1) cooldown check — skip if checked recently, (2) Redis cache hit — allow or moderate immediately, (3) database lookup — cache result, then allow or moderate.
-- Database errors during user lookup result in **no moderation action** (fail open) — this is intentional to avoid false bans if MongoDB is temporarily unreachable.
-- `unbanUser` unlifts the Telegram ban, creates a User record in MongoDB with `inChat: true`, updates the Redis cache, and clears the cooldown key.
+- Cache check order: (1) cooldown check — skip if checked recently, (2) Redis cache hit — allow or moderate immediately, (3) account-service lookup (`AccountClient.getByTelegramId`, read-only) — cache result, then allow or moderate.
+- account-service errors during user lookup result in **no moderation action** (fail open) — this is intentional to avoid false bans if account-service is temporarily unreachable. The bot has no Mongo.
+- `unbanUser` unlifts the Telegram ban, registers the user in account-service via `upsertByTelegramId` + `updateTelegramProfile({ inChat: true })`, updates the Redis cache, and clears the cooldown key.
 
 ### Testing Requirements
 ```bash
@@ -50,7 +50,7 @@ await this.moderationService.clearUserCache(userId);
 ## Dependencies
 
 ### Internal
-- `UserService` — database user lookup and creation on unban
+- `AccountClient` — read-only resolve by telegram_id (`getByTelegramId`, never creates accounts); unban registers via `upsertByTelegramId` + `updateTelegramProfile(in_chat)`
 
 ### External
 | Package | Purpose |

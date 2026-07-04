@@ -2,17 +2,22 @@ import { Scene, Ctx, On, SceneEnter, Action } from 'nestjs-telegraf';
 import { CommandEnum } from '../enum/command.enum';
 import { Context } from '../interfaces/context.interface';
 import { Injectable, Logger } from '@nestjs/common';
-import { UserService } from '../user/user.service';
+import { AccountApiError, AccountClient } from '../account/account.client';
+import { BillingClient } from '../billing/billing.client';
 import { TariffService } from '../tariff/tariff.service';
+import { adminTariffButtonLabel } from '../utils/tariff-display.util';
 import { Markup } from 'telegraf';
-import * as ApiKey from 'uuid-apikey';
 
 @Scene(CommandEnum.CREATE_USER)
 @Injectable()
 export class CreateUserScene {
   private readonly logger = new Logger(CreateUserScene.name);
 
-  constructor(private readonly userService: UserService, private readonly tariffService: TariffService) {}
+  constructor(
+    private readonly accountClient: AccountClient,
+    private readonly billingClient: BillingClient,
+    private readonly tariffService: TariffService,
+  ) {}
 
   @SceneEnter()
   async onEnter(@Ctx() ctx: Context) {
@@ -65,7 +70,7 @@ export class CreateUserScene {
       }
 
       // Проверка на существование
-      const existingUser = await this.userService.findUserByUsername(username);
+      const existingUser = await this.accountClient.getByUsername(username);
       if (existingUser) {
         await ctx.replyWithHTML(`❌ Пользователь с username "${username}" уже существует.`);
         return;
@@ -74,14 +79,10 @@ export class CreateUserScene {
       state.username = username;
 
       // Переходим к выбору тарифа
-      const tariffs = await this.tariffService.getAllTariffs();
+      // Admin picks from the full catalog, hidden (partner/staff) tariffs included.
+      const tariffs = await this.tariffService.getAdminTariffs();
       const buttons = tariffs.map((tariff) => [
-        Markup.button.callback(
-          `${tariff.name} (${tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit} req/day, ${
-            tariff.price === 0 ? 'Free' : tariff.price + '₽/мес'
-          })`,
-          `tariff_${tariff._id}`,
-        ),
+        Markup.button.callback(adminTariffButtonLabel(tariff), `tariff_${tariff.id}`),
       ]);
       buttons.push([Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]);
 
@@ -99,7 +100,7 @@ export class CreateUserScene {
 
     state.tariffId = tariffId;
 
-    const tariff = await this.tariffService.getOneById(tariffId);
+    const tariff = await this.tariffService.resolveForAdmin(tariffId);
 
     const buttons = [
       [Markup.button.callback('1 месяц', 'months_1')],
@@ -112,7 +113,7 @@ export class CreateUserScene {
 
     await ctx.editMessageText(
       `✅ Username: <code>${state.username}</code>\n` +
-        `✅ Тариф: <b>${tariff.name}</b>\n\n` +
+        `✅ Тариф: <b>${tariff?.display_name ?? '—'}</b>\n\n` +
         '📅 Шаг 3/3: Выберите срок подписки:',
       {
         parse_mode: 'HTML',
@@ -128,29 +129,25 @@ export class CreateUserScene {
     const months = parseInt(ctx.match[1], 10);
     const state = ctx.scene.session.state;
 
-    let subscriptionEndDate: Date | undefined;
-    if (months > 0) {
-      subscriptionEndDate = new Date();
-      subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + months);
-    }
-
     try {
-      const newUser = await this.userService.createExternalUser(state.username, state.tariffId, subscriptionEndDate);
+      // account владеет токеном и identity внешнего клиента; billing — его подпиской.
+      const account = await this.accountClient.createExternal(state.username);
+      const grant = await this.billingClient.adminGrantSubscription({
+        user_id: account.id,
+        tariff_id: state.tariffId,
+        ...(months > 0 ? { months } : { perpetual: true }),
+      });
 
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      const apiKey = ApiKey.toAPIKey(newUser.token);
-
-      const tariff = await this.tariffService.getOneById(state.tariffId);
+      const tariff = await this.tariffService.resolveForAdmin(state.tariffId);
 
       let message =
         '✅ <b>Пользователь успешно создан!</b>\n\n' +
-        `👤 Username: <code>${newUser.username}</code>\n` +
-        `🔑 API Token: <code>${apiKey}</code>\n` +
-        `💼 Тариф: ${tariff.name}\n`;
+        `👤 Username: <code>${account.username}</code>\n` +
+        `🔑 API Token: <code>${account.api_key}</code>\n` +
+        `💼 Тариф: ${tariff?.display_name ?? '—'}\n`;
 
-      if (subscriptionEndDate) {
-        message += `📅 Подписка до: ${subscriptionEndDate.toLocaleDateString('ru-RU')} (${months} мес.)`;
+      if (grant.expires_at) {
+        message += `📅 Подписка до: ${new Date(grant.expires_at).toLocaleDateString('ru-RU')} (${months} мес.)`;
       } else {
         message += `📅 Подписка: бессрочная`;
       }
@@ -165,10 +162,14 @@ export class CreateUserScene {
 
       await ctx.answerCbQuery('✅ Пользователь создан!');
 
-      this.logger.log(`Created external user: ${state.username}, tariff: ${tariff.name}, months: ${months}`);
+      this.logger.log(`Created external user: ${state.username}, tariff: ${state.tariffId}, months: ${months}`);
     } catch (error) {
+      const reason =
+        error instanceof AccountApiError && error.code === 'username_taken'
+          ? `Username "${state.username}" уже занят`
+          : error.message;
       this.logger.error(`Failed to create user: ${error.message}`, error.stack);
-      await ctx.editMessageText(`❌ Ошибка при создании пользователя: ${error.message}`, {
+      await ctx.editMessageText(`❌ Ошибка при создании пользователя: ${reason}`, {
         ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ В админ меню', CommandEnum.ADMIN_MENU)]]),
       });
       await ctx.answerCbQuery('❌ Ошибка!');

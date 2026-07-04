@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { HttpService } from '@nestjs/axios';
 import { UpdateClientService } from './update-client.service';
 
 describe('UpdateClientService', () => {
@@ -6,7 +7,13 @@ describe('UpdateClientService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UpdateClientService],
+      providers: [
+        UpdateClientService,
+        {
+          provide: HttpService,
+          useValue: { put: jest.fn(), patch: jest.fn() },
+        },
+      ],
     }).compile();
 
     service = module.get<UpdateClientService>(UpdateClientService);

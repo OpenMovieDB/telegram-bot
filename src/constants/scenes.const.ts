@@ -1,7 +1,7 @@
 import { BUTTONS, ADMIN_KEYBOARD_BUTTONS } from './buttons.const';
 import { CommandEnum } from '../enum/command.enum';
-import { Tariff } from 'src/tariff/schemas/tariff.schema';
-import { splitArrayIntoPairs } from 'src/utils/split-array-into-pairs';
+import { BillingTariff } from 'src/billing/billing.client';
+import { tariffLine, tariffButtons } from 'src/utils/tariff-display.util';
 import { DateTime } from 'luxon';
 
 export const SCENES = {
@@ -25,63 +25,23 @@ export const SCENES = {
   [CommandEnum.GET_ACCESS]: {
     navigateText: 'Для получения доступа к API тебе нужно выбрать тарифный план по количеству запросов в сутки.',
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
-    text: (tariffs: Tariff[]) =>
-      'Тарифы: \n\n' +
-      tariffs
-        .map(
-          (tariff) =>
-            `<b>${BUTTONS[CommandEnum[tariff.name + '_TARIFF']].text}</b>: <i>${
-              tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit
-            }</i> запросов в сутки. <b>${tariff.price === 0 ? 'Всегда бесплатно' : tariff.price + 'руб./месяц'}</b>.\n`,
-        )
-        .join(''),
-    buttons: (tariffs: Tariff[]) =>
-      splitArrayIntoPairs(tariffs.map((tariff) => BUTTONS[CommandEnum[tariff.name + '_TARIFF']])),
+    text: (tariffs: BillingTariff[]) => 'Тарифы: \n\n' + tariffs.map(tariffLine).join(''),
+    buttons: tariffButtons,
   },
   [CommandEnum.UPDATE_TARIFF]: {
-    text: (tariffs: Tariff[], currentTariff: string, subscriptionEndDate?: Date) =>
+    text: (tariffs: BillingTariff[], currentTariff: string, subscriptionEndDate?: Date) =>
       `Ваш текущий тариф: <b>${currentTariff}</b>. \nДействует до: ${
         subscriptionEndDate ? DateTime.fromJSDate(subscriptionEndDate).toFormat('dd MMMM yyyy', { locale: 'ru' }) : '∞'
       }\n\n` +
       'Доступные тарифы: \n' +
-      tariffs
-        .map(
-          (tariff) =>
-            `<b>${BUTTONS[CommandEnum[tariff.name + '_TARIFF']].text}</b>: <i>${
-              tariff.requestsLimit > 99999999990 ? '∞' : tariff.requestsLimit
-            }</i> запросов в сутки. <b>${tariff.price === 0 ? 'Всегда бесплатно' : tariff.price + 'руб./месяц'}</b>.\n`,
-        )
-        .join(''),
-    buttons: (tariffs: Tariff[]) =>
-      splitArrayIntoPairs(tariffs.map((tariff) => BUTTONS[CommandEnum[tariff.name + '_TARIFF']])),
+      tariffs.map(tariffLine).join(''),
+    buttons: tariffButtons,
   },
   [CommandEnum.PAYMENT]: {
     text: `Выберите способ оплаты:`,
     buttons: [[BUTTONS[CommandEnum.PAY_WITH_TBANK], BUTTONS[CommandEnum.PAY_WITH_CRYPTOMUS]]],
-    actions: {
-      [CommandEnum.PAY_WITH_CRYPTOMUS]: {
-        text: `Чтобы оплатить подписку для выбранного вами тарифа, вам нужно перейти к оплате, нажав на кнопку ниже.\n\nПосле того как вы оплатите, я автоматически вам поменяю тариф.`,
-      },
-      [CommandEnum.CONFIRM_PAYMENT]: {
-        success: (tariffName: string) => ({
-          navigateText: `Поздравляю, твой тариф изменен, на <code>${tariffName}</code>`,
-          navigateButtons: [BUTTONS[CommandEnum.HOME]],
-        }),
-        error: () => ({
-          navigateText: `Оплата еще в процессе, или ты еще ее не произвел. Я сообщу когда тариф обновится`,
-          navigateButtons: [BUTTONS[CommandEnum.HOME]],
-          text: `Если ничего не произошло, то нажмите на кнопку ниже. Или напишите @mdwit`,
-          buttons: [BUTTONS[CommandEnum.CONFIRM_PAYMENT]],
-        }),
-      },
-    },
   },
-  [CommandEnum.FREE_TARIFF]: {
-    navigateButtons: [BUTTONS[CommandEnum.HOME]],
-    text: (token: string) =>
-      `Твой токен для работы с API: \n\n<code>${token}</code>\n\nДокументация по API: <code>https://poiskkino.dev/documentation</code>\nОна описана в формате OpenAPI и поможет тебе быстро составить запрос к API.\n\nЕсли тебе снова нужна будет документация, в основном меню будет кнопка "🆘 поддержка".`,
-  },
-  [CommandEnum.DEMO_TARIFF]: {
+  [CommandEnum.ISSUE_TOKEN]: {
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
     text: (token: string) =>
       `Твой токен для работы с API: \n\n<code>${token}</code>\n\nДокументация по API: <code>https://poiskkino.dev/documentation</code>\nОна описана в формате OpenAPI и поможет тебе быстро составить запрос к API.\n\nЕсли тебе снова нужна будет документация, в основном меню будет кнопка "🆘 поддержка".`,
@@ -116,7 +76,7 @@ export const SCENES = {
   [CommandEnum.GET_MY_TOKEN]: {
     success: (token: string) => ({
       text: `Вот твой токен: \n\n<code>${token}</code>`,
-      buttons: [BUTTONS[CommandEnum.CHANGE_TOKEN], BUTTONS[CommandEnum.BACK]],
+      buttons: [BUTTONS[CommandEnum.CHANGE_TOKEN], BUTTONS[CommandEnum.HOME]],
     }),
     error: () => ({
       text: `У тебя еще нет токена. \n\n Чтобы получить токен, нажми на кнопку ниже.`,

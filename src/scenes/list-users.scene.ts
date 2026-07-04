@@ -1,16 +1,19 @@
 import { Scene, Ctx, SceneEnter, Action } from 'nestjs-telegraf';
 import { CommandEnum } from '../enum/command.enum';
+import { accountTariffName } from '../utils/tariff-display.util';
 import { Context } from '../interfaces/context.interface';
 import { Injectable, Logger } from '@nestjs/common';
-import { UserService } from '../user/user.service';
+import { AccountClient } from '../account/account.client';
 import { Markup } from 'telegraf';
+
+const PAGE_SIZE = 5;
 
 @Scene(CommandEnum.LIST_USERS)
 @Injectable()
 export class ListUsersScene {
   private readonly logger = new Logger(ListUsersScene.name);
 
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly accountClient: AccountClient) {}
 
   @SceneEnter()
   async onEnter(@Ctx() ctx: Context) {
@@ -26,36 +29,33 @@ export class ListUsersScene {
   }
 
   private async showUsersList(ctx: Context, page = 0, isEdit = false) {
-    const externalUsers = await this.userService.findAllUsers({ isExternalUser: true });
-    const totalUsersCount = await this.userService.countAllUsers();
-    const telegramUsersCount = totalUsersCount - externalUsers.length;
-
-    const pageSize = 5;
-    const totalPages = Math.ceil(externalUsers.length / pageSize);
-    const start = page * pageSize;
-    const end = start + pageSize;
-    const usersOnPage = externalUsers.slice(start, end);
+    const [{ items: usersOnPage, total: externalTotal }, { total: totalUsersCount }] = await Promise.all([
+      this.accountClient.listAccounts({ external: true, page: page + 1, limit: PAGE_SIZE, withEntitlement: true }),
+      this.accountClient.listAccounts({ page: 1, limit: 1 }),
+    ]);
+    const telegramUsersCount = totalUsersCount - externalTotal;
+    const totalPages = Math.max(1, Math.ceil(externalTotal / PAGE_SIZE));
 
     let message = '📋 <b>Список пользователей</b>\n\n';
 
     message += `📊 <b>Статистика:</b>\n`;
     message += `├ Telegram пользователи: ${telegramUsersCount}\n`;
-    message += `├ Внешние пользователи: ${externalUsers.length}\n`;
+    message += `├ Внешние пользователи: ${externalTotal}\n`;
     message += `└ Всего: ${totalUsersCount}\n\n`;
 
-    if (externalUsers.length > 0) {
+    if (externalTotal > 0) {
       message += `👥 <b>Внешние пользователи (стр. ${page + 1}/${totalPages}):</b>\n\n`;
 
       const buttons = [];
 
       for (const user of usersOnPage) {
         const username = user.username || 'N/A';
-        const tariff = user.tariffId?.name || 'N/A';
+        const tariff = accountTariffName(user.tariff);
 
         let status = '';
-        if (user.subscriptionEndDate) {
+        if (user.subscription_end) {
           const daysLeft = Math.ceil(
-            (new Date(user.subscriptionEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
+            (new Date(user.subscription_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
           );
           status = daysLeft > 0 ? `${daysLeft} дн.` : 'истекла';
         } else {
