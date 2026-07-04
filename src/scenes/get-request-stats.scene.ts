@@ -16,11 +16,18 @@ export class GetRequestStatsScene extends AbstractScene {
     this.logger.log(ctx.scene.session.current);
     const scene = SCENES[ctx.scene.session.current];
 
-    const accountId = ctx.session?.accountId;
+    // Sessions created before the v3 cutover have no accountId — resolve by
+    // telegram id once and cache it back, instead of claiming "not registered".
+    let accountId = ctx.session?.accountId;
     if (!accountId) {
-      this.logger.warn(`No accountId in session for user ${ctx.from.id}`);
-      await ctx.replyWithHTML(scene.error().text);
-      return;
+      const existing = await this.accountClient.getByTelegramId(ctx.from.id).catch(() => null);
+      if (!existing) {
+        this.logger.warn(`No account for user ${ctx.from.id}`);
+        await ctx.replyWithHTML(scene.error().text);
+        return;
+      }
+      accountId = existing.id;
+      ctx.session.accountId = accountId;
     }
 
     try {
