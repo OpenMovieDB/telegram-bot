@@ -9,7 +9,11 @@ import { SessionStateService } from '../session/session-state.service';
 import { accountTariffName } from '../utils/tariff-display.util';
 
 const STREAM = 'BILLING_EVENTS';
-const DURABLE = 'telegram-bot-events';
+// Default durable name; override per bot deployment via NATS_DURABLE so two
+// bots (e.g. @poiskkinodev_bot and @kinopoiskdev_bot) each get their OWN
+// durable and therefore EVERY event — a shared durable would load-balance the
+// stream between the bots and each would miss half the notifications.
+const DEFAULT_DURABLE = 'telegram-bot-events';
 const SUBJECT_PAYMENT_PAID = 'billing.payment.paid';
 const SUBJECT_PAYMENT_FAILED = 'billing.payment.failed';
 const SUBJECT_EXPIRING = 'billing.subscription.expiring';
@@ -100,6 +104,7 @@ export class BillingEventsConsumer implements OnModuleInit, OnApplicationShutdow
   }
 
   private async connectAndConsume(url: string) {
+    const durable = this.config.get<string>('NATS_DURABLE') || DEFAULT_DURABLE;
     this.nc = await connect({
       servers: url,
       name: 'telegram-bot-billing-events',
@@ -110,17 +115,17 @@ export class BillingEventsConsumer implements OnModuleInit, OnApplicationShutdow
 
     const jsm = await this.nc.jetstreamManager();
     try {
-      await jsm.consumers.info(STREAM, DURABLE);
+      await jsm.consumers.info(STREAM, durable);
     } catch {
       await jsm.consumers.add(STREAM, {
-        durable_name: DURABLE,
+        durable_name: durable,
         ack_policy: AckPolicy.Explicit,
         deliver_policy: DeliverPolicy.New, // don't replay history on first deploy
         filter_subjects: [SUBJECT_PAYMENT_PAID, SUBJECT_PAYMENT_FAILED, SUBJECT_EXPIRING, SUBJECT_EXPIRED],
         ack_wait: nanos(30_000),
         max_deliver: 5,
       });
-      this.logger.log(`Created durable consumer ${DURABLE} on ${STREAM}`);
+      this.logger.log(`Created durable consumer ${durable} on ${STREAM}`);
     }
 
     // Catalog invalidation is fan-out, not work distribution: EVERY replica
@@ -134,7 +139,7 @@ export class BillingEventsConsumer implements OnModuleInit, OnApplicationShutdow
       }
     })();
 
-    const consumer = await this.nc.jetstream().consumers.get(STREAM, DURABLE);
+    const consumer = await this.nc.jetstream().consumers.get(STREAM, durable);
     const messages = await consumer.consume();
     for await (const message of messages) {
       try {
