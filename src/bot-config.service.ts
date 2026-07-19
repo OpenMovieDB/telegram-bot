@@ -33,6 +33,12 @@ export class BotConfigService implements OnModuleInit {
       this.bot.telegram.options.agent = undefined;
       this.bot.telegram.options.attachmentAgent = undefined;
 
+      // Retry transient Telegram/proxy gateway errors (502/503/504, resets, timeouts)
+      // at the transport level so a blip never surfaces to users as "504: Gateway Time-out".
+      // Every ctx.reply*/edit/answerCbQuery in every scene funnels through callApi, so this
+      // one wrap covers them all — including AllExceptionFilter's own reply.
+      this.installTransientRetry();
+
       // Configure HTTP timeouts for better reliability
       if (this.bot.telegram.options) {
         // Cast to any since timeout properties are not in TypeScript definitions
@@ -56,6 +62,53 @@ export class BotConfigService implements OnModuleInit {
       this.logger.error(`Failed to initialize bot: ${error.message}`);
       throw error;
     }
+  }
+
+  private isTransientTelegramError(err: any): boolean {
+    // Telegraf throws a TelegramError with numeric .code (== error_code) for res.status >= 500.
+    const code = typeof err?.code === 'number' ? err.code : err?.response?.error_code;
+    if (typeof code === 'number' && code >= 500) return true;
+    if (typeof err?.code === 'string') {
+      const netCodes = ['ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ECONNABORTED', 'EAI_AGAIN', 'EPIPE', 'ENETUNREACH'];
+      if (netCodes.includes(err.code)) return true;
+    }
+    const msg = String(err?.message ?? '');
+    // "504: Gateway Time-out" has a hyphen — match both forms and common transport failures.
+    return /gateway time-?out|bad gateway|service unavailable|time-?out|socket hang up|network|EAI_AGAIN|ECONNRESET|ETIMEDOUT/i.test(
+      msg,
+    );
+  }
+
+  private installTransientRetry(): void {
+    const telegram: any = this.bot.telegram;
+    if (telegram.__transientRetryPatched) return;
+
+    const original = telegram.callApi.bind(telegram);
+    const isTransient = this.isTransientTelegramError.bind(this);
+    const logger = this.logger;
+    const maxRetries = 3;
+    const baseDelay = 400; // ms; 400/800/1200 backoff — well under the 60s handler timeout
+
+    telegram.callApi = async function (method: string, ...rest: any[]) {
+      // Never wrap the long-polling fetch — telegraf's polling loop owns its own backoff.
+      if (method === 'getUpdates') return original(method, ...rest);
+
+      let lastErr: any;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          return await original(method, ...rest);
+        } catch (err) {
+          lastErr = err;
+          if (attempt === maxRetries || !isTransient(err)) throw err;
+          logger.warn(`Telegram ${method} transient error "${(err as any)?.message}" — retry ${attempt + 1}/${maxRetries}`);
+          await new Promise((resolve) => setTimeout(resolve, baseDelay * (attempt + 1)));
+        }
+      }
+      throw lastErr;
+    };
+
+    telegram.__transientRetryPatched = true;
+    this.logger.log('Installed transient-error retry on Telegram callApi');
   }
 
   private async getBotInfoWithRetry(): Promise<void> {

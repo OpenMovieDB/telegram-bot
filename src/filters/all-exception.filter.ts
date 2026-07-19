@@ -21,7 +21,10 @@ export class AllExceptionFilter implements ExceptionFilter {
       await ctx.answerCbQuery('❌ Произошла ошибка').catch(() => undefined);
     }
 
-    const scene = SCENES.ERROR(exception.message);
+    // Never leak internal error text (e.g. "504: Gateway Time-out") to users — the real
+    // message is already logged above. Transport blips are retried in BotConfigService;
+    // anything reaching here gets a friendly, actionable message instead.
+    const scene = SCENES.ERROR();
     await ctx
       .replyWithHTML(scene.navigateText, Markup.keyboard(scene.navigateButtons).resize())
       .catch((replyError: Error) =>

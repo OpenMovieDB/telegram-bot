@@ -121,8 +121,8 @@ export const SCENES = {
       [ADMIN_KEYBOARD_BUTTONS.HOME],
     ],
   },
-  ERROR: (message: string) => ({
-    navigateText: `Прошу прошения, но у меня тут ошибка: ${message}`,
+  ERROR: () => ({
+    navigateText: 'Что-то пошло не так 😔 Попробуйте ещё раз через пару секунд или нажмите «Домой».',
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
   }),
 };

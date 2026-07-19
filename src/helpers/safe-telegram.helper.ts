@@ -76,11 +76,18 @@ export class SafeTelegramHelper {
    * Check if error is recoverable (network issues, timeouts)
    */
   static isRecoverableError(error: any): boolean {
+    // Telegraf throws TelegramError with numeric .code (== HTTP status) for res.status >= 500,
+    // e.g. "504: Gateway Time-out" from the proxy. Note: that message has a hyphen ("Time-out"),
+    // so isTimeoutError's "timeout" substring check does NOT catch it — the code check below does.
+    const numericCode = typeof error?.code === 'number' ? error.code : error?.response?.error_code;
+    if (typeof numericCode === 'number' && numericCode >= 500) return true;
+
     return (
       this.isTimeoutError(error) ||
       error?.code === 'ECONNRESET' ||
       error?.code === 'ECONNREFUSED' ||
-      error?.message?.includes('ETELEGRAM')
+      error?.message?.includes('ETELEGRAM') ||
+      /gateway time-?out|bad gateway|service unavailable/i.test(String(error?.message ?? ''))
     );
   }
 }
