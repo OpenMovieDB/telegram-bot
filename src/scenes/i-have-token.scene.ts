@@ -13,13 +13,13 @@ export class IHaveTokenScene extends AbstractScene {
 
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
+    this.logger.log(CommandEnum.I_HAVE_TOKEN);
     const existing = await this.accountClient.getByTelegramId(ctx.from.id);
     if (existing) {
       await ctx.scene.enter(CommandEnum.HOME);
       return;
     }
-    const scene = SCENES[ctx.scene.session.current];
+    const scene = SCENES[CommandEnum.I_HAVE_TOKEN];
     await ctx.replyWithHTML(scene.text);
   }
 
@@ -28,7 +28,7 @@ export class IHaveTokenScene extends AbstractScene {
     if (!('text' in ctx.message)) return;
 
     const token = ctx.message.text.trim();
-    const scene = SCENES[ctx.scene.session.current];
+    const scene = SCENES[CommandEnum.I_HAVE_TOKEN];
     const action = scene.actions[CommandEnum.BIND_TOKEN];
 
     try {

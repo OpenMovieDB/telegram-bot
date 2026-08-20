@@ -18,9 +18,9 @@ export class GetAccessScene extends TariffPickScene {
 
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
+    this.logger.log(CommandEnum.GET_ACCESS);
     const tariffs = await this.tariffService.getAllTariffs();
-    const scene = SCENES[ctx.scene.session.current];
+    const scene = SCENES[CommandEnum.GET_ACCESS];
 
     await this.sessionStateService.clearMessageId(ctx.from.id);
 

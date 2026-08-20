@@ -152,7 +152,7 @@ export class BotUpdate {
   }
 
   @Action(
-    /^(?!unban_|ignore_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_).*$/,
+    /^(?!unban_|ignore_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_|home_menu$|back_to_menu$|cancel_pending_payment$).*$/,
   )
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
     this.logger.log(ctx);
@@ -164,6 +164,41 @@ export class BotUpdate {
     } catch (e) {
       this.logger.log(e);
     }
+  }
+
+  // The payment flow sends inline buttons whose handlers live inside the
+  // PAYMENT scene (home_menu on the paid-notification, back_to_menu /
+  // cancel_pending_payment on the pending-payment message). When the user
+  // presses them after the scene is gone (scene left, pod restart), the update
+  // lands here — route it instead of dropping the press.
+  @Action(['home_menu', 'back_to_menu'])
+  async onMenuActionOutsideScene(@Ctx() ctx: Context & { update: any }) {
+    if (ctx.chat?.type !== 'private') return;
+    await ctx.answerCbQuery().catch(() => undefined);
+    await this.sessionStateService.clearAllPaymentFlags(ctx.from.id);
+    await ctx.scene.enter(CommandEnum.HOME);
+  }
+
+  @Action('cancel_pending_payment')
+  async onCancelPendingPaymentOutsideScene(@Ctx() ctx: Context & { update: any }) {
+    if (ctx.chat?.type !== 'private') return;
+
+    const cancelled = await this.paymentService.cancelUserPendingPayment(ctx.from.id);
+    if (cancelled) {
+      await this.sessionStateService.rotatePaymentAttemptId(ctx.from.id);
+      await ctx.answerCbQuery('✅ Платеж отменен');
+      await SafeTelegramHelper.safeSend(
+        () => ctx.editMessageText('✅ Активный платеж успешно отменен.\n\nВыбрать тариф заново можно через меню.'),
+        `Cancel pending payment confirmation to ${ctx.from.id}`,
+      );
+    } else {
+      await ctx.answerCbQuery('Активный платеж не найден');
+      await SafeTelegramHelper.safeSend(
+        () => ctx.editMessageText('Активный платеж не найден. Возможно, он уже был отменен или оплачен.'),
+        `Cancel pending payment miss to ${ctx.from.id}`,
+      );
+    }
+    await ctx.scene.enter(CommandEnum.HOME);
   }
 
   @Hears('➕ Создать пользователя')

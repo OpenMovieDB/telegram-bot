@@ -1,7 +1,8 @@
-import { Action, Ctx, Hears, Scene, SceneEnter, SceneLeave } from 'nestjs-telegraf';
+import { Action, Ctx, Hears, Next, On, Scene, SceneEnter, SceneLeave } from 'nestjs-telegraf';
 
 import { AbstractScene } from '../abstract/abstract.scene';
 import { CommandEnum } from '../enum/command.enum';
+import { ADMIN_KEYBOARD_BUTTONS, BUTTONS } from '../constants/buttons.const';
 import { PaymentService } from '../payment/payment.service';
 import { PaymentSystemEnum } from 'src/payment/enum/payment-system.enum';
 import { Context } from 'src/interfaces/context.interface';
@@ -10,6 +11,14 @@ import { safeReply } from 'src/utils/safe-reply.util';
 import { SCENES } from 'src/constants/scenes.const';
 import { TariffService } from 'src/tariff/tariff.service';
 import { SessionStateService } from 'src/session/session-state.service';
+
+// Every reply-keyboard text the global BotUpdate handlers route. Anything from
+// this set (or a /command) must fall through to them instead of dying in this
+// scene — a swallowed button press strands the user until a pod restart.
+const NAVIGATION_TEXTS = new Set<string>([
+  ...Object.values(BUTTONS).map((button) => button.text),
+  ...Object.values(ADMIN_KEYBOARD_BUTTONS).map((button) => button.text),
+]);
 
 @Scene(CommandEnum.PAYMENT)
 export class PaymentScene extends AbstractScene {
@@ -40,7 +49,7 @@ export class PaymentScene extends AbstractScene {
       this.logger.error(`Failed to check payment flags for user ${ctx.from.id}:`, error);
     }
 
-    const scene = SCENES[ctx.scene.session.current];
+    const scene = SCENES[CommandEnum.PAYMENT];
 
     // Reset only payment processing flags, keep tariffId and paymentMonths
     await this.sessionStateService.setPaymentInProgress(ctx.from.id, false);
@@ -162,20 +171,11 @@ export class PaymentScene extends AbstractScene {
     return await this.createPaymentAndReply(ctx, PaymentSystemEnum.TBANK, email);
   }
 
-  // Handle navigation commands (like "📊 статистика", "🆘 поддержка", etc.)
-  @Hears(['📊 статистика', '🆘 поддержка', '🏠 главное меню', '🔄️ тариф', '🫣 токен', '⬅ назад'])
-  async handleNavigationCommand(@Ctx() ctx: Context) {
-    this.logger.debug('Navigation command received in payment scene, leaving scene');
-
-    // Clear only processing flags, keep user selection (tariffId and paymentMonths)
-    await this.sessionStateService.clearProcessingFlags(ctx.from.id);
-
-    // Simply leave the scene - the main bot handler will process the command
-    await ctx.scene.leave();
-  }
-
-  @Hears(/^(?!.*[\w-]+@[\w-]+\.\w+).*$/)
-  async notAnEmail(@Ctx() ctx: Context) {
+  // Catch-all for text while the payment scene is active. Commands and menu
+  // buttons leave the scene and continue to the global handlers via next() —
+  // the press works on the first tap and /start always escapes the scene.
+  @On('text')
+  async onText(@Ctx() ctx: Context, @Next() next: () => Promise<void>) {
     // Check if payment was successful and user should exit scene
     try {
       const paymentFlags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
@@ -189,26 +189,16 @@ export class PaymentScene extends AbstractScene {
       this.logger.error(`Failed to check payment flags: ${error.message}`);
     }
 
-    // Check if we're waiting for email
+    const messageText: string = ctx.message?.['text'] ?? '';
+    if (messageText.startsWith('/') || NAVIGATION_TEXTS.has(messageText)) {
+      this.logger.debug(`User ${ctx.from.id} navigating away from payment scene (${messageText})`);
+      await ctx.scene.leave();
+      return next();
+    }
+
     const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
     if (flags?.waitingForEmail) {
-      // Check if user is trying to navigate away (commands like /start, /help, etc.)
-      const messageText = ctx.message?.['text']?.toLowerCase() || '';
-      const isCommand =
-        messageText.startsWith('/') ||
-        ['📊 статистика', '🆘 поддержка', '🏠 главное меню', '🔄️ тариф', '🫣 токен', '⬅ назад'].includes(messageText);
-
-      if (isCommand) {
-        this.logger.debug(
-          `User ${ctx.from.id} trying to navigate while waiting for email, clearing flags and leaving scene`,
-        );
-        await this.sessionStateService.clearProcessingFlags(ctx.from.id);
-        await ctx.scene.leave();
-        return;
-      }
-
       await ctx.reply('Пожалуйста, введите корректный email адрес для получения чека.');
-      return;
     }
 
     // Don't block user after payment creation - they can navigate freely

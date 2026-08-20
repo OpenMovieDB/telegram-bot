@@ -16,7 +16,7 @@ export class GetMyTokenScene extends AbstractScene {
 
   @SceneEnter()
   async enterScene(ctx) {
-    const scene = SCENES[ctx.scene.session.current];
+    const scene = SCENES[CommandEnum.GET_MY_TOKEN];
 
     let token: string | null = null;
 

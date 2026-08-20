@@ -24,13 +24,13 @@ export class UpdateTariffScene extends TariffPickScene {
 
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
-    this.logger.log(ctx.scene.session.current);
+    this.logger.log(CommandEnum.UPDATE_TARIFF);
     const account = await this.accountClient.upsertByTelegramId(ctx.from.id, ctx.from.username);
     ctx.session.accountId = account.id;
 
     // Paid tariffs only, in the admin's catalog order (sort_order).
     const tariffs = (await this.tariffService.getAllTariffs()).filter((tariff) => !isFreeTariff(tariff));
-    const scene = SCENES[ctx.scene.session.current];
+    const scene = SCENES[CommandEnum.UPDATE_TARIFF];
 
     const subscriptionEnd = account.subscription_end ? new Date(account.subscription_end) : undefined;
     await ctx.replyWithHTML(

@@ -16,7 +16,7 @@ export class ChangeTokenScene extends AbstractScene {
 
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context) {
-    const scene = SCENES[ctx.scene.session.current];
+    const scene = SCENES[CommandEnum.CHANGE_TOKEN];
 
     // Sessions created before the v3 cutover have no accountId — resolve by
     // telegram id once and cache it back, instead of claiming "not registered".
