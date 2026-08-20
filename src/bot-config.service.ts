@@ -100,7 +100,9 @@ export class BotConfigService implements OnModuleInit {
         } catch (err) {
           lastErr = err;
           if (attempt === maxRetries || !isTransient(err)) throw err;
-          logger.warn(`Telegram ${method} transient error "${(err as any)?.message}" — retry ${attempt + 1}/${maxRetries}`);
+          logger.warn(
+            `Telegram ${method} transient error "${(err as any)?.message}" — retry ${attempt + 1}/${maxRetries}`,
+          );
           await new Promise((resolve) => setTimeout(resolve, baseDelay * (attempt + 1)));
         }
       }

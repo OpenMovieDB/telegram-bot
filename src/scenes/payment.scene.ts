@@ -2,7 +2,7 @@ import { Action, Ctx, Hears, Next, On, Scene, SceneEnter, SceneLeave } from 'nes
 
 import { AbstractScene } from '../abstract/abstract.scene';
 import { CommandEnum } from '../enum/command.enum';
-import { ADMIN_KEYBOARD_BUTTONS, BUTTONS } from '../constants/buttons.const';
+import { leaveSceneIfNavigation } from '../utils/scene-navigation.util';
 import { PaymentService } from '../payment/payment.service';
 import { PaymentSystemEnum } from 'src/payment/enum/payment-system.enum';
 import { Context } from 'src/interfaces/context.interface';
@@ -11,14 +11,6 @@ import { safeReply } from 'src/utils/safe-reply.util';
 import { SCENES } from 'src/constants/scenes.const';
 import { TariffService } from 'src/tariff/tariff.service';
 import { SessionStateService } from 'src/session/session-state.service';
-
-// Every reply-keyboard text the global BotUpdate handlers route. Anything from
-// this set (or a /command) must fall through to them instead of dying in this
-// scene — a swallowed button press strands the user until a pod restart.
-const NAVIGATION_TEXTS = new Set<string>([
-  ...Object.values(BUTTONS).map((button) => button.text),
-  ...Object.values(ADMIN_KEYBOARD_BUTTONS).map((button) => button.text),
-]);
 
 @Scene(CommandEnum.PAYMENT)
 export class PaymentScene extends AbstractScene {
@@ -189,11 +181,9 @@ export class PaymentScene extends AbstractScene {
       this.logger.error(`Failed to check payment flags: ${error.message}`);
     }
 
-    const messageText: string = ctx.message?.['text'] ?? '';
-    if (messageText.startsWith('/') || NAVIGATION_TEXTS.has(messageText)) {
-      this.logger.debug(`User ${ctx.from.id} navigating away from payment scene (${messageText})`);
-      await ctx.scene.leave();
-      return next();
+    if (await leaveSceneIfNavigation(ctx, next)) {
+      this.logger.debug(`User ${ctx.from.id} navigated away from payment scene`);
+      return;
     }
 
     const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);

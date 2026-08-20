@@ -1,8 +1,9 @@
 import { CommandEnum } from '../enum/command.enum';
 import { AbstractScene } from '../abstract/abstract.scene';
-import { Action, Ctx, On, Scene } from 'nestjs-telegraf';
+import { Action, Ctx, Next, On, Scene } from 'nestjs-telegraf';
 import { Context } from '../interfaces/context.interface';
 import { SCENES } from '../constants/scenes.const';
+import { leaveSceneIfNavigation } from '../utils/scene-navigation.util';
 import { UpdateClientService } from '@app/update-client';
 
 @Scene(CommandEnum.SET_IMDB_RELATION)
@@ -12,10 +13,11 @@ export class SetImdbRelationScene extends AbstractScene {
   }
 
   @On('text')
-  async onMessage(@Ctx() ctx: Context) {
+  async onMessage(@Ctx() ctx: Context, @Next() next: () => Promise<void>) {
     if ('text' in ctx.message) {
+      if (await leaveSceneIfNavigation(ctx, next)) return;
       const message = ctx.message.text;
-      const scene = SCENES[ctx.scene.session.current];
+      const scene = SCENES[CommandEnum.SET_IMDB_RELATION];
 
       const isValidIdList = message.length > 5 && /(\d+:tt\d+)+/gm.test(message);
       if (isValidIdList) {

@@ -1,8 +1,9 @@
-import { Ctx, On, Scene, SceneEnter } from 'nestjs-telegraf';
+import { Ctx, Next, On, Scene, SceneEnter } from 'nestjs-telegraf';
 import { CommandEnum } from '../enum/command.enum';
 import { AbstractScene } from '../abstract/abstract.scene';
 import { Context } from '../interfaces/context.interface';
 import { SCENES } from '../constants/scenes.const';
+import { leaveSceneIfNavigation } from '../utils/scene-navigation.util';
 import { AccountApiError, AccountClient } from '../account/account.client';
 
 @Scene(CommandEnum.I_HAVE_TOKEN)
@@ -24,8 +25,9 @@ export class IHaveTokenScene extends AbstractScene {
   }
 
   @On('text')
-  async onMessage(@Ctx() ctx: Context) {
+  async onMessage(@Ctx() ctx: Context, @Next() next: () => Promise<void>) {
     if (!('text' in ctx.message)) return;
+    if (await leaveSceneIfNavigation(ctx, next)) return;
 
     const token = ctx.message.text.trim();
     const scene = SCENES[CommandEnum.I_HAVE_TOKEN];

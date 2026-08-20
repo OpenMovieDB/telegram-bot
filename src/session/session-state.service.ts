@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { RedisService } from '@liaoliaots/nestjs-redis';
 import Redis from 'ioredis';
 import { randomUUID } from 'crypto';
@@ -7,16 +8,32 @@ import { randomUUID } from 'crypto';
 export class SessionStateService {
   private readonly logger = new Logger(SessionStateService.name);
   private readonly redis: Redis;
+  private readonly botId: string;
 
-  constructor(private readonly redisService: RedisService) {
+  constructor(private readonly redisService: RedisService, configService: ConfigService) {
     this.redis = this.redisService.getOrThrow();
+    // Both prod bots (kp-bot and poiskkino-bot) share one Redis. Scene state
+    // keyed by telegram id alone would be shared too: a user talking to both
+    // bots would mix tariff selection, attemptId and exit-scene flags between
+    // them. Scope every key by the bot id (the numeric part of BOT_TOKEN).
+    const token = configService.get<string>('BOT_TOKEN');
+    if (!token) throw new Error('BOT_TOKEN is required: session keys are scoped per bot');
+    this.botId = token.split(':')[0];
+  }
+
+  private flagsKey(userId: number): string {
+    return `payment_flags:${this.botId}:${userId}`;
+  }
+
+  private messageKey(userId: number): string {
+    return `message:${this.botId}:${userId}`;
   }
 
   /**
    * Устанавливает флаг paymentInProgress
    */
   async setPaymentInProgress(userId: number, value: boolean): Promise<void> {
-    const key = `payment_flags:${userId}`;
+    const key = this.flagsKey(userId);
 
     try {
       const existingData = await this.redis.get(key);
@@ -39,7 +56,7 @@ export class SessionStateService {
    * Устанавливает флаг waitingForEmail
    */
   async setWaitingForEmail(userId: number, value: boolean): Promise<void> {
-    const key = `payment_flags:${userId}`;
+    const key = this.flagsKey(userId);
 
     try {
       const existingData = await this.redis.get(key);
@@ -63,7 +80,7 @@ export class SessionStateService {
    * (Idempotency-Key для billing), иначе create вернёт платёж от старого выбора.
    */
   async setTariffId(userId: number, tariffId: string): Promise<void> {
-    const key = `payment_flags:${userId}`;
+    const key = this.flagsKey(userId);
 
     try {
       const existingData = await this.redis.get(key);
@@ -87,7 +104,7 @@ export class SessionStateService {
    * Устанавливает количество месяцев для оплаты (и новый attemptId — см. setTariffId)
    */
   async setPaymentMonths(userId: number, months: number): Promise<void> {
-    const key = `payment_flags:${userId}`;
+    const key = this.flagsKey(userId);
 
     try {
       const existingData = await this.redis.get(key);
@@ -112,7 +129,7 @@ export class SessionStateService {
    * отменённый платёж вместо создания нового.
    */
   async rotatePaymentAttemptId(userId: number): Promise<void> {
-    const key = `payment_flags:${userId}`;
+    const key = this.flagsKey(userId);
 
     try {
       const existingData = await this.redis.get(key);
@@ -133,7 +150,7 @@ export class SessionStateService {
    * Сбрасывает все флаги платежа для пользователя
    */
   async clearAllPaymentFlags(userId: number): Promise<void> {
-    const key = `payment_flags:${userId}`;
+    const key = this.flagsKey(userId);
 
     try {
       await this.redis.del(key);
@@ -147,7 +164,7 @@ export class SessionStateService {
    * Очищает только процессинговые флаги, сохраняя выбор пользователя (tariffId и paymentMonths)
    */
   async clearProcessingFlags(userId: number): Promise<void> {
-    const key = `payment_flags:${userId}`;
+    const key = this.flagsKey(userId);
 
     try {
       const existingData = await this.redis.get(key);
@@ -180,7 +197,7 @@ export class SessionStateService {
     paymentMonths?: number;
     attemptId?: string;
   } | null> {
-    const key = `payment_flags:${userId}`;
+    const key = this.flagsKey(userId);
 
     try {
       const data = await this.redis.get(key);
@@ -200,7 +217,7 @@ export class SessionStateService {
    * Удаляет флаги платежа после их применения
    */
   async removePaymentFlags(userId: number): Promise<void> {
-    const key = `payment_flags:${userId}`;
+    const key = this.flagsKey(userId);
 
     try {
       await this.redis.del(key);
@@ -214,7 +231,7 @@ export class SessionStateService {
    * Устанавливает флаг что пользователь должен выйти из сцены платежа и перейти в главное меню
    */
   async setExitPaymentScene(userId: number): Promise<void> {
-    const key = `payment_flags:${userId}`;
+    const key = this.flagsKey(userId);
 
     try {
       const existingData = await this.redis.get(key);
@@ -244,7 +261,7 @@ export class SessionStateService {
    * Сохраняет ID последнего сообщения для возможности его редактирования
    */
   async setMessageId(userId: number, messageId: number): Promise<void> {
-    const key = `message:${userId}`;
+    const key = this.messageKey(userId);
 
     try {
       await this.redis.set(key, messageId.toString(), 'EX', 86400); // 24 hours TTL
@@ -258,7 +275,7 @@ export class SessionStateService {
    * Получает ID последнего сообщения
    */
   async getMessageId(userId: number): Promise<number | undefined> {
-    const key = `message:${userId}`;
+    const key = this.messageKey(userId);
 
     try {
       const messageId = await this.redis.get(key);
@@ -273,7 +290,7 @@ export class SessionStateService {
    * Очищает ID последнего сообщения
    */
   async clearMessageId(userId: number): Promise<void> {
-    const key = `message:${userId}`;
+    const key = this.messageKey(userId);
 
     try {
       await this.redis.del(key);

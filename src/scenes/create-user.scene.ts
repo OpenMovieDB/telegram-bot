@@ -1,6 +1,7 @@
-import { Scene, Ctx, On, SceneEnter, Action } from 'nestjs-telegraf';
+import { Scene, Ctx, Next, On, SceneEnter, Action } from 'nestjs-telegraf';
 import { CommandEnum } from '../enum/command.enum';
 import { Context } from '../interfaces/context.interface';
+import { leaveSceneIfNavigation } from '../utils/scene-navigation.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { AccountApiError, AccountClient } from '../account/account.client';
 import { BillingClient } from '../billing/billing.client';
@@ -35,27 +36,10 @@ export class CreateUserScene {
   }
 
   @On('text')
-  async onText(@Ctx() ctx: Context) {
+  async onText(@Ctx() ctx: Context, @Next() next: () => Promise<void>) {
     const text = ctx.message?.['text'];
     if (!text) return;
-
-    // Handle keyboard navigation buttons
-    if (text === '📱в меню') {
-      await ctx.scene.enter(CommandEnum.HOME);
-      return;
-    }
-    if (text === '⏰ Истекающие подписки') {
-      await ctx.scene.enter(CommandEnum.EXPIRING_SUBSCRIPTIONS);
-      return;
-    }
-    if (text === '📋 Список пользователей') {
-      await ctx.scene.enter(CommandEnum.LIST_USERS);
-      return;
-    }
-    if (text === '🧾 Создать счет') {
-      await ctx.scene.enter(CommandEnum.CREATE_INVOICE);
-      return;
-    }
+    if (await leaveSceneIfNavigation(ctx, next)) return;
 
     const state = ctx.scene.session.state;
 
