@@ -10,7 +10,7 @@ import { AccountResponseDto } from '../account/dto/account-response.dto';
 import { Context } from '../interfaces/context.interface';
 import { BOT_NAME } from '../constants/bot-name.const';
 import { SafeTelegramHelper } from '../helpers/safe-telegram.helper';
-import { createUnbanKeyboard } from './keyboards/moderation.keyboards';
+import { createReviewKeyboard } from './keyboards/moderation.keyboards';
 
 @Injectable()
 export class ModerationService {
@@ -21,8 +21,12 @@ export class ModerationService {
 
   private readonly SPAM_USER_PREFIX = 'spam:user:';
   private readonly SPAM_CHECK_PREFIX = 'spam:checked:';
+  private readonly SPAM_PENDING_PREFIX = 'spam:pending:';
   private readonly CACHE_TTL = 3600; // 1 hour
   private readonly CHECK_COOLDOWN = 600; // 10 minutes
+  private readonly PENDING_TTL = 86400; // 24 hours — ждём решения владельца, не дёргая его повторно
+  private readonly PENDING_MESSAGES_LIMIT = 50; // сколько сообщений копим на удаление по одному решению
+  private readonly APPROVED_TTL = 2592000; // 30 days — владелец решил не блокировать
 
   constructor(
     @InjectBot(BOT_NAME)
@@ -42,6 +46,13 @@ export class ModerationService {
       const userId = message.from.id;
       const username = message.from.username || message.from.first_name || 'Unknown';
 
+      // Пользователь уже ждёт решения владельца: сообщение не трогаем, только копим
+      // его id, чтобы удалить всё разом, если владелец решит блокировать.
+      if (await this.redis.exists(`${this.SPAM_PENDING_PREFIX}${userId}`)) {
+        await this.trackPendingMessage(userId, message.message_id);
+        return;
+      }
+
       // Проверяем кулдаун для избежания спама проверок
       const cooldownKey = `${this.SPAM_CHECK_PREFIX}${userId}`;
       const lastCheck = await this.redis.get(cooldownKey);
@@ -59,7 +70,7 @@ export class ModerationService {
 
       if (isUserAllowed === false) {
         // Пользователь уже проверен и не найден в базе
-        await this.moderateMessage(ctx, { userId, username, messageText: message.text });
+        await this.requestAdminReview(ctx, { userId, username, messageText: message.text });
         return;
       }
 
@@ -81,9 +92,9 @@ export class ModerationService {
         await this.cacheUserCheck(userId, true);
         this.logger.log(`User ${userId} (@${username}) verified from database`);
       } else {
-        // Пользователь действительно не найден - кэшируем отрицательный результат и модерируем
+        // Пользователь не найден — сообщение не трогаем, отправляем владельцу на проверку
         await this.cacheUserCheck(userId, false);
-        await this.moderateMessage(ctx, { userId, username, messageText: message.text });
+        await this.requestAdminReview(ctx, { userId, username, messageText: message.text });
       }
 
       // Устанавливаем кулдаун для проверок
@@ -112,11 +123,11 @@ export class ModerationService {
     return this.accountClient.getByTelegramId(userId);
   }
 
-  private async cacheUserCheck(userId: number, exists: boolean): Promise<void> {
+  private async cacheUserCheck(userId: number, exists: boolean, ttl: number = this.CACHE_TTL): Promise<void> {
     try {
       const cacheKey = `${this.SPAM_USER_PREFIX}${userId}`;
       const value = exists ? 'exists' : 'not_exists';
-      await this.redis.setex(cacheKey, this.CACHE_TTL, value);
+      await this.redis.setex(cacheKey, ttl, value);
 
       this.logger.debug(`Cached user check for ${userId}: ${value}`);
     } catch (error) {
@@ -124,7 +135,10 @@ export class ModerationService {
     }
   }
 
-  private async moderateMessage(
+  // Сообщение остаётся в чате, пользователь не блокируется: решение принимает владелец
+  // кнопками в админ-чате. До его ответа повторные сообщения того же пользователя
+  // уведомление не дублируют.
+  private async requestAdminReview(
     ctx: Context & { update: any },
     userInfo: { userId: number; username: string; messageText: string },
   ): Promise<void> {
@@ -132,42 +146,107 @@ export class ModerationService {
       const { userId, username, messageText } = userInfo;
       const messageId = ctx.update.message.message_id;
 
-      this.logger.warn(`Moderating spam message from user ${userId} (@${username})`);
+      const pendingCount = await this.trackPendingMessage(userId, messageId);
+      if (pendingCount > 1) {
+        this.logger.debug(`Review for user ${userId} already pending, not notifying admin again`);
+        return;
+      }
 
-      // Удаляем сообщение
-      await SafeTelegramHelper.safeSend(
-        () => ctx.deleteMessage(messageId),
-        `Delete spam message ${messageId} from user ${userId}`,
-      );
+      this.logger.warn(`Suspicious message ${messageId} from user ${userId} (@${username}) sent to admin review`);
 
-      // Баним пользователя
-      await SafeTelegramHelper.safeSend(() => ctx.banChatMember(userId), `Ban spam user ${userId}`);
-
-      // Отправляем уведомление админу
-      await this.sendAdminNotification(userId, username, messageText);
-
-      this.logger.log(`Successfully moderated spam from user ${userId} (@${username})`);
+      await this.sendAdminReviewRequest(userId, username, messageText, messageId);
     } catch (error) {
-      this.logger.error(`Error moderating message from user ${userInfo.userId}:`, error);
+      this.logger.error(`Error requesting admin review for user ${userInfo.userId}:`, error);
     }
   }
 
-  private async sendAdminNotification(userId: number, username: string, messageText: string): Promise<void> {
+  // Копим id сообщений пользователя, ожидающего решения владельца. Возвращает,
+  // сколько сообщений уже накоплено (1 — это первое, по нему шлётся уведомление).
+  private async trackPendingMessage(userId: number, messageId: number): Promise<number> {
+    const pendingKey = `${this.SPAM_PENDING_PREFIX}${userId}`;
+    const count = await this.redis.lpush(pendingKey, String(messageId));
+    await this.redis.ltrim(pendingKey, 0, this.PENDING_MESSAGES_LIMIT - 1);
+    await this.redis.expire(pendingKey, this.PENDING_TTL);
+    return count;
+  }
+
+  private async sendAdminReviewRequest(
+    userId: number,
+    username: string,
+    messageText: string,
+    messageId: number,
+  ): Promise<void> {
     try {
-      const truncatedText = messageText?.slice(0, 200) || 'No text';
+      const truncatedText = messageText?.slice(0, 200) || 'Без текста (медиа или другой тип сообщения)';
+      const messageLink = this.buildMessageLink(messageId);
       const notificationText =
-        `🚫 Заблокирован спам от неизвестного пользователя\n\n` +
+        `⚠️ Сообщение от незарегистрированного пользователя\n\n` +
         `👤 User ID: ${userId}\n` +
         `📝 Username: @${username}\n` +
-        `💬 Сообщение: "${truncatedText}"\n\n` +
-        `Если это ошибка, нажмите кнопку разбана ниже:`;
+        `💬 Сообщение: "${truncatedText}"\n` +
+        (messageLink ? `🔗 ${messageLink}\n` : '') +
+        `\nСообщение оставлено в чате. Заблокировать — сообщения этого пользователя будут удалены.`;
 
       await SafeTelegramHelper.safeSend(
-        () => this.bot.telegram.sendMessage(this.adminChatId, notificationText, createUnbanKeyboard(userId, username)),
-        `Admin notification about spam user ${userId}`,
+        () =>
+          this.bot.telegram.sendMessage(this.adminChatId, notificationText, createReviewKeyboard(userId, messageId)),
+        `Admin review request about user ${userId}`,
       );
     } catch (error) {
-      this.logger.error(`Error sending admin notification for user ${userId}:`, error);
+      this.logger.error(`Error sending admin review request for user ${userId}:`, error);
+    }
+  }
+
+  private buildMessageLink(messageId: number): string | null {
+    const raw = String(this.chatId);
+    if (!raw.startsWith('-100')) return null;
+    return `https://t.me/c/${raw.slice(4)}/${messageId}`;
+  }
+
+  // Решение владельца «заблокировать»: бан в чате + удаление всех его сообщений,
+  // накопленных за время проверки.
+  async banUser(userId: number, messageId: number): Promise<boolean> {
+    try {
+      this.logger.log(`Banning user ${userId} by admin decision, deleting messages pending review`);
+
+      const banned = await SafeTelegramHelper.safeSend(
+        () => this.bot.telegram.banChatMember(this.chatId, userId),
+        `Ban user ${userId} by admin decision`,
+      );
+
+      const pendingKey = `${this.SPAM_PENDING_PREFIX}${userId}`;
+      const collected = await this.redis.lrange(pendingKey, 0, -1);
+      const messageIds = new Set<number>([messageId, ...collected.map(Number).filter((id) => Number.isFinite(id))]);
+
+      for (const id of messageIds) {
+        await SafeTelegramHelper.safeSend(
+          () => this.bot.telegram.deleteMessage(this.chatId, id),
+          `Delete message ${id} from user ${userId}`,
+        );
+      }
+
+      await this.cacheUserCheck(userId, false);
+      await this.redis.del(pendingKey);
+
+      this.logger.log(`Deleted ${messageIds.size} message(s) from banned user ${userId}`);
+
+      return banned !== undefined;
+    } catch (error) {
+      this.logger.error(`Error banning user ${userId}:`, error);
+      return false;
+    }
+  }
+
+  // Решение владельца «не блокировать»: сообщение остаётся, пользователь больше не
+  // попадает на проверку 30 дней.
+  async approveUser(userId: number): Promise<void> {
+    try {
+      await this.cacheUserCheck(userId, true, this.APPROVED_TTL);
+      await this.redis.del(`${this.SPAM_PENDING_PREFIX}${userId}`, `${this.SPAM_CHECK_PREFIX}${userId}`);
+
+      this.logger.log(`Admin approved user ${userId}, message kept in chat`);
+    } catch (error) {
+      this.logger.error(`Error approving user ${userId}:`, error);
     }
   }
 
@@ -188,9 +267,8 @@ export class ModerationService {
       // Обновляем кэш
       await this.cacheUserCheck(userId, true);
 
-      // Очищаем кулдаун для проверок
-      const cooldownKey = `${this.SPAM_CHECK_PREFIX}${userId}`;
-      await this.redis.del(cooldownKey);
+      // Очищаем кулдаун для проверок и ожидание решения
+      await this.redis.del(`${this.SPAM_CHECK_PREFIX}${userId}`, `${this.SPAM_PENDING_PREFIX}${userId}`);
 
       this.logger.log(`Successfully unbanned and registered user ${userId} (@${username})`);
 
@@ -205,8 +283,9 @@ export class ModerationService {
     try {
       const cacheKey = `${this.SPAM_USER_PREFIX}${userId}`;
       const cooldownKey = `${this.SPAM_CHECK_PREFIX}${userId}`;
+      const pendingKey = `${this.SPAM_PENDING_PREFIX}${userId}`;
 
-      await Promise.all([this.redis.del(cacheKey), this.redis.del(cooldownKey)]);
+      await this.redis.del(cacheKey, cooldownKey, pendingKey);
 
       this.logger.log(`Cleared cache for user ${userId}`);
     } catch (error) {

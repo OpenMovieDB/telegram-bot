@@ -15,7 +15,7 @@ import { TariffService } from './tariff/tariff.service';
 import { DateTime } from 'luxon';
 import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
 import { ModerationService } from './moderation/moderation.service';
-import { createUnbanConfirmationKeyboard } from './moderation/keyboards/moderation.keyboards';
+import { createUnbanConfirmationKeyboard, createUnbanKeyboard } from './moderation/keyboards/moderation.keyboards';
 import { SessionStateService } from './session/session-state.service';
 import { AccountClient, TelegramAuthTokenExpiredError } from './account/account.client';
 
@@ -152,7 +152,7 @@ export class BotUpdate {
   }
 
   @Action(
-    /^(?!unban_|ignore_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_|home_menu$|back_to_menu$|cancel_pending_payment$).*$/,
+    /^(?!unban_|ignore_|modban_|modkeep_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_|home_menu$|back_to_menu$|cancel_pending_payment$).*$/,
   )
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
     this.logger.log(ctx);
@@ -342,6 +342,110 @@ export class BotUpdate {
 
     // Проверяем остальные типы сообщений (стикеры, фото, документы и т.д.)
     await this.moderationService.checkAndModerateUser(ctx);
+  }
+
+  // Решение владельца по сообщению, отправленному на проверку: заблокировать автора
+  // и удалить именно это сообщение.
+  @Action(/^modban_(\d+)_(\d+)$/)
+  async onModerationBan(@Ctx() ctx: Context & { match: RegExpMatchArray }) {
+    if (!this.isAdmin(ctx)) {
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('У вас нет прав для выполнения этой операции'),
+        'Unauthorized moderation ban attempt',
+      );
+      return;
+    }
+
+    try {
+      const userId = parseInt(ctx.match[1]);
+      const messageId = parseInt(ctx.match[2]);
+      const callbackQuery = ctx.update.callback_query;
+      const originalMessage =
+        'message' in callbackQuery && 'text' in callbackQuery.message ? callbackQuery.message.text : '';
+      const usernameMatch = originalMessage.match(/Username: @([^\n]+)/);
+      const username = usernameMatch ? usernameMatch[1] : 'Unknown';
+
+      const banned = await this.moderationService.banUser(userId, messageId);
+
+      if (banned) {
+        await SafeTelegramHelper.safeSend(
+          () =>
+            ctx.editMessageText(
+              `🚫 Пользователь ${userId} (@${username}) заблокирован, сообщение удалено.`,
+              createUnbanKeyboard(userId, username),
+            ),
+          `Edit message after moderation ban ${userId}`,
+        );
+
+        await SafeTelegramHelper.safeSend(
+          () => ctx.answerCbQuery('🚫 Пользователь заблокирован'),
+          'Moderation ban callback',
+        );
+
+        this.logger.log(`Admin banned user ${userId} (@${username}), message ${messageId} deleted`);
+      } else {
+        await SafeTelegramHelper.safeSend(
+          () =>
+            ctx.editMessageText(
+              `❌ Не удалось заблокировать пользователя ${userId} (@${username})\n\n` +
+                `Проверьте логи приложения для дополнительной информации.`,
+              createUnbanKeyboard(userId, username),
+            ),
+          `Edit message after moderation ban error ${userId}`,
+        );
+
+        await SafeTelegramHelper.safeSend(
+          () => ctx.answerCbQuery('❌ Ошибка при блокировке'),
+          'Moderation ban error callback',
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error in onModerationBan:', error);
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('❌ Произошла ошибка'),
+        'Moderation ban exception callback',
+      );
+    }
+  }
+
+  // Решение владельца «не блокировать»: сообщение остаётся в чате, автор больше не
+  // попадает на проверку.
+  @Action(/^modkeep_(\d+)$/)
+  async onModerationKeep(@Ctx() ctx: Context & { match: RegExpMatchArray }) {
+    if (!this.isAdmin(ctx)) {
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('У вас нет прав для выполнения этой операции'),
+        'Unauthorized moderation keep attempt',
+      );
+      return;
+    }
+
+    try {
+      const userId = parseInt(ctx.match[1]);
+      await this.moderationService.approveUser(userId);
+
+      await SafeTelegramHelper.safeSend(
+        () =>
+          ctx.editMessageText(
+            `✅ Пользователь ${userId} не заблокирован, сообщение оставлено в чате.`,
+            createUnbanConfirmationKeyboard(userId),
+          ),
+        `Edit message after moderation keep ${userId}`,
+      );
+
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('✅ Оставлено без блокировки'),
+        'Moderation keep callback',
+      );
+
+      this.logger.log(`Admin kept message from user ${userId}`);
+    } catch (error) {
+      this.logger.error('Error in onModerationKeep:', error);
+      await SafeTelegramHelper.safeSend(
+        () => ctx.answerCbQuery('❌ Произошла ошибка'),
+        'Moderation keep exception callback',
+      );
+    }
   }
 
   @Action(/^unban_(\d+)$/)

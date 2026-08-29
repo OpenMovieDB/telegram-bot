@@ -1,3 +1,22 @@
+export const createReviewKeyboard = (userId: number, messageId: number) => ({
+  reply_markup: {
+    inline_keyboard: [
+      [
+        {
+          text: '🚫 Заблокировать и удалить сообщения',
+          callback_data: `modban_${userId}_${messageId}`,
+        },
+      ],
+      [
+        {
+          text: '✅ Не блокировать',
+          callback_data: `modkeep_${userId}`,
+        },
+      ],
+    ],
+  },
+});
+
 export const createUnbanKeyboard = (userId: number, username: string) => ({
   reply_markup: {
     inline_keyboard: [
