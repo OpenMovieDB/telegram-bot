@@ -20,6 +20,15 @@ const SUBJECT_EXPIRING = 'billing.subscription.expiring';
 const SUBJECT_EXPIRED = 'billing.subscription.expired';
 const SUBJECT_TARIFF_CATALOG = 'billing.tariff.catalog.updated';
 
+// FIXME(nats.js): hostPort() takes the port from the first `:<digits>` in the
+// URL, so a password starting with a digit is parsed as the port. Keep the bus
+// login in NATS_USER/NATS_PASSWORD and never inside NATS_URL.
+interface BusCredentials {
+  url: string;
+  user: string;
+  pass: string;
+}
+
 interface SubscriptionEvent {
   subscription_id: string;
   user_id: string; // account-service UUID
@@ -83,8 +92,13 @@ export class BillingEventsConsumer implements OnModuleInit, OnApplicationShutdow
       this.logger.warn('NATS_URL not set — billing payment/subscription notifications are DISABLED');
       return;
     }
+    const user = this.config.get<string>('NATS_USER');
+    const pass = this.config.get<string>('NATS_PASSWORD');
+    if (!user || !pass) {
+      throw new Error('NATS_USER and NATS_PASSWORD are required whenever NATS_URL is set');
+    }
     // Fire-and-forget: never block bot startup on NATS/billing availability.
-    void this.runForever(url);
+    void this.runForever({ url, user, pass });
   }
 
   async onApplicationShutdown() {
@@ -92,10 +106,10 @@ export class BillingEventsConsumer implements OnModuleInit, OnApplicationShutdow
     await this.nc?.drain().catch(() => undefined);
   }
 
-  private async runForever(url: string) {
+  private async runForever(creds: BusCredentials) {
     while (!this.stopped) {
       try {
-        await this.connectAndConsume(url);
+        await this.connectAndConsume(creds);
       } catch (error) {
         this.logger.error(`Billing events consumer error: ${(error as Error).message} — retrying in 10s`);
       }
@@ -103,15 +117,17 @@ export class BillingEventsConsumer implements OnModuleInit, OnApplicationShutdow
     }
   }
 
-  private async connectAndConsume(url: string) {
+  private async connectAndConsume(creds: BusCredentials) {
     const durable = this.config.get<string>('NATS_DURABLE') || DEFAULT_DURABLE;
     this.nc = await connect({
-      servers: url,
+      servers: creds.url,
+      user: creds.user,
+      pass: creds.pass,
       name: 'telegram-bot-billing-events',
       reconnect: true,
       maxReconnectAttempts: -1,
     });
-    this.logger.log(`Connected to NATS for billing events (${url})`);
+    this.logger.log(`Connected to NATS for billing events (server ${this.nc.info?.server_name ?? 'unknown'})`);
 
     const jsm = await this.nc.jetstreamManager();
     try {
