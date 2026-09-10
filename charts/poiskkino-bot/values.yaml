@@ -1,0 +1,37 @@
+namespace: kinopoisk
+
+replicas: 1
+revisionHistoryLimit: 3
+
+images:
+  registry: pkg.sourcecraft.tech/cr/kinoflow/cn1n61b2au3n9cc77tas
+  name: kp-bot
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: regcred-sourcecraft
+
+# Весь env пода приходит из этого Secret (envFrom). Он же разводит два релиза:
+# BOT_TOKEN, BOT_URL, NATS_URL, DISABLE_SCHEDULERS различаются по релизам.
+existingSecret: kp-bot
+
+# Дополнительный несекретный env поверх existingSecret.
+env: {}
+
+port: 3000
+
+# FIXME: контейнер слушает :3000 только при ENABLE_HTTP_SERVER=true; сейчас флаг
+# не задан ни в одном Secret, порт закрыт. Service существует без слушателя,
+# probe по HTTP поставить нельзя. Включить ENABLE_HTTP_SERVER и завести probe.
+service:
+  enabled: false
+  port: 3000
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"

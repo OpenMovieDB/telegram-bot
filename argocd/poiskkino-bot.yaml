@@ -1,0 +1,37 @@
+# poiskkino-bot — основной телеграм-бот (@poiskkinodev_bot): планировщики включены,
+# слушает события биллинга из NATS.
+# Справочная копия применённого. НЕ применять целиком поверх живого app —
+# стирает helm parameters, записанные image-updater'ом. Правки — kubectl patch.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: poiskkino-bot
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: bot=pkg.sourcecraft.tech/cr/kinoflow/cn1n61b2au3n9cc77tas/kp-bot
+    argocd-image-updater.argoproj.io/bot.update-strategy: newest-build
+    argocd-image-updater.argoproj.io/bot.allow-tags: regexp:^[a-f0-9]{8}$
+    argocd-image-updater.argoproj.io/bot.pull-secret: pullsecret:argocd/regcred
+    argocd-image-updater.argoproj.io/bot.helm.image-name: images.registry/images.name
+    argocd-image-updater.argoproj.io/bot.helm.image-tag: images.tag
+    argocd-image-updater.argoproj.io/bot.force-update: "true"
+    argocd-image-updater.argoproj.io/write-back-method: argocd
+spec:
+  project: poiskkino
+  revisionHistoryLimit: 3
+  source:
+    repoURL: ssh://ssh.sourcecraft.dev/kinoflow/poiskkino-bot.git
+    targetRevision: main
+    path: charts/poiskkino-bot
+    helm:
+      valueFiles:
+        - values-poiskkino.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kinopoisk
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false

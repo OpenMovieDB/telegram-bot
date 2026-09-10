@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "poiskkino-bot.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "poiskkino-bot.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "poiskkino-bot.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "poiskkino-bot.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ include "poiskkino-bot.fullname" . }}
+          image: {{ include "poiskkino-bot.image" . }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.port }}
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: {{ .Values.existingSecret }}
+          {{- with .Values.env }}
+          env:
+            {{- range $name, $value := . }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

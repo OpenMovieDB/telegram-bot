@@ -1,0 +1,25 @@
+namespace: kinopoisk
+
+fullnameOverride: kp-bot
+
+replicas: 1
+
+images:
+  registry: pkg.sourcecraft.tech/cr/kinoflow/cn1n61b2au3n9cc77tas
+  name: kp-bot
+  tag: latest
+  pullPolicy: Always
+
+existingSecret: kp-bot
+
+service:
+  enabled: false
+  port: 3000
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"

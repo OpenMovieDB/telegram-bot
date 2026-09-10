@@ -12,6 +12,14 @@ workflows:
           REGISTRY: pkg.sourcecraft.tech/cr/kinoflow/cn1n61b2au3n9cc77tas
           IMAGE_NAME: kp-bot
         cubes:
+          - name: helm-lint
+            image: alpine:3.20
+            script:
+              - apk add --no-cache helm
+              - helm lint charts/poiskkino-bot -f charts/poiskkino-bot/values-poiskkino.yaml
+              - helm lint charts/poiskkino-bot -f charts/poiskkino-bot/values-kp.yaml
+              - helm template poiskkino-bot charts/poiskkino-bot -f charts/poiskkino-bot/values-poiskkino.yaml >/tmp/poiskkino-bot-rendered.yaml
+              - helm template kp-bot charts/poiskkino-bot -f charts/poiskkino-bot/values-kp.yaml >/tmp/kp-bot-rendered.yaml
           - name: docker-login
             script:
               - echo "$SOURCECRAFT_TOKEN" | docker login pkg.sourcecraft.tech --username iam --password-stdin
@@ -22,10 +30,15 @@ workflows:
             script:
               - docker push $REGISTRY/$IMAGE_NAME:$SOURCECRAFT_COMMIT_SHORT_SHA
               - docker push $REGISTRY/$IMAGE_NAME:latest
+          - name: verify-pushed-images
+            script:
+              - docker manifest inspect $REGISTRY/$IMAGE_NAME:$SOURCECRAFT_COMMIT_SHORT_SHA >/dev/null
+              - docker manifest inspect $REGISTRY/$IMAGE_NAME:latest >/dev/null
           - name: cleanup-old-images
             script:
               - |
                 KEEP=3
+                CURRENT_TAG="$SOURCECRAFT_COMMIT_SHORT_SHA"
                 AUTH=$(echo -n "iam:$SOURCECRAFT_TOKEN" | base64 | tr -d '\n')
                 API="https://pkg.sourcecraft.tech/v2/cr/kinoflow/cn1n61b2au3n9cc77tas/$IMAGE_NAME"
                 TAGS=$(curl -sf -H "Authorization: Basic $AUTH" "$API/tags/list?n=1000" | python3 -c "import json,sys,re; data=sys.stdin.read(); tags=json.loads(data).get('tags',[]) if data.strip() else []; print(' '.join(t for t in tags if re.match(r'^[a-f0-9]{8}$',t)))")
@@ -33,15 +46,20 @@ workflows:
                 if [ "$COUNT" -le "$KEEP" ]; then echo "Only $COUNT hash tags, nothing to clean"; exit 0; fi
                 echo "Found $COUNT hash tags, keeping $KEEP newest"
                 DELETE_TAGS=$(for TAG in $TAGS; do
+                  [ "$TAG" = "$CURRENT_TAG" ] && continue
                   DIGEST=$(curl -sf -H "Authorization: Basic $AUTH" -H "Accept: application/vnd.oci.image.index.v1+json" "$API/manifests/$TAG" | python3 -c "import json,sys; idx=json.load(sys.stdin); [print(m['digest']) for m in idx.get('manifests',[]) if m.get('platform',{}).get('architecture')=='amd64']" 2>/dev/null)
-                  [ -z "$DIGEST" ] && echo "0000-00-00 $TAG" && continue
+                  [ -z "$DIGEST" ] && echo "9999-12-31 $TAG" && continue
                   CFG=$(curl -sf -H "Authorization: Basic $AUTH" -H "Accept: application/vnd.oci.image.manifest.v1+json" "$API/manifests/$DIGEST" | python3 -c "import json,sys; print(json.load(sys.stdin).get('config',{}).get('digest',''))" 2>/dev/null)
-                  [ -z "$CFG" ] && echo "0000-00-00 $TAG" && continue
+                  [ -z "$CFG" ] && echo "9999-12-31 $TAG" && continue
                   DT=$(curl -sfL -H "Authorization: Basic $AUTH" "$API/blobs/$CFG" | python3 -c "import json,sys; print(json.load(sys.stdin).get('created','')[:19])" 2>/dev/null)
-                  echo "${DT:-0000-00-00} $TAG"
+                  echo "${DT:-9999-12-31} $TAG"
                 done | sort -r | tail -n +$((KEEP+1)) | awk '{print $2}')
                 for TAG in $DELETE_TAGS; do
                   CODE=$(curl -sf -o /dev/null -w "%{http_code}" -X DELETE -H "Authorization: Basic $AUTH" "$API/manifests/$TAG")
                   echo "Deleted $TAG (HTTP $CODE)"
                 done
                 exit 0
+          - name: verify-images-after-cleanup
+            script:
+              - docker manifest inspect $REGISTRY/$IMAGE_NAME:$SOURCECRAFT_COMMIT_SHORT_SHA >/dev/null
+              - docker manifest inspect $REGISTRY/$IMAGE_NAME:latest >/dev/null

@@ -1,0 +1,18 @@
+{{- if .Values.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "poiskkino-bot.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "poiskkino-bot.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "poiskkino-bot.selectorLabels" . | nindent 4 }}
+{{- end }}
