@@ -3,7 +3,7 @@ import { CommandEnum } from '../enum/command.enum';
 import { Context } from '../interfaces/context.interface';
 import { leaveSceneIfNavigation } from '../utils/scene-navigation.util';
 import { Injectable, Logger } from '@nestjs/common';
-import { PaymentService } from '../payment/payment.service';
+import { InvoiceTarget, PaymentService } from '../payment/payment.service';
 import { Markup } from 'telegraf';
 
 @Scene(CommandEnum.CREATE_INVOICE)
@@ -19,7 +19,8 @@ export class CreateInvoiceScene {
 
     await ctx.replyWithHTML(
       '🧾 <b>Создание счета</b>\n\n' +
-        'Шаг 1/4: Введите API-токен пользователя, на которого выставляется счёт\n\n' +
+        'Шаг 1/4: Введите API-токен пользователя, на которого выставляется счёт, ' +
+        'или «-» — счёт запишется на вас\n\n' +
         '<i>Например: 1G77T25-7MM4S33-PT2EJBV-CQ7V36A</i>',
       Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
     );
@@ -33,17 +34,19 @@ export class CreateInvoiceScene {
 
     const state = ctx.scene.session.state;
 
-    if (!state.token) {
+    if (!state.target) {
       const token = text.trim();
       if (!token) {
-        await ctx.replyWithHTML('❌ Введите корректный API-токен');
+        await ctx.replyWithHTML('❌ Введите API-токен или «-»');
         return;
       }
 
-      state.token = token;
+      const target: InvoiceTarget = token === '-' ? { adminTelegramId: ctx.from.id } : { token };
+      state.target = target;
+      const targetLabel = 'token' in target ? `Токен: <b>${target.token}</b>` : 'Счёт на <b>вас</b>';
 
       await ctx.replyWithHTML(
-        `✅ Токен: <b>${token}</b>\n\n` + 'Шаг 2/4: Введите сумму в рублях\n\n' + '<i>Например: 1000</i>',
+        `✅ ${targetLabel}\n\n` + 'Шаг 2/4: Введите сумму в рублях\n\n' + '<i>Например: 1000</i>',
         Markup.inlineKeyboard([[Markup.button.callback('❌ Отмена', CommandEnum.ADMIN_MENU)]]),
       );
       return;
@@ -93,7 +96,7 @@ export class CreateInvoiceScene {
 
       try {
         const { paymentUrl, orderId } = await this.paymentService.createInvoice(
-          state.token,
+          state.target,
           state.amount,
           state.description,
           email,
@@ -113,7 +116,9 @@ export class CreateInvoiceScene {
         );
 
         this.logger.log(
-          `Invoice created: token=${state.token}, amount=${state.amount}, description="${state.description}", email=${email}, orderId=${orderId}`,
+          `Invoice created: target=${JSON.stringify(state.target)}, amount=${state.amount}, description="${
+            state.description
+          }", email=${email}, orderId=${orderId}`,
         );
       } catch (error) {
         const message = error?.message === 'USER_NOT_FOUND' ? 'Пользователь с таким токеном не найден' : error.message;

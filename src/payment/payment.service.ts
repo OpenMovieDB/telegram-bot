@@ -8,6 +8,10 @@ import { BillingApiError, BillingClient, BillingPayment } from '../billing/billi
 import { AccountClient } from '../account/account.client';
 import { toBillingProvider } from './payment-provider.map';
 
+// InvoiceTarget names whose account a custom invoice is recorded on: the
+// payer's (by API token) or the issuing admin's own.
+export type InvoiceTarget = { token: string } | { adminTelegramId: number };
+
 // PaymentService is a stateless façade over billing-service: billing owns the
 // payment lifecycle (price, provider, atomic claim, grant via account) and is
 // the only system of record. The bot resolves the payer's account UUID, relays
@@ -76,19 +80,21 @@ export class PaymentService {
     });
   }
 
-  // Admin off-tariff invoice (arbitrary amount, grants nothing). Resolves the
-  // target user by API token, then bills through T-Bank (receipt → email).
+  // Admin off-tariff invoice (arbitrary amount, grants nothing), billed through
+  // T-Bank (receipt → email). The invoice is not tied to the payer's API token:
+  // billing still records every payment on an account, so without a token the
+  // invoice is recorded on the admin who issues it (owner, 2026-09-12: «если я
+  // не указываю юзера, то пусть будет на меня»).
   async createInvoice(
-    targetToken: string,
+    target: InvoiceTarget,
     amount: number,
     description: string,
     email: string,
   ): Promise<{ paymentUrl: string; orderId: string }> {
-    const owner = await this.accountClient.getByToken(targetToken);
-    if (!owner) throw new Error('USER_NOT_FOUND');
+    const userId = await this.resolveInvoiceUser(target);
 
     const invoice = await this.billingClient.createAdminInvoice({
-      user_id: owner.user_id,
+      user_id: userId,
       amount,
       description,
       payment_provider: 'tbank',
@@ -96,6 +102,17 @@ export class PaymentService {
     });
 
     return { paymentUrl: invoice.payment_url ?? '', orderId: invoice.external_id || invoice.payment_id };
+  }
+
+  private async resolveInvoiceUser(target: InvoiceTarget): Promise<string> {
+    if ('token' in target) {
+      const owner = await this.accountClient.getByToken(target.token);
+      if (!owner) throw new Error('USER_NOT_FOUND');
+      return owner.user_id;
+    }
+    const admin = await this.accountClient.getByTelegramId(target.adminTelegramId);
+    if (!admin) throw new Error('USER_NOT_FOUND');
+    return admin.id;
   }
 
   // Operator /confirm: force the payment to paid in billing (same atomic claim +

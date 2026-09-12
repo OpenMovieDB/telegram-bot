@@ -1,6 +1,7 @@
 import { Context as BaseContext, Scenes } from 'telegraf';
 
 import { Update } from 'telegraf/typings/core/types/typegram';
+import type { InvoiceTarget } from '../payment/payment.service';
 
 export interface Context extends BaseContext {
   update: Update.CallbackQueryUpdate;
@@ -19,6 +20,8 @@ interface SessionData extends Scenes.SceneSession<SceneSession> {
 interface SceneSession extends Scenes.SceneSessionData {
   state: {
     token?: string;
+    // Custom invoice: whose account the invoice is recorded on.
+    target?: InvoiceTarget;
     username?: string;
     tariffId?: string;
     newTariffId?: string;
