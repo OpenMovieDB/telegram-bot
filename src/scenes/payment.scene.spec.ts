@@ -5,6 +5,7 @@ import { TariffService } from '../tariff/tariff.service';
 import { SessionStateService } from '../session/session-state.service';
 import { BUTTONS } from '../constants/buttons.const';
 import { CommandEnum } from '../enum/command.enum';
+import { PaymentSystemEnum } from '../payment/enum/payment-system.enum';
 
 function makeCtx(text: string, overrides: Record<string, any> = {}) {
   return {
@@ -24,12 +25,17 @@ function makeCtx(text: string, overrides: Record<string, any> = {}) {
 describe('PaymentScene.onText', () => {
   let scene: PaymentScene;
   let sessionState: jest.Mocked<SessionStateService>;
+  let payments: { getUserPendingPayment: jest.Mock; createPayment: jest.Mock };
 
   beforeEach(async () => {
+    payments = {
+      getUserPendingPayment: jest.fn().mockResolvedValue(null),
+      createPayment: jest.fn().mockResolvedValue({ payment_id: 'p', payment_url: '' }),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PaymentScene,
-        { provide: PaymentService, useValue: {} },
+        { provide: PaymentService, useValue: payments },
         { provide: TariffService, useValue: {} },
         {
           provide: SessionStateService,
@@ -109,5 +115,32 @@ describe('PaymentScene.onText', () => {
     const [, extra] = replyWithHTML.mock.calls[0];
     const buttons = extra.reply_markup.inline_keyboard.flat().map((button: any) => [button.text, button.callback_data]);
     expect(buttons).toContainEqual(['⬅ назад', 'START']);
+  });
+
+  it('pays for the tariff picked after «назад», not the one of the open payment', async () => {
+    sessionState.getPaymentFlags.mockResolvedValue({ tariffId: 'B', paymentMonths: 3, attemptId: 'a2' } as any);
+    payments.getUserPendingPayment.mockResolvedValue({ tariff_id: 'A', payment_months: 1 });
+    const ctx = makeCtx('');
+
+    await (scene as any).createPaymentAndReply(ctx, PaymentSystemEnum.TBANK);
+
+    expect(payments.createPayment).toHaveBeenCalledWith(42, 'tguser', 'B', PaymentSystemEnum.TBANK, 3, undefined, 'a2');
+  });
+
+  it('takes a lost choice from the open payment', async () => {
+    payments.getUserPendingPayment.mockResolvedValue({ tariff_id: 'A', payment_months: 1 });
+    const ctx = makeCtx('');
+
+    await (scene as any).createPaymentAndReply(ctx, PaymentSystemEnum.TBANK);
+
+    expect(payments.createPayment).toHaveBeenCalledWith(
+      42,
+      'tguser',
+      'A',
+      PaymentSystemEnum.TBANK,
+      1,
+      undefined,
+      undefined,
+    );
   });
 });

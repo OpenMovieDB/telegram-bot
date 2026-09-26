@@ -210,25 +210,18 @@ export class PaymentScene extends AbstractScene {
     try {
       const flags = await this.sessionStateService.getPaymentFlags(ctx.from.id);
 
-      // First try to get data from existing pending payment
-      const existingPayment = await this.paymentService.getUserPendingPayment(ctx.from.id);
-      let paymentMonths: number;
-      let tariffId: string;
-
-      if (existingPayment) {
-        // Use data from existing payment
-        paymentMonths = existingPayment.payment_months;
-        tariffId = existingPayment.tariff_id;
-        this.logger.debug(`Using existing payment data: paymentMonths ${paymentMonths}, tariffId ${tariffId}`);
-      } else {
-        // Fallback to Redis flags for new payments
-        paymentMonths = flags?.paymentMonths;
-        tariffId = flags?.tariffId;
-
-        if (!paymentMonths || !tariffId) {
-          throw new Error('Отсутствуют данные о выбранном тарифе или сроке подписки');
-        }
-        this.logger.debug(`Using Redis flags: paymentMonths ${paymentMonths}, tariffId ${tariffId}`);
+      // The tariff and term the user picked last win: after «назад» to the
+      // tariffs an open payment still holds the previous choice. The open payment
+      // only fills in a choice the session has lost (flags live an hour).
+      let paymentMonths = flags?.paymentMonths;
+      let tariffId = flags?.tariffId;
+      if (!paymentMonths || !tariffId) {
+        const existingPayment = await this.paymentService.getUserPendingPayment(ctx.from.id);
+        paymentMonths = existingPayment?.payment_months;
+        tariffId = existingPayment?.tariff_id;
+      }
+      if (!paymentMonths || !tariffId) {
+        throw new Error('Отсутствуют данные о выбранном тарифе или сроке подписки');
       }
 
       this.logger.debug(`Final values: paymentMonths ${paymentMonths}, tariffId ${tariffId}, email ${email}`);

@@ -630,7 +630,7 @@ export class BotUpdate {
         await SafeTelegramHelper.safeSend(
           () =>
             ctx.reply(
-              '⚠️ Этот Telegram — единственный вход в другой аккаунт ПоискКино, поэтому перенести его нельзя.\n\nЧтобы перенести, войдите в тот аккаунт через Telegram и добавьте в нём почту. Или привяжите другой Telegram.',
+              '⚠️ Telegram не привязан: он единственный вход в другой аккаунт ПоискКино.\n\nВ тот аккаунт можно войти кнопкой «Войти через Telegram» на странице входа.',
               { parse_mode: 'HTML' },
             ),
           `Dashboard link refused to ${ctx.chat.id}`,
@@ -647,6 +647,10 @@ export class BotUpdate {
       );
       return true;
     }
+
+    // A link may have taken this Telegram off another account: the next action
+    // resolves the account by Telegram again instead of the remembered one.
+    if (result.flow === 'link') delete ctx.session.accountId;
 
     const message =
       result.flow === 'link'
