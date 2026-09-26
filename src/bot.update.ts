@@ -635,7 +635,8 @@ export class BotUpdate {
       question =
         `Объединить аккаунт этого Telegram с аккаунтом ПоискКино${named}?\n\n` +
         'Входить можно будет и через Telegram, и по почте. Если токен есть у обоих аккаунтов, ' +
-        'останется тот, которым пользовались последним, второй перестанет работать.';
+        'останется токен этого Telegram, кроме случая, когда токеном из кабинета последний раз пользовались ' +
+        'в более поздний день. Второй токен перестанет работать.';
       confirm = '✅ Объединить';
       answer = 'mg';
     } else if (request.flow === 'link') {
@@ -659,7 +660,7 @@ export class BotUpdate {
 
   // The buttons carry the start of the token: an answer to an older question
   // never confirms a newer link. mg: the person agreed to join the two accounts.
-  @Action(/^dashboard_auth:(ok|mg|no):([0-9a-f]+)$/i)
+  @Action(/^dashboard_auth:(ok|mg|no):([0-9a-f]+)$/)
   async onDashboardAuthAnswer(@Ctx() ctx: Context & { match: RegExpMatchArray }) {
     if (ctx.chat?.type !== 'private') return;
     await ctx.answerCbQuery().catch(() => undefined);

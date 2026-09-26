@@ -67,8 +67,11 @@ describe('BotUpdate — dashboard sign-in and link', () => {
 
     await update.onStart(ctx as any);
 
-    expect(ctx.reply.mock.calls[0][0]).toMatch(
-      /^Объединить аккаунт этого Telegram с аккаунтом ПоискКино owner@example\.com\?/,
+    expect(ctx.reply.mock.calls[0][0]).toBe(
+      'Объединить аккаунт этого Telegram с аккаунтом ПоискКино owner@example.com?\n\n' +
+        'Входить можно будет и через Telegram, и по почте. Если токен есть у обоих аккаунтов, ' +
+        'останется токен этого Telegram, кроме случая, когда токеном из кабинета последний раз пользовались ' +
+        'в более поздний день. Второй токен перестанет работать.',
     );
     expect(buttons(ctx.reply)).toEqual([
       ['✅ Объединить', 'dashboard_auth:mg:aaaaaaaaaaaaaaaa'],
