@@ -1,5 +1,6 @@
 import { CommandEnum } from '../enum/command.enum';
 import { AbstractScene } from '../abstract/abstract.scene';
+import { backToTariffs } from '../abstract/tariff-pick.scene';
 import { Action, Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { Logger } from '@nestjs/common';
 import { Context } from 'src/interfaces/context.interface';
@@ -50,7 +51,7 @@ export class SelectMonthsScene extends AbstractScene {
 
     await ctx.replyWithHTML(
       `Тариф: <b>${tariff.display_name}</b>\n\nВыберите срок подписки 🔢`,
-      Markup.inlineKeyboard(buttons),
+      Markup.inlineKeyboard([...buttons, ...backToTariffs(ctx)]),
     );
   }
 
@@ -69,6 +70,6 @@ export class SelectMonthsScene extends AbstractScene {
 
     await ctx.answerCbQuery();
     await this.sessionStateService.setPaymentMonths(ctx.from.id, months);
-    await ctx.scene.enter(CommandEnum.PAYMENT);
+    await ctx.scene.enter(CommandEnum.PAYMENT, ctx.scene.state);
   }
 }

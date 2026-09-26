@@ -8,6 +8,7 @@ import { PaymentSystemEnum } from 'src/payment/enum/payment-system.enum';
 import { Context } from 'src/interfaces/context.interface';
 import { Markup } from 'telegraf';
 import { safeReply } from 'src/utils/safe-reply.util';
+import { backToTariffs } from '../abstract/tariff-pick.scene';
 import { SCENES } from 'src/constants/scenes.const';
 import { TariffService } from 'src/tariff/tariff.service';
 import { SessionStateService } from 'src/session/session-state.service';
@@ -47,7 +48,12 @@ export class PaymentScene extends AbstractScene {
     await this.sessionStateService.setPaymentInProgress(ctx.from.id, false);
     await this.sessionStateService.setWaitingForEmail(ctx.from.id, false);
 
-    await safeReply(ctx, scene.text, Markup.inlineKeyboard(scene.buttons), this.sessionStateService);
+    await safeReply(
+      ctx,
+      scene.text,
+      Markup.inlineKeyboard([...scene.buttons, ...backToTariffs(ctx)]),
+      this.sessionStateService,
+    );
   }
 
   @SceneLeave()

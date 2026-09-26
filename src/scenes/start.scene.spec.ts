@@ -67,8 +67,14 @@ describe('StartScene', () => {
       providers: [
         StartScene,
         { provide: AccountClient, useValue: { upsertByTelegramId: jest.fn().mockResolvedValue(mockAccount) } },
-        { provide: TariffService, useValue: { getAllTariffs: jest.fn().mockResolvedValue(catalog) } },
-        { provide: SessionStateService, useValue: {} },
+        {
+          provide: TariffService,
+          useValue: {
+            getAllTariffs: jest.fn().mockResolvedValue(catalog),
+            getOneById: jest.fn((id: string) => Promise.resolve(catalog.find((t) => t.id === id))),
+          },
+        },
+        { provide: SessionStateService, useValue: { setTariffId: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 
@@ -106,5 +112,17 @@ describe('StartScene', () => {
       expect.stringContaining('Наши условия'),
       expect.objectContaining({ parse_mode: 'HTML' }),
     );
+  });
+
+  it('carries these tariffs to the period screen, so «назад» comes back here', async () => {
+    const enter = jest.fn().mockResolvedValue(undefined);
+    const ctx = makeCtx({
+      match: ['tariff_basic-id', 'basic-id'],
+      answerCbQuery: jest.fn().mockResolvedValue(undefined),
+      scene: { enter },
+    });
+    await scene.onTariffPick(ctx as any);
+
+    expect(enter).toHaveBeenCalledWith('SELECT_MONTHS', { tariffsScene: 'START' });
   });
 });

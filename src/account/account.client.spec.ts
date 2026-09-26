@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AccountApiError, AccountClient, TelegramAuthTokenExpiredError } from './account.client';
+import {
+  AccountApiError,
+  AccountClient,
+  TelegramAuthTokenExpiredError,
+  TelegramOnlyLoginError,
+} from './account.client';
 import { AuthApiError, AuthClient } from '../auth/auth.client';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
@@ -203,6 +208,14 @@ describe('AccountClient (composition facade)', () => {
 
       await expect(client.confirmTelegramAuth(VALID_TOKEN, 12345, '', '')).rejects.toBeInstanceOf(
         TelegramAuthTokenExpiredError,
+      );
+    });
+
+    it('maps telegram_already_linked to TelegramOnlyLoginError', async () => {
+      authClient.confirmTelegram.mockRejectedValue(new AuthApiError('telegram_already_linked', 409, 'linked'));
+
+      await expect(client.confirmTelegramAuth(VALID_TOKEN, 12345, '', '')).rejects.toBeInstanceOf(
+        TelegramOnlyLoginError,
       );
     });
   });

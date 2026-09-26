@@ -27,6 +27,15 @@ export class TelegramAuthTokenExpiredError extends Error {
   }
 }
 
+// The Telegram account opened for a dashboard link is another account's only
+// way in, so auth keeps it there.
+export class TelegramOnlyLoginError extends Error {
+  constructor() {
+    super('telegram account is the only way into another account');
+    this.name = 'TelegramOnlyLoginError';
+  }
+}
+
 // AccountApiError mirrors account-service's `{error, message}` envelope so
 // callers branch on the machine-readable code (`username_taken`,
 // `telegram_already_linked`, …) instead of HTTP status or message text. Identity
@@ -171,6 +180,9 @@ export class AccountClient {
     } catch (err) {
       if (err instanceof AuthApiError && (err.status === 410 || err.status === 404)) {
         throw new TelegramAuthTokenExpiredError(token);
+      }
+      if (err instanceof AuthApiError && err.code === 'telegram_already_linked') {
+        throw new TelegramOnlyLoginError();
       }
       throw err;
     }

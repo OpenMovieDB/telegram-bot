@@ -17,7 +17,7 @@ import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
 import { ModerationService } from './moderation/moderation.service';
 import { createUnbanConfirmationKeyboard, createUnbanKeyboard } from './moderation/keyboards/moderation.keyboards';
 import { SessionStateService } from './session/session-state.service';
-import { AccountClient, TelegramAuthTokenExpiredError } from './account/account.client';
+import { AccountClient, TelegramAuthTokenExpiredError, TelegramOnlyLoginError } from './account/account.client';
 import { MembershipService, MembershipStep } from './membership/membership.service';
 
 @Update()
@@ -623,6 +623,17 @@ export class BotUpdate {
               { parse_mode: 'HTML' },
             ),
           `Dashboard auth expired to ${ctx.chat.id}`,
+        );
+        return true;
+      }
+      if (err instanceof TelegramOnlyLoginError) {
+        await SafeTelegramHelper.safeSend(
+          () =>
+            ctx.reply(
+              '⚠️ Этот Telegram — единственный вход в другой аккаунт ПоискКино, поэтому перенести его нельзя.\n\nЧтобы перенести, войдите в тот аккаунт через Telegram и добавьте в нём почту. Или привяжите другой Telegram.',
+              { parse_mode: 'HTML' },
+            ),
+          `Dashboard link refused to ${ctx.chat.id}`,
         );
         return true;
       }

@@ -37,6 +37,9 @@ describe('PaymentScene.onText', () => {
             getPaymentFlags: jest.fn().mockResolvedValue(null),
             removePaymentFlags: jest.fn().mockResolvedValue(undefined),
             clearAllPaymentFlags: jest.fn().mockResolvedValue(undefined),
+            setPaymentInProgress: jest.fn().mockResolvedValue(undefined),
+            setWaitingForEmail: jest.fn().mockResolvedValue(undefined),
+            setMessageId: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -95,5 +98,16 @@ describe('PaymentScene.onText', () => {
     expect(sessionState.removePaymentFlags).toHaveBeenCalledWith(42);
     expect(ctx.scene.enter).toHaveBeenCalledWith(CommandEnum.HOME);
     expect(next).not.toHaveBeenCalled();
+  });
+
+  it('offers «назад» to the tariffs the user picked from', async () => {
+    const replyWithHTML = jest.fn().mockResolvedValue({ message_id: 1 });
+    const ctx = makeCtx('', { scene: { state: { tariffsScene: 'START' }, session: {} }, replyWithHTML });
+
+    await scene.onSceneEnter(ctx as any);
+
+    const [, extra] = replyWithHTML.mock.calls[0];
+    const buttons = extra.reply_markup.inline_keyboard.flat().map((button: any) => [button.text, button.callback_data]);
+    expect(buttons).toContainEqual(['⬅ назад', 'START']);
   });
 });
