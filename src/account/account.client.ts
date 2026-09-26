@@ -36,8 +36,26 @@ export class TelegramAlreadyLinkedError extends Error {
   }
 }
 
+// The link would now join two accounts, while the person agreed to a plain link:
+// the bot asks again.
+export class TelegramLinkChangedError extends Error {
+  constructor() {
+    super('telegram link would join two accounts now');
+    this.name = 'TelegramLinkChangedError';
+  }
+}
+
 function isExpiredHandshake(err: unknown): boolean {
   return err instanceof AuthApiError && (err.status === 410 || err.status === 404);
+}
+
+// toTelegramAuthError turns auth's answer on a dashboard sign-in or link into
+// the error the bot shows the person.
+function toTelegramAuthError(err: unknown, token: string): unknown {
+  if (isExpiredHandshake(err)) return new TelegramAuthTokenExpiredError(token);
+  if (err instanceof AuthApiError && err.code === 'telegram_already_linked') return new TelegramAlreadyLinkedError();
+  if (err instanceof AuthApiError && err.code === 'telegram_link_changed') return new TelegramLinkChangedError();
+  return err;
 }
 
 // AccountApiError mirrors account-service's `{error, message}` envelope so
@@ -166,29 +184,29 @@ export class AccountClient {
     return user ? this.compose(user, acct) : this.composeAccountOnly(acct);
   }
 
-  // confirmTelegramAuth tells auth-service that the Telegram user just opened
-  // `/start <token>` in the bot. auth resolves the pending state (dashboard
-  // login or telegram-link) and returns which flow it was. 404/410 are terminal
-  // — we throw TelegramAuthTokenExpiredError so the caller shows the right copy
-  // instead of retrying. firstName is no longer sent (auth ignores it).
+  // confirmTelegramAuth tells auth-service that the person pressed the confirm
+  // button. auth resolves the pending state (dashboard login or telegram-link)
+  // and returns which flow it was. merge: the person pressed «Объединить». 404/410
+  // are terminal — we throw TelegramAuthTokenExpiredError so the caller shows the
+  // right copy instead of retrying.
   async confirmTelegramAuth(
     token: string,
     telegramId: number,
     telegramUsername: string,
-    firstName: string,
+    merge: boolean,
     requestId?: string,
   ): Promise<ConfirmTelegramAuthResponseDto> {
     try {
-      const data = await this.authClient.confirmTelegram(token, telegramId, telegramUsername || undefined, requestId);
+      const data = await this.authClient.confirmTelegram(
+        token,
+        telegramId,
+        telegramUsername || undefined,
+        merge,
+        requestId,
+      );
       return { success: data.success, flow: data.flow, merged: data.merged === true };
     } catch (err) {
-      if (isExpiredHandshake(err)) {
-        throw new TelegramAuthTokenExpiredError(token);
-      }
-      if (err instanceof AuthApiError && err.code === 'telegram_already_linked') {
-        throw new TelegramAlreadyLinkedError();
-      }
-      throw err;
+      throw toTelegramAuthError(err, token);
     }
   }
 
@@ -203,13 +221,7 @@ export class AccountClient {
     try {
       return await this.authClient.getTelegramRequest(token, telegramId, requestId);
     } catch (err) {
-      if (isExpiredHandshake(err)) {
-        throw new TelegramAuthTokenExpiredError(token);
-      }
-      if (err instanceof AuthApiError && err.code === 'telegram_already_linked') {
-        throw new TelegramAlreadyLinkedError();
-      }
-      throw err;
+      throw toTelegramAuthError(err, token);
     }
   }
 

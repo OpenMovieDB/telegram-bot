@@ -17,7 +17,12 @@ import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
 import { ModerationService } from './moderation/moderation.service';
 import { createUnbanConfirmationKeyboard, createUnbanKeyboard } from './moderation/keyboards/moderation.keyboards';
 import { SessionStateService } from './session/session-state.service';
-import { AccountClient, TelegramAlreadyLinkedError, TelegramAuthTokenExpiredError } from './account/account.client';
+import {
+  AccountClient,
+  TelegramAlreadyLinkedError,
+  TelegramAuthTokenExpiredError,
+  TelegramLinkChangedError,
+} from './account/account.client';
 import { ConfirmTelegramAuthResponseDto } from './account/dto/confirm-telegram-auth-response.dto';
 import { AuthTelegramRequestResponse } from './auth/dto/auth-user-response.dto';
 import { MembershipService, MembershipStep } from './membership/membership.service';
@@ -624,13 +629,15 @@ export class BotUpdate {
     const named = account ? ` ${account}` : '';
     let question = 'Войти в кабинет ПоискКино через этот Telegram?\n\nПодтверждайте, только если вход начали вы.';
     let confirm = '✅ Войти';
+    let answer = 'ok';
     if (request.flow === 'link' && request.merge) {
       // Владелец 2026-09-27: «это единый аккаунт после мерджа а не рахные».
       question =
         `Объединить аккаунт этого Telegram с аккаунтом ПоискКино${named}?\n\n` +
-        'Получится один аккаунт: входить можно будет и через Telegram, и по почте. Оплаченный тариф сохранится. ' +
-        'Ключ API останется один — тот, которым пользовались последним.';
+        'Входить можно будет и через Telegram, и по почте. Если токен есть у обоих аккаунтов, ' +
+        'останется тот, которым пользовались последним, второй перестанет работать.';
       confirm = '✅ Объединить';
+      answer = 'mg';
     } else if (request.flow === 'link') {
       question = `Привязать этот Telegram к аккаунту ПоискКино${named}?`;
       confirm = '✅ Привязать';
@@ -641,7 +648,7 @@ export class BotUpdate {
           question,
           Markup.inlineKeyboard([
             [
-              Markup.button.callback(confirm, `dashboard_auth:ok:${key}`),
+              Markup.button.callback(confirm, `dashboard_auth:${answer}:${key}`),
               Markup.button.callback('Отмена', `dashboard_auth:no:${key}`),
             ],
           ]),
@@ -651,8 +658,8 @@ export class BotUpdate {
   }
 
   // The buttons carry the start of the token: an answer to an older question
-  // never confirms a newer link.
-  @Action(/^dashboard_auth:(ok|no):([0-9a-f]+)$/i)
+  // never confirms a newer link. mg: the person agreed to join the two accounts.
+  @Action(/^dashboard_auth:(ok|mg|no):([0-9a-f]+)$/i)
   async onDashboardAuthAnswer(@Ctx() ctx: Context & { match: RegExpMatchArray }) {
     if (ctx.chat?.type !== 'private') return;
     await ctx.answerCbQuery().catch(() => undefined);
@@ -669,8 +676,8 @@ export class BotUpdate {
     }
     delete ctx.session.dashboardAuthToken;
 
-    if (answer === 'ok') {
-      await this.confirmDashboardAuth(ctx, token);
+    if (answer !== 'no') {
+      await this.confirmDashboardAuth(ctx, token, answer === 'mg');
       return;
     }
     await this.accountClient.declineTelegramAuth(token);
@@ -690,18 +697,18 @@ export class BotUpdate {
   }
 
   // Confirms a dashboard login or Telegram-link in auth with the Telegram
-  // identity the bot just observed.
-  private async confirmDashboardAuth(ctx: Context, token: string): Promise<void> {
+  // identity the bot just observed. A link that would now join two accounts,
+  // while the person agreed to a plain link, is asked again.
+  private async confirmDashboardAuth(ctx: Context, token: string, merge: boolean): Promise<void> {
     const telegramUser = ctx.from;
     let result: ConfirmTelegramAuthResponseDto;
     try {
-      result = await this.accountClient.confirmTelegramAuth(
-        token,
-        telegramUser.id,
-        telegramUser.username ?? '',
-        telegramUser.first_name ?? '',
-      );
+      result = await this.accountClient.confirmTelegramAuth(token, telegramUser.id, telegramUser.username ?? '', merge);
     } catch (err) {
+      if (err instanceof TelegramLinkChangedError) {
+        await this.askDashboardAuth(ctx, token);
+        return;
+      }
       await this.replyDashboardAuthFailure(ctx, err);
       return;
     }

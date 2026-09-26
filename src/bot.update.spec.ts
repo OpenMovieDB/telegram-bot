@@ -1,5 +1,5 @@
 import { BotUpdate } from './bot.update';
-import { TelegramAlreadyLinkedError } from './account/account.client';
+import { TelegramAlreadyLinkedError, TelegramLinkChangedError } from './account/account.client';
 
 const TOKEN = 'a'.repeat(16) + 'b'.repeat(48);
 
@@ -71,9 +71,32 @@ describe('BotUpdate — dashboard sign-in and link', () => {
       /^Объединить аккаунт этого Telegram с аккаунтом ПоискКино owner@example\.com\?/,
     );
     expect(buttons(ctx.reply)).toEqual([
-      ['✅ Объединить', 'dashboard_auth:ok:aaaaaaaaaaaaaaaa'],
+      ['✅ Объединить', 'dashboard_auth:mg:aaaaaaaaaaaaaaaa'],
       ['Отмена', 'dashboard_auth:no:aaaaaaaaaaaaaaaa'],
     ]);
+  });
+
+  it('«Объединить» confirms with the consent to join the accounts', async () => {
+    const { update, accountClient } = makeBotUpdate();
+    accountClient.confirmTelegramAuth.mockResolvedValue({ success: true, flow: 'link', merged: true });
+    const ctx = makeCtx({ session: { dashboardAuthToken: TOKEN }, match: ['', 'mg', 'aaaaaaaaaaaaaaaa'] });
+
+    await update.onDashboardAuthAnswer(ctx as any);
+
+    expect(accountClient.confirmTelegramAuth).toHaveBeenCalledWith(TOKEN, 42, 'tguser', true);
+  });
+
+  it('asks again when the link would now join the accounts', async () => {
+    const { update, accountClient } = makeBotUpdate();
+    accountClient.confirmTelegramAuth.mockRejectedValue(new TelegramLinkChangedError());
+    accountClient.getTelegramAuthRequest.mockResolvedValue({ flow: 'link', email: 'owner@example.com', merge: true });
+    const ctx = makeCtx({ session: { dashboardAuthToken: TOKEN }, match: ['', 'ok', 'aaaaaaaaaaaaaaaa'] });
+
+    await update.onDashboardAuthAnswer(ctx as any);
+
+    expect(ctx.reply.mock.calls[0][0]).toMatch(/^Объединить аккаунт этого Telegram/);
+    expect(buttons(ctx.reply)[0]).toEqual(['✅ Объединить', 'dashboard_auth:mg:aaaaaaaaaaaaaaaa']);
+    expect(ctx.session.dashboardAuthToken).toBe(TOKEN);
   });
 
   it('says the Telegram does not fit before asking anything', async () => {
@@ -110,7 +133,7 @@ describe('BotUpdate — dashboard sign-in and link', () => {
 
     await update.onDashboardAuthAnswer(ctx as any);
 
-    expect(accountClient.confirmTelegramAuth).toHaveBeenCalledWith(TOKEN, 42, 'tguser', 'Ivan');
+    expect(accountClient.confirmTelegramAuth).toHaveBeenCalledWith(TOKEN, 42, 'tguser', false);
     expect(ctx.session.dashboardAuthToken).toBeUndefined();
     expect(ctx.session.accountId).toBeUndefined();
   });

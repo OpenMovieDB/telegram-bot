@@ -32,7 +32,8 @@ export interface AuthTelegramConfirmResponse {
   success: boolean;
   flow: 'login' | 'link';
   // The link made the dashboard account and the account of this Telegram one.
-  merged: boolean;
+  // Absent from an auth that does not join accounts.
+  merged?: boolean;
 }
 
 // POST /svc/telegram/request — what the opened link does, read before
@@ -42,7 +43,8 @@ export interface AuthTelegramRequestResponse {
   flow: 'login' | 'link';
   email?: string;
   username?: string;
-  merge: boolean;
+  // Absent from an auth that does not join accounts.
+  merge?: boolean;
 }
 
 // POST /svc/users body — telegram-only OR username-only ("external") creation.

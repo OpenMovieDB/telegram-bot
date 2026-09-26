@@ -150,13 +150,26 @@ describe('AuthClient', () => {
   it('confirmTelegram POSTs token + telegram identity', async () => {
     (httpService.post as jest.Mock).mockReturnValue(of(makeAxiosResponse({ success: true, flow: 'link' })));
 
-    const result = await client.confirmTelegram('tok', 111, 'testuser', 'req-c');
+    const result = await client.confirmTelegram('tok', 111, 'testuser', true, 'req-c');
 
     expect(httpService.post).toHaveBeenCalledWith(
       'http://auth:8080/svc/telegram/confirm',
-      { token: 'tok', telegram_id: 111, telegram_username: 'testuser' },
+      { token: 'tok', telegram_id: 111, telegram_username: 'testuser', merge: true },
       expect.objectContaining({ timeout: 5000 }),
     );
     expect(result.flow).toBe('link');
+  });
+
+  it('getTelegramRequest POSTs the token and the Telegram that opened the link', async () => {
+    (httpService.post as jest.Mock).mockReturnValue(of(makeAxiosResponse({ flow: 'link', merge: true })));
+
+    const result = await client.getTelegramRequest('tok', 111, 'req-r');
+
+    expect(httpService.post).toHaveBeenCalledWith(
+      'http://auth:8080/svc/telegram/request',
+      { token: 'tok', telegram_id: 111 },
+      expect.objectContaining({ timeout: 5000 }),
+    );
+    expect(result.merge).toBe(true);
   });
 });

@@ -213,20 +213,23 @@ export class AuthClient {
     }, `patchTelegram(${userId})`);
   }
 
-  // POST /svc/telegram/confirm — the Telegram user opened `/start <token>`.
-  // 404/410 (unknown/expired token) surface as AuthApiError; the facade maps
-  // them to TelegramAuthTokenExpiredError.
+  // POST /svc/telegram/confirm — the Telegram user pressed the confirm button.
+  // merge: the person agreed to join the two accounts; without it auth answers
+  // 409 telegram_link_changed when the link would join them. 404/410
+  // (unknown/expired token) surface as AuthApiError; the facade maps them to
+  // TelegramAuthTokenExpiredError.
   async confirmTelegram(
     token: string,
     telegramId: number,
-    telegramUsername?: string,
+    telegramUsername: string | undefined,
+    merge: boolean,
     requestId?: string,
   ): Promise<AuthTelegramConfirmResponse> {
     return this.withRetry(async () => {
       const { data } = await lastValueFrom(
         this.httpService.post<AuthTelegramConfirmResponse>(
           `${this.baseUrl}/svc/telegram/confirm`,
-          { token, telegram_id: telegramId, telegram_username: telegramUsername ?? null },
+          { token, telegram_id: telegramId, telegram_username: telegramUsername ?? null, merge },
           { headers: this.headers(requestId), timeout: 5000 },
         ),
       );

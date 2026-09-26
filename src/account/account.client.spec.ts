@@ -4,6 +4,7 @@ import {
   AccountClient,
   TelegramAlreadyLinkedError,
   TelegramAuthTokenExpiredError,
+  TelegramLinkChangedError,
 } from './account.client';
 import { AuthApiError, AuthClient } from '../auth/auth.client';
 import { HttpService } from '@nestjs/axios';
@@ -191,42 +192,42 @@ describe('AccountClient (composition facade)', () => {
     it('delegates to auth /svc/telegram/confirm and returns the flow', async () => {
       authClient.confirmTelegram.mockResolvedValue({ success: true, flow: 'login', merged: false });
 
-      const result = await client.confirmTelegramAuth(VALID_TOKEN, 12345, 'vasya', 'Vasya', 'req-tg');
+      const result = await client.confirmTelegramAuth(VALID_TOKEN, 12345, 'vasya', false, 'req-tg');
 
-      expect(authClient.confirmTelegram).toHaveBeenCalledWith(VALID_TOKEN, 12345, 'vasya', 'req-tg');
+      expect(authClient.confirmTelegram).toHaveBeenCalledWith(VALID_TOKEN, 12345, 'vasya', false, 'req-tg');
       expect(result).toEqual({ success: true, flow: 'login', merged: false });
     });
 
     it('reports a link that joined the two accounts', async () => {
       authClient.confirmTelegram.mockResolvedValue({ success: true, flow: 'link', merged: true });
 
-      const result = await client.confirmTelegramAuth(VALID_TOKEN, 12345, '', '');
+      const result = await client.confirmTelegramAuth(VALID_TOKEN, 12345, '', true);
 
+      expect(authClient.confirmTelegram).toHaveBeenCalledWith(VALID_TOKEN, 12345, undefined, true, undefined);
       expect(result).toEqual({ success: true, flow: 'link', merged: true });
     });
 
-    it('maps a 410 to TelegramAuthTokenExpiredError', async () => {
-      authClient.confirmTelegram.mockRejectedValue(new AuthApiError('telegram_auth_expired', 410, 'gone'));
+    it('reads an answer without merged as a link that joined nothing', async () => {
+      authClient.confirmTelegram.mockResolvedValue({ success: true, flow: 'link' });
 
-      await expect(client.confirmTelegramAuth(VALID_TOKEN, 12345, '', '')).rejects.toBeInstanceOf(
-        TelegramAuthTokenExpiredError,
-      );
+      const result = await client.confirmTelegramAuth(VALID_TOKEN, 12345, '', false);
+
+      expect(result).toEqual({ success: true, flow: 'link', merged: false });
     });
 
-    it('maps a 404 to TelegramAuthTokenExpiredError too', async () => {
-      authClient.confirmTelegram.mockRejectedValue(new AuthApiError('not_found', 404, 'unknown'));
-
-      await expect(client.confirmTelegramAuth(VALID_TOKEN, 12345, '', '')).rejects.toBeInstanceOf(
-        TelegramAuthTokenExpiredError,
-      );
-    });
-
-    it('maps telegram_already_linked to TelegramAlreadyLinkedError', async () => {
-      authClient.confirmTelegram.mockRejectedValue(new AuthApiError('telegram_already_linked', 409, 'linked'));
-
-      await expect(client.confirmTelegramAuth(VALID_TOKEN, 12345, '', '')).rejects.toBeInstanceOf(
+    it.each([
+      ['a 410', new AuthApiError('telegram_auth_expired', 410, 'gone'), TelegramAuthTokenExpiredError],
+      ['a 404', new AuthApiError('not_found', 404, 'unknown'), TelegramAuthTokenExpiredError],
+      [
+        'telegram_already_linked',
+        new AuthApiError('telegram_already_linked', 409, 'linked'),
         TelegramAlreadyLinkedError,
-      );
+      ],
+      ['telegram_link_changed', new AuthApiError('telegram_link_changed', 409, 'changed'), TelegramLinkChangedError],
+    ])('maps %s', async (_name, authError, expected) => {
+      authClient.confirmTelegram.mockRejectedValue(authError);
+
+      await expect(client.confirmTelegramAuth(VALID_TOKEN, 12345, '', false)).rejects.toBeInstanceOf(expected);
     });
   });
 
@@ -248,6 +249,15 @@ describe('AccountClient (composition facade)', () => {
         TelegramAlreadyLinkedError,
       );
       expect(authClient.getTelegramRequest).toHaveBeenCalledWith(VALID_TOKEN, 12345, undefined);
+    });
+
+    it('passes on an answer without merge from an auth that does not join accounts', async () => {
+      authClient.getTelegramRequest.mockResolvedValue({ flow: 'link', email: 'owner@example.com' });
+
+      await expect(client.getTelegramAuthRequest(VALID_TOKEN, 12345)).resolves.toEqual({
+        flow: 'link',
+        email: 'owner@example.com',
+      });
     });
 
     it('declining an expired link is not an error', async () => {
