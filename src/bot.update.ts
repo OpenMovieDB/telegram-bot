@@ -605,10 +605,10 @@ export class BotUpdate {
     }
   }
 
-  // A dashboard sign-in or link runs only on the person's press (владелец
-  // 2026-09-27: «подтверждение в боте нужно»): a link sent by someone else would
-  // otherwise sign them into this Telegram's account or take this Telegram into
-  // theirs. The question names the account a link gives this Telegram to.
+  // A dashboard link runs only on the person's press (владелец 2026-09-27:
+  // «подтверждение в боте нужно»); the question names the account that gets this
+  // Telegram. A sign-in asks too — решение автора: a sign-in link sent by someone
+  // else would otherwise hand them this Telegram's account.
   private async askDashboardAuth(ctx: Context, token: string): Promise<void> {
     let request: AuthTelegramRequestResponse;
     try {
@@ -668,10 +668,10 @@ export class BotUpdate {
   }
 
   private async replyDashboardAuthFailure(ctx: Context, err: unknown): Promise<void> {
-    let text = '⚠️ Не удалось подтвердить авторизацию. Попробуйте через минуту или начните заново с дашборда.';
+    let text = '⚠️ Не удалось подтвердить. Попробуйте через минуту или начните заново в кабинете.';
     if (err instanceof TelegramAuthTokenExpiredError) {
       text =
-        '⚠️ Ссылка для авторизации в личном кабинете истекла или уже использована.\n\nОткройте кабинет в браузере и попробуйте снова.';
+        '⚠️ Ссылка из кабинета истекла или уже использована.\n\nОткройте кабинет в браузере и попробуйте снова.';
     } else if (err instanceof TelegramAlreadyLinkedError) {
       text = '⚠️ Этот Telegram не подходит: он уже привязан к другому аккаунту ПоискКино.';
     } else {
@@ -704,7 +704,7 @@ export class BotUpdate {
     const message =
       result.flow === 'link'
         ? '✅ Telegram успешно привязан к вашему аккаунту!\n\nМожете вернуться в браузер.'
-        : '✅ Авторизация в личном кабинете подтверждена!\n\nМожете вернуться в браузер.';
+        : '✅ Вход в кабинет подтверждён.\n\nМожете вернуться в браузер.';
 
     await SafeTelegramHelper.safeSend(
       () =>
