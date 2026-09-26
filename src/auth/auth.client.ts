@@ -234,14 +234,20 @@ export class AuthClient {
     }, `confirmTelegram(${telegramId})`);
   }
 
-  // POST /svc/telegram/request — reads the handshake without changing it. The
-  // token travels in the body: request paths end up in auth's access log.
-  async getTelegramRequest(token: string, requestId?: string): Promise<AuthTelegramRequestResponse> {
+  // POST /svc/telegram/request — what the handshake does for this Telegram
+  // account; 409 telegram_already_linked when it cannot join the dashboard
+  // account. The token travels in the body: request paths end up in auth's
+  // access log.
+  async getTelegramRequest(
+    token: string,
+    telegramId: number,
+    requestId?: string,
+  ): Promise<AuthTelegramRequestResponse> {
     return this.withRetry(async () => {
       const { data } = await lastValueFrom(
         this.httpService.post<AuthTelegramRequestResponse>(
           `${this.baseUrl}/svc/telegram/request`,
-          { token },
+          { token, telegram_id: telegramId },
           { headers: this.headers(requestId), timeout: 5000 },
         ),
       );

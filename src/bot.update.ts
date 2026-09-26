@@ -612,7 +612,7 @@ export class BotUpdate {
   private async askDashboardAuth(ctx: Context, token: string): Promise<void> {
     let request: AuthTelegramRequestResponse;
     try {
-      request = await this.accountClient.getTelegramAuthRequest(token);
+      request = await this.accountClient.getTelegramAuthRequest(token, ctx.from.id);
     } catch (err) {
       await this.replyDashboardAuthFailure(ctx, err);
       return;
@@ -621,10 +621,20 @@ export class BotUpdate {
 
     const key = token.slice(0, DASHBOARD_AUTH_KEY_LENGTH);
     const account = request.email ?? request.username;
-    const [question, confirm] =
-      request.flow === 'link'
-        ? [`Привязать этот Telegram к аккаунту ПоискКино${account ? ` ${account}` : ''}?`, '✅ Привязать']
-        : ['Войти в кабинет ПоискКино через этот Telegram?\n\nПодтверждайте, только если вход начали вы.', '✅ Войти'];
+    const named = account ? ` ${account}` : '';
+    let question = 'Войти в кабинет ПоискКино через этот Telegram?\n\nПодтверждайте, только если вход начали вы.';
+    let confirm = '✅ Войти';
+    if (request.flow === 'link' && request.merge) {
+      // Владелец 2026-09-27: «это единый аккаунт после мерджа а не рахные».
+      question =
+        `Объединить аккаунт этого Telegram с аккаунтом ПоискКино${named}?\n\n` +
+        'Получится один аккаунт: входить можно будет и через Telegram, и по почте. Оплаченный тариф сохранится. ' +
+        'Ключ API останется один — тот, которым пользовались последним.';
+      confirm = '✅ Объединить';
+    } else if (request.flow === 'link') {
+      question = `Привязать этот Telegram к аккаунту ПоискКино${named}?`;
+      confirm = '✅ Привязать';
+    }
     await SafeTelegramHelper.safeSend(
       () =>
         ctx.reply(
@@ -700,10 +710,12 @@ export class BotUpdate {
     // Telegram instead of an account remembered before.
     if (result.flow === 'link') delete ctx.session.accountId;
 
-    const message =
-      result.flow === 'link'
-        ? '✅ Telegram успешно привязан к вашему аккаунту!\n\nМожете вернуться в браузер.'
-        : '✅ Вход в кабинет подтверждён.\n\nМожете вернуться в браузер.';
+    let message = '✅ Вход в кабинет подтверждён.\n\nМожете вернуться в браузер.';
+    if (result.merged) {
+      message = '✅ Аккаунты объединены.\n\nМожете вернуться в браузер.';
+    } else if (result.flow === 'link') {
+      message = '✅ Telegram успешно привязан к вашему аккаунту!\n\nМожете вернуться в браузер.';
+    }
 
     await SafeTelegramHelper.safeSend(
       () =>
@@ -714,7 +726,9 @@ export class BotUpdate {
       `Dashboard auth confirmation to ${ctx.chat.id}`,
     );
 
-    this.logger.log(`Dashboard auth confirmed for telegram user ${telegramUser.id} (flow: ${result.flow})`);
+    this.logger.log(
+      `Dashboard auth confirmed for telegram user ${telegramUser.id} (flow: ${result.flow}, merged: ${result.merged})`,
+    );
   }
 
   private isAdmin(ctx: Context): boolean {

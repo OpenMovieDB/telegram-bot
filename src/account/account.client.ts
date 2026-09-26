@@ -180,7 +180,7 @@ export class AccountClient {
   ): Promise<ConfirmTelegramAuthResponseDto> {
     try {
       const data = await this.authClient.confirmTelegram(token, telegramId, telegramUsername || undefined, requestId);
-      return { success: data.success, flow: data.flow };
+      return { success: data.success, flow: data.flow, merged: data.merged === true };
     } catch (err) {
       if (isExpiredHandshake(err)) {
         throw new TelegramAuthTokenExpiredError(token);
@@ -192,14 +192,22 @@ export class AccountClient {
     }
   }
 
-  // What the opened dashboard link does (sign in, or give this Telegram to which
-  // account), read before the person confirms it.
-  async getTelegramAuthRequest(token: string, requestId?: string): Promise<AuthTelegramRequestResponse> {
+  // What the dashboard link opened from this Telegram does (sign in, give this
+  // Telegram to which account, or join the two accounts), read before the
+  // person confirms it. A Telegram that cannot join is refused here.
+  async getTelegramAuthRequest(
+    token: string,
+    telegramId: number,
+    requestId?: string,
+  ): Promise<AuthTelegramRequestResponse> {
     try {
-      return await this.authClient.getTelegramRequest(token, requestId);
+      return await this.authClient.getTelegramRequest(token, telegramId, requestId);
     } catch (err) {
       if (isExpiredHandshake(err)) {
         throw new TelegramAuthTokenExpiredError(token);
+      }
+      if (err instanceof AuthApiError && err.code === 'telegram_already_linked') {
+        throw new TelegramAlreadyLinkedError();
       }
       throw err;
     }

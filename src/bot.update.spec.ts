@@ -50,6 +50,7 @@ describe('BotUpdate — dashboard sign-in and link', () => {
 
     await update.onStart(ctx as any);
 
+    expect(accountClient.getTelegramAuthRequest).toHaveBeenCalledWith(TOKEN, 42);
     expect(accountClient.confirmTelegramAuth).not.toHaveBeenCalled();
     expect(ctx.reply.mock.calls[0][0]).toBe('Привязать этот Telegram к аккаунту ПоискКино owner@example.com?');
     expect(buttons(ctx.reply)).toEqual([
@@ -57,6 +58,46 @@ describe('BotUpdate — dashboard sign-in and link', () => {
       ['Отмена', 'dashboard_auth:no:aaaaaaaaaaaaaaaa'],
     ]);
     expect(ctx.session.dashboardAuthToken).toBe(TOKEN);
+  });
+
+  it('asks to join the accounts when this Telegram has its own account', async () => {
+    const { update, accountClient } = makeBotUpdate();
+    accountClient.getTelegramAuthRequest.mockResolvedValue({ flow: 'link', email: 'owner@example.com', merge: true });
+    const ctx = makeCtx();
+
+    await update.onStart(ctx as any);
+
+    expect(ctx.reply.mock.calls[0][0]).toMatch(
+      /^Объединить аккаунт этого Telegram с аккаунтом ПоискКино owner@example\.com\?/,
+    );
+    expect(buttons(ctx.reply)).toEqual([
+      ['✅ Объединить', 'dashboard_auth:ok:aaaaaaaaaaaaaaaa'],
+      ['Отмена', 'dashboard_auth:no:aaaaaaaaaaaaaaaa'],
+    ]);
+  });
+
+  it('says the Telegram does not fit before asking anything', async () => {
+    const { update, accountClient } = makeBotUpdate();
+    accountClient.getTelegramAuthRequest.mockRejectedValue(new TelegramAlreadyLinkedError());
+    const ctx = makeCtx();
+
+    await update.onStart(ctx as any);
+
+    expect(ctx.reply).toHaveBeenCalledTimes(1);
+    expect(ctx.reply).toHaveBeenCalledWith(
+      '⚠️ Этот Telegram не подходит: он уже привязан к другому аккаунту ПоискКино.',
+    );
+    expect(ctx.session.dashboardAuthToken).toBeUndefined();
+  });
+
+  it('tells that the accounts were joined', async () => {
+    const { update, accountClient } = makeBotUpdate();
+    accountClient.confirmTelegramAuth.mockResolvedValue({ success: true, flow: 'link', merged: true });
+    const ctx = makeCtx({ session: { dashboardAuthToken: TOKEN }, match: ['', 'ok', 'aaaaaaaaaaaaaaaa'] });
+
+    await update.onDashboardAuthAnswer(ctx as any);
+
+    expect(ctx.reply.mock.calls[0][0]).toBe('✅ Аккаунты объединены.\n\nМожете вернуться в браузер.');
   });
 
   it('confirms only on the press and forgets the remembered account after a link', async () => {

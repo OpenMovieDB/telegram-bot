@@ -31,14 +31,18 @@ export interface AuthUserListResponse {
 export interface AuthTelegramConfirmResponse {
   success: boolean;
   flow: 'login' | 'link';
+  // The link made the dashboard account and the account of this Telegram one.
+  merged: boolean;
 }
 
 // POST /svc/telegram/request — what the opened link does, read before
-// the person confirms it. For a link: the account that gets this Telegram.
+// the person confirms it. For a link: the account that gets this Telegram;
+// merge — that account and the account of this Telegram become one.
 export interface AuthTelegramRequestResponse {
   flow: 'login' | 'link';
   email?: string;
   username?: string;
+  merge: boolean;
 }
 
 // POST /svc/users body — telegram-only OR username-only ("external") creation.
