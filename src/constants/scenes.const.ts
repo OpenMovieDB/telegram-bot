@@ -6,9 +6,10 @@ import { DateTime } from 'luxon';
 
 export const SCENES = {
   [CommandEnum.START]: {
-    text: (token: string) =>
-      `Привет! Вот твой токен для работы с API:\n\n<code>${token}</code>\n\nДокументация: <a href="https://poiskkino.dev/documentation">poiskkino.dev/documentation</a>`,
-    buttons: [BUTTONS[CommandEnum.DOCUMENTATION], BUTTONS[CommandEnum.JOIN_CHAT]],
+    text: (tariffs: BillingTariff[]) =>
+      'Привет! Вижу, ты новенький.\n\nЯ выдаю токен к API poiskkino.dev, показываю статистику запросов и меняю тариф.\n\nНаши условия:\n\n' +
+      tariffs.map(tariffLine).join('\n'),
+    buttons: (tariffs: BillingTariff[]) => [...tariffButtons(tariffs), [BUTTONS[CommandEnum.DOCUMENTATION]]],
   },
   [CommandEnum.HOME]: {
     navigateText: 'Выбери действие:',
@@ -125,4 +126,30 @@ export const SCENES = {
     navigateText: 'Что-то пошло не так 😔 Попробуйте ещё раз через пару секунд или нажмите «Домой».',
     navigateButtons: [BUTTONS[CommandEnum.HOME]],
   }),
+};
+
+// The free key's steps and notices: the community chat and the developer channel.
+export const MEMBERSHIP = {
+  chatStep: '<b>Шаг 1 из 2.</b> Вступи в чат сообщества @omdb_dev — там задают вопросы по API и находят ответы.',
+  channelStep: '<b>Шаг 2 из 2.</b> Подпишись на канал разработчика @mdwit0r.',
+  notInChat: 'Тебя пока нет в чате @omdb_dev. Вступи и нажми «проверить».',
+  notInChannel: 'Подписки на @mdwit0r пока нет. Подпишись и нажми «проверить».',
+  token: (apiKey: string, condition?: { tariffName: string; requestsLimit: number }) =>
+    `Готово! Твой токен:\n\n<code>${apiKey}</code>` +
+    (condition
+      ? `\n\n${condition.tariffName}: ${condition.requestsLimit} запросов в сутки. Токен работает, пока ты в чате @omdb_dev и на канале @mdwit0r. Оплатишь любой тариф — условие снимается.`
+      : ''),
+  stopped: (tariffName: string, inChat: boolean, inChannel: boolean) => {
+    const [left, comeBack] =
+      !inChat && !inChannel
+        ? ['из чата @omdb_dev и канала @mdwit0r', 'Вернись в чат и на канал']
+        : !inChat
+        ? ['из чата @omdb_dev', 'Вступи снова']
+        : ['из канала @mdwit0r', 'Подпишись снова'];
+    return (
+      `⚠️ Токен остановлен: ты вышел ${left}.\n\n` +
+      `На ${tariffName} токен работает, пока ты в чате @omdb_dev и на канале @mdwit0r. ${comeBack} — токен заработает. Оплатишь любой тариф — условие снимается.`
+    );
+  },
+  resumed: '✅ Токен снова работает.',
 };

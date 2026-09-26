@@ -12,6 +12,8 @@ import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
 import { AccountClient } from './account/account.client';
 import { AccountResponseDto } from './account/dto/account-response.dto';
 import { TariffService, isFreeTariff } from './tariff/tariff.service';
+import { BUTTONS } from './constants/buttons.const';
+import { CommandEnum } from './enum/command.enum';
 
 @Injectable()
 export class BotService {
@@ -39,18 +41,30 @@ export class BotService {
     );
   }
 
-  async sendPaymentSuccessMessage(chatId: number, tariffName: string, subscriptionEndDate?: Date): Promise<void> {
+  // A payment is the other way to the key: the message carries it, so a new
+  // user who paid first does not have to look for it.
+  async sendPaymentSuccessMessage(
+    chatId: number,
+    tariffName: string,
+    subscriptionEndDate?: Date,
+    apiKey?: string,
+  ): Promise<void> {
     const until = subscriptionEndDate
       ? DateTime.fromJSDate(subscriptionEndDate).toFormat('dd MMMM yyyy', { locale: 'ru' })
       : '∞';
-    const message = `Тариф ${tariffName} успешно оплачен 🎉 \n\nПодписка действует до: ${until}\n\nВы можете продолжить использование бота.`;
+    const header = `Тариф ${tariffName} успешно оплачен 🎉 \n\nПодписка действует до: ${until}\n\n`;
+    const message = apiKey
+      ? `${header}Твой токен:\n<code>${apiKey}</code>`
+      : `${header}Вы можете продолжить использование бота.`;
+    const buttons = apiKey ? [[BUTTONS[CommandEnum.DOCUMENTATION]]] : [];
 
     // Send message with home menu button to trigger scene exit
     await SafeTelegramHelper.safeSend(
       () =>
         this.bot.telegram.sendMessage(chatId, message, {
+          parse_mode: 'HTML',
           reply_markup: {
-            inline_keyboard: [[{ text: '🏠 В главное меню', callback_data: 'home_menu' }]],
+            inline_keyboard: [...buttons, [{ text: '🏠 В главное меню', callback_data: 'home_menu' }]],
           },
         }),
       `Payment success message to chat ${chatId}`,

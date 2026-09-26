@@ -54,8 +54,10 @@ export class BotConfigService implements OnModuleInit {
       this.logger.log('Bot initialized successfully');
 
       // Start polling only after successful connection
-      // Since polling is private, we just launch without checking
-      this.bot.launch().catch((error) => {
+      // Since polling is private, we just launch without checking.
+      // chat_member is not delivered unless asked for: it reports joins and
+      // leaves in the community chat and the developer channel.
+      this.bot.launch({ allowedUpdates: ['message', 'callback_query', 'chat_member'] }).catch((error) => {
         this.logger.error(`Failed to launch bot polling: ${error.message}`);
       });
     } catch (error) {

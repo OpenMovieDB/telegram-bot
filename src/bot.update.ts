@@ -18,6 +18,7 @@ import { ModerationService } from './moderation/moderation.service';
 import { createUnbanConfirmationKeyboard, createUnbanKeyboard } from './moderation/keyboards/moderation.keyboards';
 import { SessionStateService } from './session/session-state.service';
 import { AccountClient, TelegramAuthTokenExpiredError } from './account/account.client';
+import { MembershipService } from './membership/membership.service';
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -36,6 +37,7 @@ export class BotUpdate {
     private readonly moderationService: ModerationService,
     private readonly sessionStateService: SessionStateService,
     private readonly accountClient: AccountClient,
+    private readonly membershipService: MembershipService,
   ) {
     this.adminChatId = Number(configService.get('ADMIN_CHAT_ID'));
   }
@@ -64,8 +66,9 @@ export class BotUpdate {
 
     await this.sessionStateService.clearMessageId(ctx.from.id);
 
+    // Without a key the user starts from the tariffs, the free one included.
     const existing = await this.accountClient.getByTelegramId(ctx.from.id);
-    if (existing) {
+    if (existing && existing.key_state !== 'none') {
       ctx.session.accountId = existing.id;
       await ctx.scene.enter(CommandEnum.HOME);
     } else {
@@ -152,7 +155,7 @@ export class BotUpdate {
   }
 
   @Action(
-    /^(?!unban_|ignore_|modban_|modkeep_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_|home_menu$|back_to_menu$|cancel_pending_payment$).*$/,
+    /^(?!unban_|ignore_|modban_|modkeep_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_|membership_|home_menu$|back_to_menu$|cancel_pending_payment$).*$/,
   )
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
     this.logger.log(ctx);
@@ -199,6 +202,36 @@ export class BotUpdate {
       );
     }
     await ctx.scene.enter(CommandEnum.HOME);
+  }
+
+  // The free key's buttons carry no scene state: a press after a pod restart
+  // works the same.
+  @Action('membership_check')
+  async onMembershipCheck(@Ctx() ctx: Context) {
+    if (ctx.chat?.type !== 'private') return;
+    await this.membershipService.onStepCheck(ctx);
+  }
+
+  @Action('membership_resume')
+  async onMembershipResume(@Ctx() ctx: Context) {
+    if (ctx.chat?.type !== 'private') return;
+    await this.membershipService.onResumeCheck(ctx);
+  }
+
+  @Action('membership_back')
+  async onMembershipBack(@Ctx() ctx: Context) {
+    if (ctx.chat?.type !== 'private') return;
+    await ctx.answerCbQuery();
+    await ctx.scene.enter(CommandEnum.START);
+  }
+
+  @On('chat_member')
+  async onChatMember(@Ctx() ctx: Context & { update: any }) {
+    try {
+      await this.membershipService.onChatMember(ctx.update.chat_member);
+    } catch (e) {
+      this.logger.error(`chat_member ${ctx.update.chat_member?.new_chat_member?.user?.id}: ${(e as Error).message}`);
+    }
   }
 
   @Hears('➕ Создать пользователя')

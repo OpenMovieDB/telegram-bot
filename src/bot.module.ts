@@ -8,6 +8,7 @@ import { BotService } from './bot.service';
 import { BotUpdate } from './bot.update';
 import { BotConfigService } from './bot-config.service';
 import { IssueTokenScene } from './scenes/issue-token.scene';
+import { MembershipService } from './membership/membership.service';
 import { GetAccessScene } from './scenes/get-access.scene';
 import { GetMyTokenScene } from './scenes/get-my-token.scene';
 import { GetRequestStatsScene } from './scenes/get-request-stats.scene';
@@ -87,6 +88,7 @@ import { BillingEventsConsumer } from './nats/billing-events.consumer';
     BotService,
     BotConfigService,
     BotUpdate,
+    MembershipService,
     StartScene,
     HomeScene,
     GetAccessScene,

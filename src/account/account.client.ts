@@ -14,6 +14,7 @@ import {
   AccountListFilter,
   AccountByTokenWire,
   AccountUsageDto,
+  MembershipCheckWire,
 } from './dto/account-response.dto';
 import { ConfirmTelegramAuthResponseDto } from './dto/confirm-telegram-auth-response.dto';
 import { AuthApiError, AuthClient } from '../auth/auth.client';
@@ -295,6 +296,22 @@ export class AccountClient {
     }, `getUsage(${accountId})`);
   }
 
+  // account asks Telegram about the community chat and the developer channel and
+  // issues, stops or resumes the free key accordingly — the bot only renders the
+  // answer. 503 means Telegram did not answer; retried like any 5xx.
+  async checkMembership(accountId: string, requestId?: string): Promise<MembershipCheckWire> {
+    return this.withRetry(async () => {
+      const { data } = await lastValueFrom(
+        this.httpService.post<MembershipCheckWire>(
+          `${this.baseUrl}/svc/accounts/${accountId}/membership/check`,
+          {},
+          { headers: this.headers(requestId), timeout: 15000 },
+        ),
+      );
+      return data;
+    }, `checkMembership(${accountId})`);
+  }
+
   async rotateToken(accountId: string, requestId?: string): Promise<RotateTokenResponseDto> {
     return this.withRetry(async () => {
       const { data } = await lastValueFrom(
@@ -336,6 +353,7 @@ export class AccountClient {
       telegram_username: user.telegram_username ?? null,
       tariff: this.toTariff(acct),
       subscription_end: acct.subscription?.ends_at ?? null,
+      key_state: acct.key_state,
     };
   }
 
@@ -369,6 +387,7 @@ export class AccountClient {
       telegram_username: null,
       tariff: this.toTariff(acct),
       subscription_end: acct.subscription?.ends_at ?? null,
+      key_state: acct.key_state,
     };
   }
 

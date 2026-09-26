@@ -212,7 +212,7 @@ export class BillingEventsConsumer implements OnModuleInit, OnApplicationShutdow
     const subscriptionEnd = account.subscription_end ? new Date(account.subscription_end) : undefined;
 
     await this.sessionStateService.setExitPaymentScene(telegramId);
-    await this.botService.sendPaymentSuccessMessage(telegramId, tariffName, subscriptionEnd);
+    await this.botService.sendPaymentSuccessMessage(telegramId, tariffName, subscriptionEnd, account.api_key);
     await this.botService.sendPaymentSuccessMessageToAdmin(
       account.telegram_username || account.username || String(telegramId),
       tariffName,

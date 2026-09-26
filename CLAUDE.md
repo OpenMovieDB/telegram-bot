@@ -45,6 +45,7 @@ Payment/subscription outcomes flow the other way: billing's transactional outbox
 5. **BillingEventsConsumer** (`src/nats/billing-events.consumer.ts`) — durable JetStream consumer for `billing.payment.{paid,failed}` + `billing.subscription.{expiring,expired}`; resolves account UUID → telegram_id and notifies. Disabled (with a warning) when `NATS_URL` is unset.
 6. **SafeTelegramHelper** (`src/helpers/safe-telegram.helper.ts`) — wraps Telegram API calls (retry + timeout). Never call `bot.telegram.*` directly.
 7. **ModerationService** (`src/moderation/`) — group spam gate; resolves users via account **read-only** (`getByTelegramId`, never upserts); unban registers via upsert.
+8. **MembershipService** (`src/membership/`) — the free key's two steps (community chat, developer channel) for accounts account marks with the condition. account decides (`key_state` none/active/stopped on the entitlement, `POST /svc/accounts/:id/membership/check`); the bot only renders: `/start` without a key → START (tariffs), free tariff → steps in the same message, `membership_*` buttons are global actions, `chat_member` updates (enabled via `allowedUpdates`) → a notice only on active→stopped and stopped→active.
 
 ## Important Conventions
 

@@ -12,6 +12,11 @@ export interface AccountTariffDto {
   requests_limit: number;
 }
 
+// none — no key yet (a new free account that has not joined the chat and the
+// channel); active — the key works; stopped — the key exists but the free
+// account left the chat or the channel. api_key is sent only when active.
+export type KeyState = 'none' | 'active' | 'stopped';
+
 export interface AccountSubscriptionWire {
   active: boolean;
   started_at?: string | null;
@@ -28,7 +33,21 @@ export interface AccountEntitlementWire {
   tariff?: AccountTariffDto;
   subscription?: AccountSubscriptionWire;
   api_key?: string;
+  key_state?: KeyState;
   created_at?: string;
+}
+
+// POST /svc/accounts/:id/membership/check — account asks Telegram whether the
+// user is in the community chat and the developer channel. key_state_before
+// differs from key_state exactly on the check that stopped the key or made it
+// work (or issued it).
+export interface MembershipCheckWire {
+  membership_required: boolean;
+  telegram_linked: boolean;
+  in_chat: boolean;
+  in_channel: boolean;
+  key_state: KeyState;
+  key_state_before: KeyState;
 }
 
 // GET /svc/accounts/by-token response (flat, token-centric).
@@ -67,6 +86,7 @@ export interface AccountResponseDto {
   telegram_username?: string | null;
   tariff: AccountTariffDto;
   subscription_end?: string | null;
+  key_state?: KeyState;
 }
 
 export interface AccountListDto {

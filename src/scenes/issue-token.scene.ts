@@ -5,10 +5,11 @@ import { Ctx, Scene, SceneEnter } from 'nestjs-telegraf';
 import { SCENES } from '../constants/scenes.const';
 import { Markup } from 'telegraf';
 import { Context } from '../interfaces/context.interface';
+import { MembershipService } from '../membership/membership.service';
 
 @Scene(CommandEnum.ISSUE_TOKEN)
 export class IssueTokenScene extends AbstractScene {
-  constructor(private readonly accountClient: AccountClient) {
+  constructor(private readonly accountClient: AccountClient, private readonly membershipService: MembershipService) {
     super();
   }
 
@@ -16,10 +17,14 @@ export class IssueTokenScene extends AbstractScene {
   async onSceneEnter(@Ctx() ctx: Context) {
     const scene = SCENES[CommandEnum.ISSUE_TOKEN];
     try {
-      // Idempotent: a new account gets the default (free) tariff and a token;
-      // an existing one just returns its token.
       const account = await this.accountClient.upsertByTelegramId(ctx.from.id, ctx.from.username);
       ctx.session.accountId = account.id;
+
+      // A new account holds the free key only after the chat and the channel.
+      if (account.key_state && account.key_state !== 'active') {
+        await this.membershipService.startSteps(ctx, account.id);
+        return;
+      }
 
       await ctx.replyWithHTML(scene.text(account.api_key), Markup.keyboard(scene.navigateButtons).resize());
     } catch (e) {

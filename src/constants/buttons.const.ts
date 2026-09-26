@@ -28,6 +28,16 @@ export const BUTTONS = {
   ),
 };
 
+// Free-key steps: the community chat (BUTTONS JOIN_CHAT) and the developer
+// channel. The callbacks are handled globally in bot.update.ts — no scene state,
+// the press works after a pod restart too.
+export const MEMBERSHIP_BUTTONS = {
+  JOIN_CHANNEL: Markup.button.url('подписаться на канал 📢', 'https://t.me/mdwit0r'),
+  CHECK: Markup.button.callback('✅ проверить', 'membership_check'),
+  RESUME: Markup.button.callback('✅ проверить', 'membership_resume'),
+  BACK: Markup.button.callback('⬅ назад', 'membership_back'),
+};
+
 // Keyboard buttons for admin menu (must be Markup.button.text for keyboard)
 export const ADMIN_KEYBOARD_BUTTONS = {
   CREATE_USER: Markup.button.text('➕ Создать пользователя'),

@@ -17,12 +17,15 @@ export function tariffTitle(tariff: BillingTariff): string {
   return `${tariff.is_popular ? '⭐ ' : ''}${tariff.display_name}`;
 }
 
+// The free tariff is paid for with the community chat and the developer channel.
+const FREE_PRICE_LABEL = 'Бесплатно: участие в чате и подписка на канал';
+
 // Price label that works for ANY price configuration: free, monthly, or a
 // tariff offered only in longer periods (no months=1 row).
 export function priceLabel(tariff: BillingTariff): string {
-  if (isFreeTariff(tariff)) return 'Всегда бесплатно';
+  if (isFreeTariff(tariff)) return FREE_PRICE_LABEL;
   const periods = offeredPeriods(tariff);
-  if (!periods.length) return 'Всегда бесплатно';
+  if (!periods.length) return FREE_PRICE_LABEL;
   const monthly = periods.find((period) => period.months === 1);
   if (monthly) return `${monthly.priceRub} руб./месяц`;
   return `от ${periods[0].priceRub} руб. за ${periods[0].months} мес.`;

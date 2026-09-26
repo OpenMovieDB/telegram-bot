@@ -51,8 +51,10 @@ describe('tariff-display.util', () => {
     expect(tariffLine(tariff({ description: '' }))).not.toContain('<i></i>');
   });
 
-  it('renders a free tariff as "Всегда бесплатно"', () => {
-    expect(tariffLine(tariff({ display_name: 'Демо', is_default: true, prices: [] }))).toContain('Всегда бесплатно');
+  it('prices a free tariff with the chat and the channel', () => {
+    expect(tariffLine(tariff({ display_name: 'Демо', is_default: true, prices: [] }))).toContain(
+      'Бесплатно: участие в чате и подписка на канал',
+    );
   });
 
   it('prices a tariff sold only in long periods as "от …"', () => {
