@@ -234,27 +234,30 @@ export class AuthClient {
     }, `confirmTelegram(${telegramId})`);
   }
 
-  // GET /svc/telegram/requests/{token} — reads the handshake without changing it.
+  // POST /svc/telegram/request — reads the handshake without changing it. The
+  // token travels in the body: request paths end up in auth's access log.
   async getTelegramRequest(token: string, requestId?: string): Promise<AuthTelegramRequestResponse> {
     return this.withRetry(async () => {
       const { data } = await lastValueFrom(
-        this.httpService.get<AuthTelegramRequestResponse>(`${this.baseUrl}/svc/telegram/requests/${token}`, {
-          headers: this.headers(requestId),
-          timeout: 5000,
-        }),
+        this.httpService.post<AuthTelegramRequestResponse>(
+          `${this.baseUrl}/svc/telegram/request`,
+          { token },
+          { headers: this.headers(requestId), timeout: 5000 },
+        ),
       );
       return data;
     }, 'getTelegramRequest');
   }
 
-  // POST /svc/telegram/requests/{token}/decline — the person pressed «Отмена».
+  // POST /svc/telegram/decline — the person pressed «Отмена».
   async declineTelegramRequest(token: string, requestId?: string): Promise<void> {
     await this.withRetry(async () => {
       await lastValueFrom(
-        this.httpService.post(`${this.baseUrl}/svc/telegram/requests/${token}/decline`, undefined, {
-          headers: this.headers(requestId),
-          timeout: 5000,
-        }),
+        this.httpService.post(
+          `${this.baseUrl}/svc/telegram/decline`,
+          { token },
+          { headers: this.headers(requestId), timeout: 5000 },
+        ),
       );
     }, 'declineTelegramRequest');
   }
