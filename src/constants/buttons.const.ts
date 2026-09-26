@@ -33,7 +33,8 @@ export const BUTTONS = {
 // the press works after a pod restart too.
 export const MEMBERSHIP_BUTTONS = {
   JOIN_CHANNEL: Markup.button.url('подписаться на канал 📢', 'https://t.me/mdwit0r'),
-  CHECK: Markup.button.callback('✅ проверить', 'membership_check'),
+  CHECK_CHAT: Markup.button.callback('✅ проверить', 'membership_check:chat'),
+  CHECK_CHANNEL: Markup.button.callback('✅ проверить', 'membership_check:channel'),
   RESUME: Markup.button.callback('✅ проверить', 'membership_resume'),
   BACK: Markup.button.callback('⬅ назад', 'membership_back'),
 };

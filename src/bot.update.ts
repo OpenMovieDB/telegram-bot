@@ -18,7 +18,7 @@ import { ModerationService } from './moderation/moderation.service';
 import { createUnbanConfirmationKeyboard, createUnbanKeyboard } from './moderation/keyboards/moderation.keyboards';
 import { SessionStateService } from './session/session-state.service';
 import { AccountClient, TelegramAuthTokenExpiredError } from './account/account.client';
-import { MembershipService } from './membership/membership.service';
+import { MembershipService, MembershipStep } from './membership/membership.service';
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -206,10 +206,10 @@ export class BotUpdate {
 
   // The free key's buttons carry no scene state: a press after a pod restart
   // works the same.
-  @Action('membership_check')
-  async onMembershipCheck(@Ctx() ctx: Context) {
+  @Action(/^membership_check(?::(chat|channel))?$/)
+  async onMembershipCheck(@Ctx() ctx: Context & { match: RegExpMatchArray }) {
     if (ctx.chat?.type !== 'private') return;
-    await this.membershipService.onStepCheck(ctx);
+    await this.membershipService.onStepCheck(ctx, ctx.match[1] as MembershipStep | undefined);
   }
 
   @Action('membership_resume')

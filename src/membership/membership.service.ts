@@ -12,6 +12,8 @@ import { MembershipCheckWire } from '../account/dto/account-response.dto';
 import { SafeTelegramHelper } from '../helpers/safe-telegram.helper';
 import { accountTariffName } from '../utils/tariff-display.util';
 
+export type MembershipStep = 'chat' | 'channel';
+
 export interface MembershipScreen {
   text: string;
   keyboard: ReturnType<typeof Markup.inlineKeyboard>;
@@ -38,8 +40,11 @@ export class MembershipService {
   }
 
   // «проверить» under a step. The check covers both conditions, so a user who
-  // left the chat between the steps is sent back to step 1.
-  async onStepCheck(ctx: Context): Promise<void> {
+  // left the chat between the steps is sent back to step 1. The alert names what
+  // is missing only when the pressed step is not passed; a passed chat step just
+  // moves on to the channel. Buttons sent before the step was in their data
+  // carry none and alert on anything missing.
+  async onStepCheck(ctx: Context, step?: MembershipStep): Promise<void> {
     const account = await this.accountClient.getByTelegramId(ctx.from.id);
     if (!account) {
       await ctx.answerCbQuery();
@@ -49,7 +54,8 @@ export class MembershipService {
     ctx.session.accountId = account.id;
 
     const check = await this.accountClient.checkMembership(account.id);
-    if (check.key_state === 'active') {
+    const passed = check.key_state === 'active' || (step === 'chat' && check.in_chat);
+    if (passed) {
       await ctx.answerCbQuery();
     } else {
       await ctx.answerCbQuery(unmetAlert(check), { show_alert: true });
@@ -122,7 +128,7 @@ export class MembershipService {
         text: MEMBERSHIP.chatStep,
         keyboard: Markup.inlineKeyboard([
           [BUTTONS[CommandEnum.JOIN_CHAT]],
-          [MEMBERSHIP_BUTTONS.CHECK],
+          [MEMBERSHIP_BUTTONS.CHECK_CHAT],
           [MEMBERSHIP_BUTTONS.BACK],
         ]),
       };
@@ -132,7 +138,7 @@ export class MembershipService {
         text: MEMBERSHIP.channelStep,
         keyboard: Markup.inlineKeyboard([
           [MEMBERSHIP_BUTTONS.JOIN_CHANNEL],
-          [MEMBERSHIP_BUTTONS.CHECK],
+          [MEMBERSHIP_BUTTONS.CHECK_CHANNEL],
           [MEMBERSHIP_BUTTONS.BACK],
         ]),
       };

@@ -61,7 +61,7 @@ describe('MembershipService', () => {
 
       const [text, extra] = ctx.editMessageText.mock.calls[0];
       expect(text).toContain('Шаг 1 из 2');
-      expect(buttons(extra)).toEqual(['https://t.me/+hdOSHbV8SJo2NmJi', 'membership_check', 'membership_back']);
+      expect(buttons(extra)).toEqual(['https://t.me/+hdOSHbV8SJo2NmJi', 'membership_check:chat', 'membership_back']);
     });
 
     it('skips the chat step for a user already in the chat', async () => {
@@ -73,7 +73,7 @@ describe('MembershipService', () => {
 
       const [text, extra] = ctx.editMessageText.mock.calls[0];
       expect(text).toContain('Шаг 2 из 2');
-      expect(buttons(extra)).toEqual(['https://t.me/mdwit0r', 'membership_check', 'membership_back']);
+      expect(buttons(extra)).toEqual(['https://t.me/mdwit0r', 'membership_check:channel', 'membership_back']);
     });
 
     it('shows the key with its condition once both are met', async () => {
@@ -88,7 +88,49 @@ describe('MembershipService', () => {
       expect(buttons(extra)).toEqual(['https://poiskkino.dev/documentation', 'HOME']);
     });
 
-    it('alerts which condition is missing on «проверить»', async () => {
+    it('moves from a passed chat step to the channel without an alert', async () => {
+      accountClient.checkMembership.mockResolvedValue(
+        check({ in_channel: false, key_state: 'none', key_state_before: 'none' }),
+      );
+      const ctx = makeCtx();
+      await service.onStepCheck(ctx as any, 'chat');
+
+      expect(ctx.answerCbQuery).toHaveBeenCalledWith();
+      expect(ctx.editMessageText.mock.calls[0][0]).toContain('Шаг 2 из 2');
+    });
+
+    it('alerts when the chat step is not passed', async () => {
+      accountClient.checkMembership.mockResolvedValue(
+        check({ in_chat: false, in_channel: false, key_state: 'none', key_state_before: 'none' }),
+      );
+      const ctx = makeCtx();
+      await service.onStepCheck(ctx as any, 'chat');
+
+      expect(ctx.answerCbQuery).toHaveBeenCalledWith(expect.stringContaining('@omdb_dev'), { show_alert: true });
+    });
+
+    it('alerts when the channel step is not passed', async () => {
+      accountClient.checkMembership.mockResolvedValue(
+        check({ in_channel: false, key_state: 'none', key_state_before: 'none' }),
+      );
+      const ctx = makeCtx();
+      await service.onStepCheck(ctx as any, 'channel');
+
+      expect(ctx.answerCbQuery).toHaveBeenCalledWith(expect.stringContaining('@mdwit0r'), { show_alert: true });
+    });
+
+    it('alerts and returns to the chat when the user left it before the channel step', async () => {
+      accountClient.checkMembership.mockResolvedValue(
+        check({ in_chat: false, in_channel: false, key_state: 'none', key_state_before: 'none' }),
+      );
+      const ctx = makeCtx();
+      await service.onStepCheck(ctx as any, 'channel');
+
+      expect(ctx.answerCbQuery).toHaveBeenCalledWith(expect.stringContaining('@omdb_dev'), { show_alert: true });
+      expect(ctx.editMessageText.mock.calls[0][0]).toContain('Шаг 1 из 2');
+    });
+
+    it('alerts on anything missing under a button sent without the step', async () => {
       accountClient.checkMembership.mockResolvedValue(
         check({ in_channel: false, key_state: 'none', key_state_before: 'none' }),
       );
