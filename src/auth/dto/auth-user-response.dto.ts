@@ -33,6 +33,14 @@ export interface AuthTelegramConfirmResponse {
   flow: 'login' | 'link';
 }
 
+// GET /svc/telegram/requests/{token} — what the opened link does, read before
+// the person confirms it. For a link: the account that gets this Telegram.
+export interface AuthTelegramRequestResponse {
+  flow: 'login' | 'link';
+  email?: string;
+  username?: string;
+}
+
 // POST /svc/users body — telegram-only OR username-only ("external") creation.
 export interface AuthCreateUserInput {
   email?: string;

@@ -15,6 +15,8 @@ export interface Context extends BaseContext {
 interface SessionData extends Scenes.SceneSession<SceneSession> {
   messageId?: number;
   accountId?: string;
+  // The dashboard sign-in or link waiting for the person's «Войти»/«Привязать».
+  dashboardAuthToken?: string;
 }
 
 interface SceneSession extends Scenes.SceneSessionData {

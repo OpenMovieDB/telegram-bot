@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import {
   AuthCreateUserInput,
   AuthTelegramConfirmResponse,
+  AuthTelegramRequestResponse,
   AuthUserListFilter,
   AuthUserListResponse,
   AuthUserResponse,
@@ -231,5 +232,30 @@ export class AuthClient {
       );
       return data;
     }, `confirmTelegram(${telegramId})`);
+  }
+
+  // GET /svc/telegram/requests/{token} — reads the handshake without changing it.
+  async getTelegramRequest(token: string, requestId?: string): Promise<AuthTelegramRequestResponse> {
+    return this.withRetry(async () => {
+      const { data } = await lastValueFrom(
+        this.httpService.get<AuthTelegramRequestResponse>(`${this.baseUrl}/svc/telegram/requests/${token}`, {
+          headers: this.headers(requestId),
+          timeout: 5000,
+        }),
+      );
+      return data;
+    }, 'getTelegramRequest');
+  }
+
+  // POST /svc/telegram/requests/{token}/decline — the person pressed «Отмена».
+  async declineTelegramRequest(token: string, requestId?: string): Promise<void> {
+    await this.withRetry(async () => {
+      await lastValueFrom(
+        this.httpService.post(`${this.baseUrl}/svc/telegram/requests/${token}/decline`, undefined, {
+          headers: this.headers(requestId),
+          timeout: 5000,
+        }),
+      );
+    }, 'declineTelegramRequest');
   }
 }

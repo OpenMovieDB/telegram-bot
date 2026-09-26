@@ -18,7 +18,7 @@ import {
 } from './dto/account-response.dto';
 import { ConfirmTelegramAuthResponseDto } from './dto/confirm-telegram-auth-response.dto';
 import { AuthApiError, AuthClient } from '../auth/auth.client';
-import { AuthUserResponse } from '../auth/dto/auth-user-response.dto';
+import { AuthTelegramRequestResponse, AuthUserResponse } from '../auth/dto/auth-user-response.dto';
 
 export class TelegramAuthTokenExpiredError extends Error {
   constructor(public readonly token: string) {
@@ -27,13 +27,17 @@ export class TelegramAuthTokenExpiredError extends Error {
   }
 }
 
-// The Telegram account opened for a dashboard link is another account's only
-// way in, so auth keeps it there.
-export class TelegramOnlyLoginError extends Error {
+// The Telegram account opened for a dashboard link belongs to another account;
+// auth keeps it there.
+export class TelegramAlreadyLinkedError extends Error {
   constructor() {
-    super('telegram account is the only way into another account');
-    this.name = 'TelegramOnlyLoginError';
+    super('telegram account belongs to another account');
+    this.name = 'TelegramAlreadyLinkedError';
   }
+}
+
+function isExpiredHandshake(err: unknown): boolean {
+  return err instanceof AuthApiError && (err.status === 410 || err.status === 404);
 }
 
 // AccountApiError mirrors account-service's `{error, message}` envelope so
@@ -178,13 +182,36 @@ export class AccountClient {
       const data = await this.authClient.confirmTelegram(token, telegramId, telegramUsername || undefined, requestId);
       return { success: data.success, flow: data.flow };
     } catch (err) {
-      if (err instanceof AuthApiError && (err.status === 410 || err.status === 404)) {
+      if (isExpiredHandshake(err)) {
         throw new TelegramAuthTokenExpiredError(token);
       }
       if (err instanceof AuthApiError && err.code === 'telegram_already_linked') {
-        throw new TelegramOnlyLoginError();
+        throw new TelegramAlreadyLinkedError();
       }
       throw err;
+    }
+  }
+
+  // What the opened dashboard link does (sign in, or give this Telegram to which
+  // account), read before the person confirms it.
+  async getTelegramAuthRequest(token: string, requestId?: string): Promise<AuthTelegramRequestResponse> {
+    try {
+      return await this.authClient.getTelegramRequest(token, requestId);
+    } catch (err) {
+      if (isExpiredHandshake(err)) {
+        throw new TelegramAuthTokenExpiredError(token);
+      }
+      throw err;
+    }
+  }
+
+  // The person refused the sign-in or link: the waiting dashboard stops at once.
+  // An expired link has nothing left to refuse.
+  async declineTelegramAuth(token: string, requestId?: string): Promise<void> {
+    try {
+      await this.authClient.declineTelegramRequest(token, requestId);
+    } catch (err) {
+      if (!isExpiredHandshake(err)) throw err;
     }
   }
 

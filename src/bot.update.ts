@@ -1,6 +1,6 @@
 import { Logger, UseFilters, UseInterceptors } from '@nestjs/common';
 import { Action, Command, Ctx, Hears, InjectBot, On, Start, Update } from 'nestjs-telegraf';
-import { Telegraf } from 'telegraf';
+import { Markup, Telegraf } from 'telegraf';
 import { BotService } from './bot.service';
 import { BOT_NAME } from './constants/bot-name.const';
 import { ResponseTimeInterceptor } from './interceptors/response-time-interceptor.service';
@@ -17,8 +17,13 @@ import { SafeTelegramHelper } from './helpers/safe-telegram.helper';
 import { ModerationService } from './moderation/moderation.service';
 import { createUnbanConfirmationKeyboard, createUnbanKeyboard } from './moderation/keyboards/moderation.keyboards';
 import { SessionStateService } from './session/session-state.service';
-import { AccountClient, TelegramAuthTokenExpiredError, TelegramOnlyLoginError } from './account/account.client';
+import { AccountClient, TelegramAlreadyLinkedError, TelegramAuthTokenExpiredError } from './account/account.client';
+import { ConfirmTelegramAuthResponseDto } from './account/dto/confirm-telegram-auth-response.dto';
+import { AuthTelegramRequestResponse } from './auth/dto/auth-user-response.dto';
 import { MembershipService, MembershipStep } from './membership/membership.service';
+
+// Callback data holds at most 64 bytes: the buttons carry the token's start.
+const DASHBOARD_AUTH_KEY_LENGTH = 16;
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -60,8 +65,8 @@ export class BotUpdate {
 
     const args = ctx.state?.command?.args;
     if (args && args.length === 1 && /^[0-9a-f]{64}$/i.test(args[0])) {
-      const handled = await this.handleDashboardAuth(ctx, args[0]);
-      if (handled) return;
+      await this.askDashboardAuth(ctx, args[0]);
+      return;
     }
 
     await this.sessionStateService.clearMessageId(ctx.from.id);
@@ -155,7 +160,7 @@ export class BotUpdate {
   }
 
   @Action(
-    /^(?!unban_|ignore_|modban_|modkeep_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_|membership_|home_menu$|back_to_menu$|cancel_pending_payment$).*$/,
+    /^(?!unban_|ignore_|modban_|modkeep_|clear_cache_|tariff_|months_|page_|user_|select_tariff_|new_tariff_months_|extend_|back_user_|show_token_|change_token_|change_tariff_|extend_subscription_|back_to_user_|membership_|dashboard_auth:|home_menu$|back_to_menu$|cancel_pending_payment$).*$/,
   )
   async onAnswer(@Ctx() ctx: SceneContext & { update: any }) {
     this.logger.log(ctx);
@@ -600,13 +605,86 @@ export class BotUpdate {
     }
   }
 
-  // Confirms a dashboard login or Telegram-link via account-service RPC.
-  // The bot never touches account's cache directly anymore — the JSON
-  // contract for the pending state lives entirely inside account; the bot
-  // only sends the Telegram identity it just observed.
-  private async handleDashboardAuth(ctx: Context & { update: any }, token: string): Promise<boolean> {
+  // A dashboard sign-in or link runs only on the person's press (владелец
+  // 2026-09-27: «подтверждение в боте нужно»): a link sent by someone else would
+  // otherwise sign them into this Telegram's account or take this Telegram into
+  // theirs. The question names the account a link gives this Telegram to.
+  private async askDashboardAuth(ctx: Context, token: string): Promise<void> {
+    let request: AuthTelegramRequestResponse;
+    try {
+      request = await this.accountClient.getTelegramAuthRequest(token);
+    } catch (err) {
+      await this.replyDashboardAuthFailure(ctx, err);
+      return;
+    }
+    ctx.session.dashboardAuthToken = token;
+
+    const key = token.slice(0, DASHBOARD_AUTH_KEY_LENGTH);
+    const account = request.email ?? request.username;
+    const [question, confirm] =
+      request.flow === 'link'
+        ? [`Привязать этот Telegram к аккаунту ПоискКино${account ? ` ${account}` : ''}?`, '✅ Привязать']
+        : ['Войти в кабинет ПоискКино через этот Telegram?\n\nПодтверждайте, только если вход начали вы.', '✅ Войти'];
+    await SafeTelegramHelper.safeSend(
+      () =>
+        ctx.reply(
+          question,
+          Markup.inlineKeyboard([
+            [
+              Markup.button.callback(confirm, `dashboard_auth:ok:${key}`),
+              Markup.button.callback('Отмена', `dashboard_auth:no:${key}`),
+            ],
+          ]),
+        ),
+      `Dashboard auth question to ${ctx.chat.id}`,
+    );
+  }
+
+  // The buttons carry the start of the token: an answer to an older question
+  // never confirms a newer link.
+  @Action(/^dashboard_auth:(ok|no):([0-9a-f]+)$/i)
+  async onDashboardAuthAnswer(@Ctx() ctx: Context & { match: RegExpMatchArray }) {
+    if (ctx.chat?.type !== 'private') return;
+    await ctx.answerCbQuery().catch(() => undefined);
+    await SafeTelegramHelper.safeSend(
+      () => ctx.editMessageReplyMarkup(undefined),
+      `Dashboard auth buttons removed for ${ctx.chat.id}`,
+    );
+
+    const [, answer, key] = ctx.match;
+    const token = ctx.session.dashboardAuthToken;
+    if (!token?.startsWith(key)) {
+      await this.replyDashboardAuthFailure(ctx, new TelegramAuthTokenExpiredError(key));
+      return;
+    }
+    delete ctx.session.dashboardAuthToken;
+
+    if (answer === 'ok') {
+      await this.confirmDashboardAuth(ctx, token);
+      return;
+    }
+    await this.accountClient.declineTelegramAuth(token);
+    await SafeTelegramHelper.safeSend(() => ctx.reply('Отменено.'), `Dashboard auth declined by ${ctx.chat.id}`);
+  }
+
+  private async replyDashboardAuthFailure(ctx: Context, err: unknown): Promise<void> {
+    let text = '⚠️ Не удалось подтвердить авторизацию. Попробуйте через минуту или начните заново с дашборда.';
+    if (err instanceof TelegramAuthTokenExpiredError) {
+      text =
+        '⚠️ Ссылка для авторизации в личном кабинете истекла или уже использована.\n\nОткройте кабинет в браузере и попробуйте снова.';
+    } else if (err instanceof TelegramAlreadyLinkedError) {
+      text = '⚠️ Этот Telegram не подходит: он уже привязан к другому аккаунту ПоискКино.';
+    } else {
+      this.logger.error(`Dashboard auth failed for telegram user ${ctx.from.id}: ${(err as Error).message}`);
+    }
+    await SafeTelegramHelper.safeSend(() => ctx.reply(text), `Dashboard auth failure to ${ctx.chat.id}`);
+  }
+
+  // Confirms a dashboard login or Telegram-link in auth with the Telegram
+  // identity the bot just observed.
+  private async confirmDashboardAuth(ctx: Context, token: string): Promise<void> {
     const telegramUser = ctx.from;
-    let result;
+    let result: ConfirmTelegramAuthResponseDto;
     try {
       result = await this.accountClient.confirmTelegramAuth(
         token,
@@ -615,41 +693,12 @@ export class BotUpdate {
         telegramUser.first_name ?? '',
       );
     } catch (err) {
-      if (err instanceof TelegramAuthTokenExpiredError) {
-        await SafeTelegramHelper.safeSend(
-          () =>
-            ctx.reply(
-              '⚠️ Ссылка для авторизации в личном кабинете истекла или уже использована.\n\nОткройте кабинет в браузере и попробуйте снова.',
-              { parse_mode: 'HTML' },
-            ),
-          `Dashboard auth expired to ${ctx.chat.id}`,
-        );
-        return true;
-      }
-      if (err instanceof TelegramOnlyLoginError) {
-        await SafeTelegramHelper.safeSend(
-          () =>
-            ctx.reply(
-              '⚠️ Telegram не привязан: он единственный вход в другой аккаунт ПоискКино.\n\nВ тот аккаунт можно войти кнопкой «Войти через Telegram» на странице входа.',
-              { parse_mode: 'HTML' },
-            ),
-          `Dashboard link refused to ${ctx.chat.id}`,
-        );
-        return true;
-      }
-      this.logger.error(`confirmTelegramAuth failed for telegram user ${telegramUser.id}: ${(err as Error).message}`);
-      await SafeTelegramHelper.safeSend(
-        () =>
-          ctx.reply('⚠️ Не удалось подтвердить авторизацию. Попробуйте через минуту или начните заново с дашборда.', {
-            parse_mode: 'HTML',
-          }),
-        `Dashboard auth transient to ${ctx.chat.id}`,
-      );
-      return true;
+      await this.replyDashboardAuthFailure(ctx, err);
+      return;
     }
 
-    // A link may have taken this Telegram off another account: the next action
-    // resolves the account by Telegram again instead of the remembered one.
+    // A link gives this Telegram an account: the next action resolves it by
+    // Telegram instead of an account remembered before.
     if (result.flow === 'link') delete ctx.session.accountId;
 
     const message =
@@ -657,7 +706,6 @@ export class BotUpdate {
         ? '✅ Telegram успешно привязан к вашему аккаунту!\n\nМожете вернуться в браузер.'
         : '✅ Авторизация в личном кабинете подтверждена!\n\nМожете вернуться в браузер.';
 
-    const { Markup } = await import('telegraf');
     await SafeTelegramHelper.safeSend(
       () =>
         ctx.reply(message, {
@@ -668,7 +716,6 @@ export class BotUpdate {
     );
 
     this.logger.log(`Dashboard auth confirmed for telegram user ${telegramUser.id} (flow: ${result.flow})`);
-    return true;
   }
 
   private isAdmin(ctx: Context): boolean {

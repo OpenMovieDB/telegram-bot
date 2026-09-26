@@ -2,8 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import {
   AccountApiError,
   AccountClient,
+  TelegramAlreadyLinkedError,
   TelegramAuthTokenExpiredError,
-  TelegramOnlyLoginError,
 } from './account.client';
 import { AuthApiError, AuthClient } from '../auth/auth.client';
 import { HttpService } from '@nestjs/axios';
@@ -82,6 +82,8 @@ describe('AccountClient (composition facade)', () => {
             linkTelegram: jest.fn(),
             patchTelegram: jest.fn(),
             confirmTelegram: jest.fn(),
+            getTelegramRequest: jest.fn(),
+            declineTelegramRequest: jest.fn(),
           },
         },
       ],
@@ -211,12 +213,34 @@ describe('AccountClient (composition facade)', () => {
       );
     });
 
-    it('maps telegram_already_linked to TelegramOnlyLoginError', async () => {
+    it('maps telegram_already_linked to TelegramAlreadyLinkedError', async () => {
       authClient.confirmTelegram.mockRejectedValue(new AuthApiError('telegram_already_linked', 409, 'linked'));
 
       await expect(client.confirmTelegramAuth(VALID_TOKEN, 12345, '', '')).rejects.toBeInstanceOf(
-        TelegramOnlyLoginError,
+        TelegramAlreadyLinkedError,
       );
+    });
+  });
+
+  describe('getTelegramAuthRequest / declineTelegramAuth', () => {
+    const VALID_TOKEN = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
+    it('maps an expired link to TelegramAuthTokenExpiredError', async () => {
+      authClient.getTelegramRequest.mockRejectedValue(new AuthApiError('telegram_auth_expired', 410, 'gone'));
+
+      await expect(client.getTelegramAuthRequest(VALID_TOKEN)).rejects.toBeInstanceOf(TelegramAuthTokenExpiredError);
+    });
+
+    it('declining an expired link is not an error', async () => {
+      authClient.declineTelegramRequest.mockRejectedValue(new AuthApiError('telegram_auth_expired', 410, 'gone'));
+
+      await expect(client.declineTelegramAuth(VALID_TOKEN)).resolves.toBeUndefined();
+    });
+
+    it('surfaces a failed decline', async () => {
+      authClient.declineTelegramRequest.mockRejectedValue(new AuthApiError('internal', 500, 'down'));
+
+      await expect(client.declineTelegramAuth(VALID_TOKEN)).rejects.toBeInstanceOf(AuthApiError);
     });
   });
 
