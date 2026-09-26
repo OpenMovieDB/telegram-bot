@@ -670,8 +670,7 @@ export class BotUpdate {
   private async replyDashboardAuthFailure(ctx: Context, err: unknown): Promise<void> {
     let text = '⚠️ Не удалось подтвердить. Попробуйте через минуту или начните заново в кабинете.';
     if (err instanceof TelegramAuthTokenExpiredError) {
-      text =
-        '⚠️ Ссылка из кабинета истекла или уже использована.\n\nОткройте кабинет в браузере и попробуйте снова.';
+      text = '⚠️ Ссылка из кабинета истекла или уже использована.\n\nОткройте кабинет в браузере и попробуйте снова.';
     } else if (err instanceof TelegramAlreadyLinkedError) {
       text = '⚠️ Этот Telegram не подходит: он уже привязан к другому аккаунту ПоискКино.';
     } else {
