@@ -41,7 +41,9 @@ import { ExpiringSubscriptionsScene } from './scenes/expiring-subscriptions.scen
 import { UserDetailsScene } from './scenes/user-details.scene';
 import { UpdateUserSubscriptionScene } from './scenes/update-user-subscription.scene';
 import { rebrandBlocker } from './middlewares/rebrand-blocker.middleware';
+import { recordActivity } from './middlewares/activity.middleware';
 import { AccountModule } from './account/account.module';
+import { AccountClient } from './account/account.client';
 import { BillingModule } from './billing/billing.module';
 import { BillingEventsConsumer } from './nats/billing-events.consumer';
 
@@ -52,11 +54,11 @@ import { BillingEventsConsumer } from './nats/billing-events.consumer';
     }),
     TelegrafModule.forRootAsync({
       botName: BOT_NAME,
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
+      imports: [ConfigModule, AccountModule],
+      inject: [ConfigService, AccountClient],
+      useFactory: (configService: ConfigService, accountClient: AccountClient) => ({
         token: configService.get('BOT_TOKEN'),
-        middlewares: [rebrandBlocker(), session(), commandArgs()],
+        middlewares: [recordActivity(accountClient), rebrandBlocker(), session(), commandArgs()],
         include: [BotModule],
         launchOptions: false,
       }),

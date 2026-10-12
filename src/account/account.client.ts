@@ -235,6 +235,18 @@ export class AccountClient {
     }
   }
 
+  // Tells account-service the person acted in the bot: it keeps the account from
+  // removal for inactivity (offer 4.4). One attempt, no retry — the next message
+  // records the same.
+  async recordActivity(telegramId: number): Promise<void> {
+    await lastValueFrom(
+      this.httpService.post(`${this.baseUrl}/svc/accounts/by-telegram/${telegramId}/activity`, null, {
+        headers: this.headers(),
+        timeout: 3000,
+      }),
+    );
+  }
+
   // Read-only resolve by Telegram id — never creates a user. Used by moderation
   // ("do we know this user?") and notification paths. The user is already known
   // to auth, so resolving (lazy-provisioning) their entitlement is correct.
