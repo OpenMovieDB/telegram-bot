@@ -465,7 +465,11 @@ export class BotUpdate {
 
     try {
       const userId = parseInt(ctx.match[1]);
-      await this.moderationService.approveUser(userId);
+      const callbackQuery = ctx.update.callback_query;
+      const originalMessage =
+        'message' in callbackQuery && 'text' in callbackQuery.message ? callbackQuery.message.text : '';
+      const username = originalMessage.match(/Username: @([^\n]+)/)?.[1];
+      await this.moderationService.approveUser(userId, username);
 
       await SafeTelegramHelper.safeSend(
         () =>

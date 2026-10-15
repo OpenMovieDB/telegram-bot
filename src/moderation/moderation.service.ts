@@ -237,10 +237,12 @@ export class ModerationService {
     }
   }
 
-  // Решение владельца «не блокировать»: сообщение остаётся, пользователь больше не
-  // попадает на проверку 30 дней.
-  async approveUser(userId: number): Promise<void> {
+  // Решение владельца «не блокировать»: сообщение остаётся, пользователь регистрируется
+  // и больше не попадает на проверку. Ключ в Dragonfly решение не хранит: он вытесняется.
+  async approveUser(userId: number, username?: string): Promise<void> {
     try {
+      const user = await this.accountClient.upsertByTelegramId(userId, username);
+      await this.accountClient.updateTelegramProfile(user.id, { inChat: true });
       await this.cacheUserCheck(userId, true, this.APPROVED_TTL);
       await this.redis.del(`${this.SPAM_PENDING_PREFIX}${userId}`, `${this.SPAM_CHECK_PREFIX}${userId}`);
 
